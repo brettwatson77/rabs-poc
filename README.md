@@ -106,6 +106,7 @@ function devAuth(req, res, next) {
   req.user = { id: 1, name: 'Test Admin', role: 'admin' };
   next();
 }
+```
 
 You can expand to JWT or OAuth later, but it’s not required in this repo.
 🚀 Getting Started
@@ -125,9 +126,9 @@ cd frontend
 npm start
 
 Seed the database:
-
+```
 npm run seed
-
+```
 📡 Voice Agent Integration (Optional)
 
 While this repo is not exposed online by default, you may expose the backend to the internet (e.g., using ngrok) for temporary API access during voice agent tests.
