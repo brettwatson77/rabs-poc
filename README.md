@@ -72,22 +72,23 @@ This proof-of-concept exists to confirm the core logic of the future R.A.B.S. sy
 
 ## 📂 Project Structure (Early Phase)
 
+```
 rabs-poc/
 ├── backend/
-│ ├── routes/
-│ ├── models/
-│ ├── logic/
-│ └── server.js
+│   ├── routes/
+│   ├── models/
+│   ├── logic/
+│   └── server.js
 ├── frontend/
-│ ├── src/
-│ └── public/
+│   ├── src/
+│   └── public/
 ├── database/
-│ ├── schema.sql
-│ └── seed.js
+│   ├── schema.sql
+│   └── seed.js
 ├── scripts/
 ├── README.md
 └── .env.example
-
+```
 
 ---
 
@@ -106,16 +107,23 @@ function devAuth(req, res, next) {
   req.user = { id: 1, name: 'Test Admin', role: 'admin' };
   next();
 }
+```
 
 You can expand to JWT or OAuth later, but it’s not required in this repo.
-🚀 Getting Started
 
+---
+
+## 🚀 Getting Started
+
+```bash
 git clone https://github.com/YOUR-USERNAME/rabs-poc.git
 cd rabs-poc
 npm install
+```
 
 Start backend and frontend:
 
+```bash
 # Backend
 cd backend
 npm start
@@ -123,35 +131,38 @@ npm start
 # Frontend
 cd frontend
 npm start
+```
 
 Seed the database:
 
+```bash
 npm run seed
 ```
 
-📡 Voice Agent Integration (Optional)
+---
 
-While this repo is not exposed online by default, you may expose the backend to the internet (e.g., using ngrok) for temporary API access during voice agent tests.
-🧭 Roadmap (POC Scope Only)
+## 📡 Voice Agent Integration (Optional)
 
-Build add/remove logic for clients in activities
-
-Create dynamic resource allocation engine
-
-Mock invoice generation from schedule changes
-
-Enable basic voice-agent command simulation
-
-    Capture output from voice → intent → system task
-
-🤝 Feedback
-
-This repo is exploratory — not for production or real-world deployment. Feedback on logic structures, voice-agent API control, and resource coordination flows is welcome.
-🧠 Codename: Reggie
-
-Because even a proof-of-concept deserves personality.
-
+While this repo is not exposed online by default, you **may expose the backend to the internet** (e.g., using `ngrok`) for temporary API access during voice agent tests.
 
 ---
 
-Let me know if you'd like this saved as a `.txt` file or need a matching `.env.example`, `package.json`, or seed script scaffold next.
+## 🧭 Roadmap (POC Scope Only)
+
+- [ ] Build add/remove logic for clients in activities  
+- [ ] Create dynamic resource allocation engine  
+- [ ] Mock invoice generation from schedule changes  
+- [ ] Enable basic voice-agent command simulation  
+- [ ] Capture output from voice → intent → system task  
+
+---
+
+## 🤝 Feedback
+
+This repo is exploratory — not for production or real-world deployment. Feedback on logic structures, voice-agent API control, and resource coordination flows is welcome.
+
+---
+
+## 🧠 Codename: *Reggie*
+
+Because even a proof-of-concept deserves personality.
