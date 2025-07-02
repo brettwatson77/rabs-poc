@@ -1,0 +1,103 @@
+/* frontend/src/styles/CalendarView.css */
+
+.calendar-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    background-color: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden; /* Ensures the border-radius is respected by children */
+}
+
+/* Header for Day Names */
+.calendar-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background-color: #f7fafc;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.day-header {
+    padding: 0.75rem;
+    text-align: center;
+    font-weight: 600;
+    color: #4a5568;
+}
+
+.day-header .date-number {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 400;
+    color: #718096;
+    margin-top: 0.25rem;
+}
+
+/* Body for Events */
+.calendar-body {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    min-height: 500px; /* Give the calendar a decent default height */
+}
+
+.day-column {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border-right: 1px solid #e2e8f0;
+}
+
+.day-column:last-child {
+    border-right: none;
+}
+
+.no-events {
+    flex-grow: 1; /* Fills empty space */
+}
+
+/* Event Card Styling */
+.event-card {
+    background-color: #f0f4ff; /* Light blue background */
+    border-left: 4px solid #646cff;
+    padding: 0.75rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.event-title {
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 0.25rem;
+}
+
+.event-time {
+    font-size: 0.8rem;
+    color: #718096;
+    margin-bottom: 0.5rem;
+}
+
+.event-venue {
+    font-size: 0.85rem;
+    color: #4a5568;
+    margin-bottom: 0.75rem;
+}
+
+.event-details {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: #718096;
+    border-top: 1px dashed #cbd5e0;
+    padding-top: 0.5rem;
+}
+
+/* --------------------------------------------------------
+ * Visual indicator for programs that are understaffed
+ * (Applied when `.understaffed` class is added to .event-card)
+ * ------------------------------------------------------ */
+.event-card.understaffed {
+    border-left-color: #e53e3e;           /* Red border */
+    background-color: #fff5f5;            /* Subtle light-red background */
+}
