@@ -8,9 +8,9 @@ import '../styles/Modal.css';
  * @param {Function} props.onClose - Function to call when the modal should be closed.
  * @param {React.ReactNode} props.children - The content to display inside the modal.
  */
-const Modal = ({ isOpen, onClose, children }) => {
-  // If the modal is not open, render nothing.
-  if (!isOpen) {
+const Modal = ({ isOpen = true, onClose, children }) => {
+  // Only return null when `isOpen` is explicitly set to false.
+  if (isOpen === false) {
     return null;
   }
 

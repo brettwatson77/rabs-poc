@@ -18,7 +18,13 @@ const plannerRouter      = require('./routes/planner');
 const rosterRouter       = require('./routes/roster');
 const financeRouter      = require('./routes/finance');
 const ratesRouter        = require('./routes/rates');
-const recalculationRouter = require('./routes/recalculation');
+const systemRouter       = require('./routes/system');
+const changelogRouter    = require('./routes/changelog');
+const cancellationsRouter = require('./routes/cancellations');
+const recalculationRouter = require('./routes/recalculation'); // <-- NEW
+const staffAssignmentsRouter = require('./routes/staffAssignments'); // <-- NEW
+// Dynamic resource allocation (auto-staffing, vehicle & route engine) router
+const dynamicResourcesRouter = require('./routes/dynamicResources'); // <-- NEW
 
 // Initialize Express app
 const app = express();
@@ -26,7 +32,11 @@ const app = express();
 // Define allowed origins for CORS
 const whitelist = [
   'http://localhost:3008',
+  'http://localhost:3009',
+  'http://192.168.77.6:3009',
+  'http://192.168.77.6:3008',
   'https://rabspoc.codexdiz.com',
+  'https://rabspoc.codexdiz.com/api/v1/',
   'https://www.rabs.ai'
 ];
 
@@ -80,7 +90,14 @@ app.use('/api/v1/planner',      plannerRouter);
 app.use('/api/v1/roster',       rosterRouter);
 app.use('/api/v1/finance',      financeRouter);
 app.use('/api/v1/rates',        ratesRouter);
+app.use('/api/v1/system',       systemRouter);
+app.use('/api/v1/changelog',    changelogRouter);
+app.use('/api/v1/cancellations', cancellationsRouter);
+app.use('/api/v1/staff-assignments', staffAssignmentsRouter); // <-- NEW
+// Mount the recalculation routes (e.g., POST /api/v1/recalculate/process)
 app.use('/api/v1/recalculate',  recalculationRouter);
+// Dynamic resources (rebalance, route optimisation, etc.)
+app.use('/api/v1/dynamic-resources', dynamicResourcesRouter); // <-- NEW
 
 // Set up the server to listen on the specified port
 const PORT = process.env.PORT || 3009;

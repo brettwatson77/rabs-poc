@@ -37,7 +37,9 @@
 .calendar-body {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    min-height: 500px; /* Give the calendar a decent default height */
+    /* Let height be dictated by tallest column */
+    grid-auto-rows: min-content;
+    /* Remove fixed min-height so second week can sit directly beneath first */
 }
 
 .day-column {
@@ -100,4 +102,30 @@
 .event-card.understaffed {
     border-left-color: #e53e3e;           /* Red border */
     background-color: #fff5f5;            /* Subtle light-red background */
+}
+
+/* --------------------------------------------------------
+ * Stacking two-week view: add visual divider between weeks
+ * (Each week starts with its own .calendar-header generated
+ *  by the component – apply top-border to all except first)
+ * ------------------------------------------------------ */
+.calendar-header:not(:first-of-type) {
+    border-top: 3px solid #a0aec0; /* Darker divider */
+}
+
+/* --------------------------------------------------------
+ * Responsive tweaks: collapse grid on narrow screens
+ * ------------------------------------------------------ */
+@media (max-width: 768px) {
+    .calendar-header,
+    .calendar-body {
+        grid-template-columns: repeat(3, 1fr); /* 3 days per row */
+    }
+}
+
+@media (max-width: 480px) {
+    .calendar-header,
+    .calendar-body {
+        grid-template-columns: 1fr; /* One day per row */
+    }
 }

@@ -2,11 +2,9 @@
 const express = require('express');
 const recalculationController = require('../controllers/recalculationController');
 
-// Initialize router
 const router = express.Router();
 
-// Define the route to trigger the recalculation process
-router.post('/', recalculationController.triggerRecalculation);
+// Route to trigger the processing of pending enrollment changes
+router.post('/process', recalculationController.processPendingChanges);
 
-// Export the router
 module.exports = router;

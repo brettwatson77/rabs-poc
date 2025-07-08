@@ -8,30 +8,32 @@ const dotenv = require('dotenv');
 // Load environment variables
 dotenv.config();
 
+// ---------------------------------------------------------------------------
+// A `db` handle will be created inside `runSeed` but is referenced by the
+// many helper functions below.  We declare it here so they share the same
+// instance when `runSeed` is executed.
+// ---------------------------------------------------------------------------
+let db; // will be assigned in runSeed()
+
+/**
+ * Helper: format a JS Date in local timezone as `YYYY-MM-DD`
+ * This avoids `.toISOString()` (which is UTC) and therefore
+ * prevents off-by-one-day errors when the local timezone is
+ * ahead/behind UTC.
+ * @param {Date} d
+ * @returns {string}
+ */
+function formatDateLocal(d) {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0'); // Months are 0-based
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 // Define paths
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const DB_PATH = path.join(DATA_DIR, 'rabs-poc.db');
 const SCHEMA_PATH = path.join(__dirname, 'schema.sql');
-
-// Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-  console.log(`Created data directory: ${DATA_DIR}`);
-}
-
-// ---------------------------------------------------------------------------
-// Always start with a clean slate: if the DB already exists from a previous
-// run (with an older schema), delete it so the schema can be recreated fresh.
-// ---------------------------------------------------------------------------
-if (fs.existsSync(DB_PATH)) {
-  try {
-    fs.unlinkSync(DB_PATH);
-    console.log(`Existing database removed: ${DB_PATH}`);
-  } catch (err) {
-    console.error(`Unable to delete existing database ${DB_PATH}:`, err);
-    process.exit(1);
-  }
-}
 
 // Initialize OpenAI client if API key is available
 let openai = null;
@@ -52,49 +54,61 @@ if (process.env.GOOGLE_AI_KEY) {
   console.log('Google Gemini client initialized');
 }
 
-// Connect to database
-const db = new sqlite3.Database(DB_PATH, (err) => {
-  if (err) {
-    console.error('Error connecting to database:', err.message);
-    process.exit(1);
+// ---------------------------------------------------------------------------
+// MAIN ENTRY (re-usable): runSeed()
+// ---------------------------------------------------------------------------
+async function runSeed() {
+  // Ensure data directory exists
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    console.log(`Created data directory: ${DATA_DIR}`);
   }
-  console.log(`Connected to database: ${DB_PATH}`);
-  
-  // Enable foreign keys
-  db.run('PRAGMA foreign_keys = ON;', (err) => {
-    if (err) {
-      console.error('Error enabling foreign keys:', err.message);
-      process.exit(1);
-    }
-    
-    // Read and execute schema
-    fs.readFile(SCHEMA_PATH, 'utf8', (err, schema) => {
-      if (err) {
-        console.error('Error reading schema file:', err.message);
-        process.exit(1);
-      }
-      
-      console.log('Executing schema...');
-      db.exec(schema, (err) => {
-        if (err) {
-          console.error('Error executing schema:', err.message);
-          process.exit(1);
-        }
-        console.log('Schema executed successfully');
-        
-        // Begin seeding data
-        seedDatabase();
+
+  // Always start with a clean slate
+  if (fs.existsSync(DB_PATH)) {
+    fs.unlinkSync(DB_PATH);
+    console.log(`Existing database removed: ${DB_PATH}`);
+  }
+
+  // Wrap sqlite3 callback-style API in a promise so we can await it
+  await new Promise((resolve, reject) => {
+    db = new sqlite3.Database(DB_PATH, (err) => {
+      if (err) return reject(err);
+      console.log(`Connected to database: ${DB_PATH}`);
+
+      db.run('PRAGMA foreign_keys = ON;', (errFk) => {
+        if (errFk) return reject(errFk);
+
+        fs.readFile(SCHEMA_PATH, 'utf8', (errRead, schema) => {
+          if (errRead) return reject(errRead);
+
+          console.log('Executing schema...');
+          db.exec(schema, (errExec) => {
+            if (errExec) return reject(errExec);
+            console.log('Schema executed successfully');
+
+            // Now seed the database
+            seedDatabase()
+              .then(resolve)
+              .catch(reject);
+          });
+        });
       });
     });
+  }).then(() => {
+    console.log('Seed completed ✔');
+  }).catch((err) => {
+    console.error('Seed failed:', err);
+    process.exitCode = 1;
   });
-});
+}
 
 // Main seeding function
 function seedDatabase() {
   console.log("Seeding database with fake clients, staff, vehicles, and activities...");
   
   // Run all seed functions in sequence
-  seedVenues()
+  return seedVenues()
     .then(() => seedPrograms())
     .then(() => seedParticipants())
     .then(() => seedStaff())
@@ -105,19 +119,19 @@ function seedDatabase() {
     .then(() => seedEnrollments())
     .then(() => {
       console.log('Database seeding completed successfully');
-      // Close database connection
-      db.close((err) => {
-        if (err) {
-          console.error('Error closing database:', err.message);
-          process.exit(1);
-        }
-        console.log('Database connection closed');
+      // Close database connection and resolve
+      return new Promise((resolve, reject) => {
+        db.close((err) => {
+          if (err) return reject(err);
+          console.log('Database connection closed');
+          resolve();
+        });
       });
     })
     .catch(err => {
       console.error('Error seeding database:', err);
       db.close();
-      process.exit(1);
+      throw err;
     });
 }
 
@@ -531,7 +545,8 @@ function seedStaff() {
         address: '123 Staff Street',
         suburb: 'Liverpool',
         state: 'NSW',
-        postcode: '2170'
+        postcode: '2170',
+        contracted_hours: 76
       },
       {
         id: 'S2',
@@ -540,7 +555,8 @@ function seedStaff() {
         address: '456 Support Road',
         suburb: 'Cabramatta',
         state: 'NSW',
-        postcode: '2166'
+        postcode: '2166',
+        contracted_hours: 50
       },
       {
         id: 'S3',
@@ -549,7 +565,8 @@ function seedStaff() {
         address: '789 Helper Avenue',
         suburb: 'Fairfield',
         state: 'NSW',
-        postcode: '2165'
+        postcode: '2165',
+        contracted_hours: 30
       },
       {
         id: 'S4',
@@ -558,7 +575,8 @@ function seedStaff() {
         address: '101 Carer Lane',
         suburb: 'Liverpool',
         state: 'NSW',
-        postcode: '2170'
+        postcode: '2170',
+        contracted_hours: 76
       },
       {
         id: 'S5',
@@ -567,11 +585,13 @@ function seedStaff() {
         address: '202 Support Street',
         suburb: 'Cabramatta',
         state: 'NSW',
-        postcode: '2166'
+        postcode: '2166',
+        contracted_hours: 50
       }
     ];
     
-    const placeholders = staff.map(() => '(?, ?, ?, ?, ?, ?, ?)').join(', ');
+    // id, first_name, last_name, address, suburb, state, postcode, contracted_hours
+    const placeholders = staff.map(() => '(?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
     const values = staff.flatMap(staffMember => [
       staffMember.id,
       staffMember.first_name,
@@ -579,11 +599,12 @@ function seedStaff() {
       staffMember.address,
       staffMember.suburb,
       staffMember.state,
-      staffMember.postcode
+      staffMember.postcode,
+      staffMember.contracted_hours
     ]);
     
     db.run(
-      `INSERT INTO staff (id, first_name, last_name, address, suburb, state, postcode) VALUES ${placeholders}`,
+      `INSERT INTO staff (id, first_name, last_name, address, suburb, state, postcode, contracted_hours) VALUES ${placeholders}`,
       values,
       function(err) {
         if (err) {
@@ -978,8 +999,9 @@ function seedProgramInstances() {
             // Calculate the date for this program in this week
             const programDate = new Date(startDate);
             programDate.setDate(programDate.getDate() + (week * 7) + ((program.day_of_week - programDate.getDay() + 7) % 7));
-            
-            const dateString = programDate.toISOString().split('T')[0];
+            // Normalise to local midnight and format as YYYY-MM-DD in local time
+            programDate.setHours(0, 0, 0, 0);
+            const dateString = formatDateLocal(programDate);
             
             // For weekend programs, generate a unique activity and venue
             let activityDescription = null;
@@ -1549,9 +1571,6 @@ function generateStaffAndVehicleAssignments() {
                 }
               }
               
-              // Generate billing records for this program instance
-              await generateBillingRecords(instance.program_instance_id);
-              
             } catch (e) {
               console.error(`Error processing program instance ${instance.program_instance_id}:`, e);
             }
@@ -1565,66 +1584,14 @@ function generateStaffAndVehicleAssignments() {
   });
 }
 
-// Generate billing records
-function generateBillingRecords(programInstanceId) {
-  return new Promise((resolve, reject) => {
-    // Get all billable attendances for this program instance
-    db.all(`
-      SELECT 
-        a.participant_id,
-        a.program_instance_id,
-        a.status,
-        pi.program_id
-      FROM attendance a
-      JOIN program_instances pi ON a.program_instance_id = pi.id
-      WHERE a.program_instance_id = ?
-    `, [programInstanceId], async (err, attendances) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-      
-      for (const attendance of attendances) {
-        // Get all rate line items for the program
-        db.all('SELECT * FROM rate_line_items WHERE program_id = ?', [attendance.program_id], async (err, lineItems) => {
-          if (err) {
-            console.error(`Error fetching line items for program ${attendance.program_id}:`, err);
-            return;
-          }
-          
-          // Create a separate billing record for each line item
-          for (const item of lineItems) {
-            await new Promise((resolveInsert, rejectInsert) => {
-              db.run(
-                `INSERT INTO billing_records (participant_id, program_instance_id, line_item_id, amount, status, notes) VALUES (?, ?, ?, ?, ?, ?)`,
-                [
-                  attendance.participant_id,
-                  attendance.program_instance_id,
-                  item.id,
-                  item.unit_price,
-                  'unbilled',
-                  attendance.status === 'cancelled' ? 'Late cancellation - still billable' : ''
-                ],
-                function(err) {
-                  if (err) {
-                    // Ignore unique constraint errors, as we might be re-running the seed script
-                    if (!err.message.includes('UNIQUE constraint failed')) {
-                      rejectInsert(err);
-                      return;
-                    }
-                  }
-                  resolveInsert();
-                }
-              );
-            });
-          }
-        });
-      }
-      
-      resolve();
-    });
-  });
-}
-
 // Export the database connection for use in other modules
-module.exports = db;
+module.exports.runSeed = runSeed;
+
+// ---------------------------------------------------------------------------
+// If this script is run directly (`node database/seed.js`) execute runSeed().
+// When imported (e.g., via an admin endpoint) the caller can invoke runSeed()
+// manually without side-effects.
+// ---------------------------------------------------------------------------
+if (require.main === module) {
+  runSeed();
+}

@@ -1,0 +1,22 @@
+/* frontend/src/styles/PageTransitions.css */
+
+/* 
+ * Defines a simple keyframe animation to smoothly fade in content.
+ * This is used to prevent the jarring "flash" when navigating between pages.
+ */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 
+ * A reusable class that applies the fadeIn animation.
+ * We can add this to the root container of our page components.
+ */
+.page-fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}

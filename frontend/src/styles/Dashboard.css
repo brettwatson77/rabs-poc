@@ -1,0 +1,183 @@
+/* frontend/src/styles/Dashboard.css */
+
+.dashboard-container {
+  display: flex;
+  gap: 20px;
+  width: 100%;
+  height: 70vh; /* Set a fixed height to contain the columns */
+}
+
+.dashboard-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden; /* Hide anything that spills out */
+}
+
+.dashboard-column h2 {
+  padding: 15px;
+  margin: 0;
+  background-color: #f3f4f6;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: center;
+  font-size: 1.2rem;
+  color: #374151;
+}
+
+/* Special styling for the "Now" column to make it stand out */
+.dashboard-column.now {
+  background-color: #fefce8; /* Light yellow background */
+  border-color: #facc15; /* Yellow border */
+}
+
+.dashboard-column.now h2 {
+  background-color: #fef9c3;
+  border-color: #facc15;
+  color: #a16207;
+}
+
+.column-content {
+  padding: 15px;
+  overflow-y: auto; /* Enable vertical scrolling if content overflows */
+  flex-grow: 1;
+}
+
+.activity-card {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 15px;
+  margin-bottom: 15px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.2s ease-in-out;
+}
+
+.activity-card:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.activity-card h4 {
+  margin: 0 0 5px 0;
+  font-size: 1rem;
+  color: #1f2937;
+}
+
+.activity-card p {
+  margin: 0 0 10px 0;
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+.card-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  color: #4b5563;
+  border-top: 1px solid #f3f4f6;
+  padding-top: 10px;
+}
+
+.card-summary span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* ------------------------------------------------------------------
+ *  KPI METRIC CARDS & QUICK-ACTIONS
+ * ----------------------------------------------------------------*/
+
+.metrics-dashboard {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-bottom: 25px;
+}
+
+.metric-card {
+  flex: 1 1 150px;                /* grow/shrink with a sensible min width */
+  min-width: 150px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 18px 22px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  text-align: center;
+}
+
+.metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+.metric-card h3 {
+  margin: 0 0 6px 0;
+  font-size: 0.9rem;
+  letter-spacing: 0.2px;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.metric-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 4px;
+}
+
+.metric-label {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+/* ---------- Quick Actions ---------- */
+
+.quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 25px;
+}
+
+.action-button {
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #ffffff;
+  background: #2563eb;            /* blue-600 */
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.action-button:hover {
+  background: #1e40af;            /* blue-800 */
+  transform: translateY(-1px);
+}
+
+.action-button:active {
+  transform: translateY(0);
+}
+
+/* ---------- Responsive tweaks ---------- */
+
+@media (max-width: 768px) {
+  .dashboard-container {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .metric-card {
+    flex: 1 1 100%;
+  }
+
+  .quick-actions {
+    flex-direction: column;
+  }
+}

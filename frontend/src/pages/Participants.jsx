@@ -102,7 +102,9 @@ const Participants = () => {
     };
 
     return (
-        <div className="crud-page-container">
+        <>
+        {/* Apply shared CRUD page styling for consistent layout */}
+        <div className="crud-page-container" style={{ padding: '20px', fontFamily: 'sans-serif' }}>
             <h1>Manage Participants</h1>
 
             {error && <p className="error-message">{error}</p>}
@@ -197,6 +199,7 @@ const Participants = () => {
                 </div>
             )}
         </div>
+        </>
     );
 };
 

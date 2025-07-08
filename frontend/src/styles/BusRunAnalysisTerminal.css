@@ -1,0 +1,253 @@
+/* 
+ * BusRunAnalysisTerminal.css
+ * Styling for the Bus Run Analysis Terminal component
+ * A retro-futuristic terminal interface with modern polish
+ */
+
+/* Base terminal container */
+.terminal-container {
+  font-family: 'Courier New', monospace;
+  background-color: #0c0c0c;
+  color: #33ff33;
+  border-radius: 6px;
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.2), 
+              0 0 30px rgba(0, 0, 0, 0.4), 
+              inset 0 0 15px rgba(0, 0, 0, 0.8);
+  width: 100%;
+  max-width: 800px;
+  max-height: 500px;
+  margin: 20px auto;
+  overflow: hidden;
+  border: 1px solid #1a1a1a;
+  position: relative;
+  transition: all 0.3s ease-in-out;
+}
+
+/* Terminal header bar */
+.terminal-header-bar {
+  background: linear-gradient(to right, #1a1a1a, #2a2a2a);
+  padding: 8px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #333;
+  user-select: none;
+}
+
+/* Terminal title */
+.terminal-title {
+  font-size: 14px;
+  color: #aaa;
+  font-weight: bold;
+  text-shadow: 0 0 2px rgba(170, 170, 170, 0.5);
+}
+
+/* Terminal controls (minimize, close buttons) */
+.terminal-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.terminal-button {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  cursor: pointer;
+  color: #333;
+  transition: all 0.2s ease;
+}
+
+.terminal-button.close {
+  background-color: #ff5f56;
+}
+
+.terminal-button.minimize {
+  background-color: #ffbd2e;
+}
+
+.terminal-button:hover {
+  filter: brightness(1.2);
+}
+
+/* Terminal content area */
+.terminal-content {
+  padding: 12px;
+  height: calc(100% - 40px);
+  max-height: 450px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #333 #0c0c0c;
+}
+
+.terminal-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.terminal-content::-webkit-scrollbar-track {
+  background: #0c0c0c;
+}
+
+.terminal-content::-webkit-scrollbar-thumb {
+  background-color: #333;
+  border-radius: 3px;
+}
+
+/* Terminal lines */
+.terminal-line {
+  margin-bottom: 6px;
+  line-height: 1.4;
+  font-size: 14px;
+  text-shadow: 0 0 5px rgba(51, 255, 51, 0.5);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Terminal prefix (like command prompts) */
+.terminal-prefix {
+  color: #00aaff;
+  margin-right: 8px;
+  font-weight: bold;
+  text-shadow: 0 0 5px rgba(0, 170, 255, 0.5);
+}
+
+/* Different message types */
+.terminal-header {
+  color: #ffffff;
+  font-weight: bold;
+  font-size: 16px;
+  margin-top: 8px;
+  margin-bottom: 8px;
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.7);
+}
+
+.terminal-info {
+  color: #00aaff;
+  text-shadow: 0 0 5px rgba(0, 170, 255, 0.5);
+}
+
+.terminal-analysis {
+  color: #ffcc00;
+  text-shadow: 0 0 5px rgba(255, 204, 0, 0.5);
+}
+
+.terminal-route {
+  color: #00ccaa;
+  text-shadow: 0 0 5px rgba(0, 204, 170, 0.5);
+}
+
+.terminal-score {
+  color: #ff9966;
+  text-shadow: 0 0 5px rgba(255, 153, 102, 0.5);
+}
+
+.terminal-result {
+  color: #33ff33;
+  font-weight: bold;
+  text-shadow: 0 0 8px rgba(51, 255, 51, 0.7);
+}
+
+.terminal-error {
+  color: #ff3333;
+  text-shadow: 0 0 5px rgba(255, 51, 51, 0.7);
+}
+
+.terminal-default {
+  color: #bbbbbb;
+}
+
+/* Spinner animation for loading state */
+.terminal-spinner {
+  display: inline-block;
+  animation: spin 1.2s linear infinite;
+  color: #33ff33;
+  font-size: 16px;
+  margin-left: 4px;
+  text-shadow: 0 0 5px rgba(51, 255, 51, 0.7);
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Terminal prompt and cursor */
+.terminal-complete {
+  display: flex;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.terminal-prompt {
+  color: #33ff33;
+  font-weight: bold;
+  margin-right: 4px;
+}
+
+.terminal-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 16px;
+  background-color: #33ff33;
+  animation: blink 1s step-end infinite;
+  box-shadow: 0 0 5px rgba(51, 255, 51, 0.7);
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Minimized state */
+.terminal-container.minimized {
+  max-height: 36px;
+  height: 36px;
+}
+
+.terminal-container.minimized .terminal-content {
+  display: none;
+}
+
+/* Responsive design */
+@media (max-width: 600px) {
+  .terminal-container {
+    max-width: 95%;
+    margin: 10px auto;
+  }
+  
+  .terminal-line {
+    font-size: 12px;
+  }
+  
+  .terminal-header {
+    font-size: 14px;
+  }
+}
+
+/* Typing animation effect */
+@keyframes typing {
+  from { width: 0 }
+  to { width: 100% }
+}
+
+/* Glowing effect on hover */
+.terminal-container:hover {
+  box-shadow: 0 0 25px rgba(0, 255, 0, 0.3), 
+              0 0 35px rgba(0, 0, 0, 0.5), 
+              inset 0 0 15px rgba(0, 0, 0, 0.8);
+}
+
+/* Terminal line appear animation */
+.terminal-line {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
+}

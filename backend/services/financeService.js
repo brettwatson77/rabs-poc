@@ -1,5 +1,5 @@
 // backend/services/financeService.js
-const db = require('../database');
+const { getDbConnection } = require('../database');
 
 /**
  * Generate a CSV string from an array of objects
@@ -17,7 +17,7 @@ const generateCsvFromData = (data, headers) => {
       const value = row[header.id];
       // Wrap strings in quotes and handle null/undefined values
       return value === null || value === undefined 
-        ? '""' 
+        ? '' 
         : typeof value === 'string' 
           ? `"${value.replace(/"/g, '""')}"` 
           : value;
@@ -34,70 +34,116 @@ const generateCsvFromData = (data, headers) => {
  * @param {string} endDate - End date in YYYY-MM-DD format
  * @returns {Promise<string>} CSV formatted string
  */
-const generateBillingCsv = (startDate, endDate) => {
-  return new Promise((resolve, reject) => {
-    /* ------------------------------------------------------------------
-     * 1. Retrieve provider RegistrationNumber & ABN from settings table
-     * ------------------------------------------------------------------ */
-    db.all(
+const generateBillingCsv = async (startDate, endDate) => {
+  let db;
+  try {
+    db = await getDbConnection();
+    // 1. Retrieve provider settings
+    const settingsRows = await new Promise((resolve, reject) =>
+      db.all(
       `SELECT key, value FROM settings WHERE key IN ('ndis_registration_number','abn')`,
       [],
-      (err, settingsRows) => {
-        if (err) {
-          reject(err);
-          return;
-        }
+      (err, rows) => (err ? reject(err) : resolve(rows))
+    ));
 
-        const settings = settingsRows.reduce((acc, s) => {
-          acc[s.key] = s.value;
-          return acc;
-        }, {});
+    const settings = settingsRows.reduce((acc, s) => {
+      acc[s.key] = s.value;
+      return acc;
+    }, {});
 
-        const registrationNumber = settings['ndis_registration_number'] || '';
-        const abn = settings['abn'] || '';
+    const registrationNumber = settings['ndis_registration_number'] || '';
+    const abn = settings['abn'] || '';
 
-        /* ------------------------------------------------------------------
-         * 2. Main billing query – join to rate_line_items (rli)
-         * ------------------------------------------------------------------ */
-        const query = `
-          SELECT
-            br.id               AS billing_id,
-            p.ndis_number       AS ndis_number,
-            p.first_name,
-            p.last_name,
-            pi.date             AS activity_date,
-            pi.start_time,
-            pi.end_time,
-            rli.support_number,
-            rli.unit_price,
-            rli.gst_code,
-            rli.in_kind_funding_program,
-            rli.claim_type,
-            a.status            AS attendance_status
-          FROM billing_records br
-          JOIN participants p       ON br.participant_id = p.id
-          JOIN program_instances pi ON br.program_instance_id = pi.id
-          JOIN rate_line_items rli  ON br.line_item_id = rli.id
-          JOIN attendance a         ON a.participant_id = br.participant_id
-                                    AND a.program_instance_id = br.program_instance_id
-          WHERE p.is_plan_managed = 0
-            AND pi.date BETWEEN ? AND ?
-            AND br.status = 'unbilled'
-          ORDER BY pi.date, pi.start_time, p.last_name, p.first_name
+    // 2. Main live-calculation query for unbilled items
+    const query = `
+          WITH date_range_instances AS (
+            SELECT id, program_id, date, start_time, end_time
+            FROM program_instances
+            WHERE date BETWEEN ? AND ?
+          ),
+          base_attendances AS (
+            SELECT p.id AS participant_id, p.ndis_number, p.is_plan_managed, dri.id AS program_instance_id, dri.program_id, dri.date, dri.start_time, dri.end_time
+            FROM program_enrollments pe
+            JOIN participants p ON pe.participant_id = p.id
+            JOIN date_range_instances dri ON pe.program_id = dri.program_id
+            WHERE pe.start_date <= dri.date AND (pe.end_date IS NULL OR pe.end_date >= dri.date)
+          ),
+          added_attendances AS (
+            SELECT p.id AS participant_id, p.ndis_number, p.is_plan_managed, dri.id AS program_instance_id, dri.program_id, dri.date, dri.start_time, dri.end_time
+            FROM pending_enrollment_changes pec
+            JOIN participants p ON pec.participant_id = p.id
+            JOIN date_range_instances dri ON pec.program_id = dri.program_id
+            WHERE pec.action = 'add' AND pec.effective_date <= dri.date
+          ),
+          removed_attendances AS (
+            SELECT pec.participant_id, dri.id AS program_instance_id
+            FROM pending_enrollment_changes pec
+            JOIN date_range_instances dri ON pec.program_id = dri.program_id
+            WHERE pec.action = 'remove' AND pec.effective_date <= dri.date
+          ),
+          final_attendances AS (
+            SELECT * FROM base_attendances
+            UNION
+            SELECT * FROM added_attendances
+          )
+          SELECT DISTINCT
+              fa.participant_id,
+              fa.program_instance_id,
+              fa.ndis_number,
+              fa.date AS activity_date,
+              fa.start_time,
+              fa.end_time,
+              rli.id AS line_item_id,
+              rli.support_number,
+              rli.unit_price,
+              rli.gst_code,
+              rli.in_kind_funding_program,
+              rli.claim_type,
+              COALESCE(att.status, 'confirmed') AS attendance_status
+          FROM final_attendances fa
+          JOIN rate_line_items rli ON fa.program_id = rli.program_id
+          LEFT JOIN attendance att ON fa.participant_id = att.participant_id AND fa.program_instance_id = att.program_instance_id
+          /*  === Prevent double-billing ===
+             An item is “unbilled” if there is **no** matching row in billing_records
+             for the same participant, program instance and line-item combination.
+             We do this with a LEFT JOIN and filter for NULL on the joined record.
+          */
+          LEFT JOIN billing_records br
+                 ON  br.participant_id      = fa.participant_id
+                AND br.program_instance_id = fa.program_instance_id
+                AND br.line_item_id        = rli.id
+                AND br.status              = 'billed'          -- only treat BILLED rows as “already billed”
+          WHERE
+              fa.is_plan_managed = 0
+              AND NOT EXISTS (
+                  SELECT 1 FROM removed_attendances ra
+                  WHERE ra.participant_id = fa.participant_id AND ra.program_instance_id = fa.program_instance_id
+              )
+              /* only keep rows that have **no** billing record yet */
+              AND br.id IS NULL
+          ORDER BY fa.date, fa.start_time, fa.participant_id;
         `;
-    
-        db.all(query, [startDate, endDate], (err, rows) => {
-          if (err) {
-            reject(err);
-            return;
-          }
 
-          // Debug: how many billing rows were returned
-          console.log('Billing query returned', rows.length, 'rows');
+    const rows = await new Promise((resolve, reject) =>
+      db.all(query, [startDate, endDate], (err, r) => (err ? reject(err) : resolve(r)))
+    );
 
-          /* ----------------------------------------------------------------
-           * 3. Map DB rows to NDIS bulk upload structure
-           * ---------------------------------------------------------------- */
+    // --- De-duplicate rows by composite key to avoid UNIQUE violations when inserting ---
+    const seenKeys = new Set();
+    const uniqueRows = rows.filter(r => {
+      const key = `${r.participant_id}-${r.program_instance_id}-${r.line_item_id}`;
+      if (seenKeys.has(key)) return false;
+      seenKeys.add(key);
+      return true;
+    });
+
+    // Debug – show the actual SQL & params we just executed
+    console.log('[generateBillingCsv] Executed SQL:', query);
+    console.log('[generateBillingCsv] Params:', [startDate, endDate]);
+
+    console.log('Billing query returned', rows.length, 'unbilled items (', uniqueRows.length, 'after de-dup)');
+
+          // 3. Map DB rows to NDIS bulk upload structure
           const headers = [
             { id: 'RegistrationNumber',      title: 'RegistrationNumber' },
             { id: 'NDISNumber',              title: 'NDISNumber' },
@@ -117,10 +163,21 @@ const generateBillingCsv = (startDate, endDate) => {
             { id: 'ABN',                     title: 'ABN of Support Provider' }
           ];
 
-          const mapped = rows.map(r => {
+          const recordsToInsert = [];
+          const mapped = uniqueRows.map(r => {
             const start = new Date(`${r.activity_date}T${r.start_time}:00`);
             const end   = new Date(`${r.activity_date}T${r.end_time}:00`);
             const hours = ((end - start) / 3600000).toFixed(2);
+
+            // Prepare record for insertion into billing_records
+            recordsToInsert.push({
+              participant_id: r.participant_id,
+              program_instance_id: r.program_instance_id,
+              line_item_id: r.line_item_id,
+              amount: r.unit_price,
+              status: 'billed',
+              notes: `Billed on ${new Date().toISOString().split('T')[0]}`
+            });
 
             return {
               RegistrationNumber:  registrationNumber,
@@ -128,7 +185,7 @@ const generateBillingCsv = (startDate, endDate) => {
               SupportsDeliveredFrom: r.activity_date,
               SupportsDeliveredTo:   r.activity_date,
               SupportNumber:       r.support_number,
-              ClaimReference:      r.billing_id,
+              ClaimReference:      `PI${r.program_instance_id}-LI${r.line_item_id}`,
               Quantity:            0.0,
               Hours:               hours,
               UnitPrice:           r.unit_price.toFixed(2),
@@ -142,32 +199,34 @@ const generateBillingCsv = (startDate, endDate) => {
             };
           });
 
-          // Generate CSV
-          const csvData = generateCsvFromData(mapped, headers);
+    const csvData = generateCsvFromData(mapped, headers);
 
-          /* ----------------------------------------------------------------
-           * 4. Mark billed records
-           * ---------------------------------------------------------------- */
-          if (rows.length > 0) {
-            const billingIds = rows.map(row => row.billing_id);
-            const placeholders = billingIds.map(() => '?').join(',');
+    // 4. Insert records into billing_records to mark them as billed
+    if (recordsToInsert.length > 0) {
+      const placeholders = recordsToInsert.map(() => '(?, ?, ?, ?, ?, ?)').join(',');
+      const values = recordsToInsert.flatMap(rec => [
+        rec.participant_id,
+        rec.program_instance_id,
+        rec.line_item_id,
+        rec.amount,
+        rec.status,
+        rec.notes,
+      ]);
 
-            db.run(
-              `UPDATE billing_records SET status = 'billed' WHERE id IN (${placeholders})`,
-              billingIds,
-              (err) => {
-                if (err) {
-                  console.error('Error updating billing status:', err);
-                }
-              }
-            );
-          }
+      await new Promise((resolve, reject) =>
+        db.run(
+          `INSERT INTO billing_records (participant_id, program_instance_id, line_item_id, amount, status, notes) VALUES ${placeholders}`,
+          values,
+          (err) => (err ? reject(err) : resolve())
+        )
+      );
+      console.log(`Successfully marked ${recordsToInsert.length} items as billed.`);
+    }
 
-          resolve(csvData);
-        });
-      }
-    );
-  });
+    return csvData;
+  } finally {
+    if (db) db.close();
+  }
 };
 
 /**
@@ -176,49 +235,86 @@ const generateBillingCsv = (startDate, endDate) => {
  * @param {string} endDate - End date in YYYY-MM-DD format
  * @returns {Promise<string>} CSV formatted string
  */
-const generateInvoicesCsv = (startDate, endDate) => {
-  return new Promise((resolve, reject) => {
+const generateInvoicesCsv = async (startDate, endDate) => {
+  let db;
+  try {
+    db = await getDbConnection();
+    // Live-calculation query for unbilled invoice items
     const query = `
-      SELECT
-        br.id AS billing_id,
-        p.id AS participant_id,
-        p.first_name,
-        p.last_name,
-        pi.date AS activity_date,
-        prog.name AS program_name,
-        pi.start_time,
-        pi.end_time,
-        v.name AS venue_name,
-        br.amount,
-        rli.support_number,
-        rli.description AS line_item_description,
-        a.status AS attendance_status,
-        CASE
-          WHEN a.status = 'cancelled' THEN 'Yes'
-          ELSE 'No'
-        END AS is_cancelled,
-        br.notes
-      FROM billing_records br
-      JOIN participants p ON br.participant_id = p.id
-      JOIN program_instances pi ON br.program_instance_id = pi.id
-      JOIN programs prog ON pi.program_id = prog.id
-      JOIN venues v ON pi.venue_id = v.id
-      JOIN rate_line_items rli ON br.line_item_id = rli.id
-      JOIN attendance a ON br.participant_id = a.participant_id AND br.program_instance_id = a.program_instance_id
-      WHERE p.is_plan_managed = 1
-        AND pi.date BETWEEN ? AND ?
-        AND br.status = 'unbilled'
-      ORDER BY p.id, p.last_name, p.first_name, pi.date, pi.start_time
+      WITH date_range_instances AS (
+        SELECT pi.id, pi.program_id, pi.date, pi.start_time, pi.end_time, p.name AS program_name, v.name AS venue_name
+        FROM program_instances pi
+        JOIN programs p ON pi.program_id = p.id
+        JOIN venues v ON pi.venue_id = v.id
+        WHERE pi.date BETWEEN ? AND ?
+      ),
+      base_attendances AS (
+        SELECT p.id AS participant_id, p.first_name, p.last_name, p.is_plan_managed, dri.id AS program_instance_id, dri.program_id, dri.date, dri.start_time, dri.end_time, dri.program_name, dri.venue_name
+        FROM program_enrollments pe
+        JOIN participants p ON pe.participant_id = p.id
+        JOIN date_range_instances dri ON pe.program_id = dri.program_id
+        WHERE pe.start_date <= dri.date AND (pe.end_date IS NULL OR pe.end_date >= dri.date)
+      ),
+      added_attendances AS (
+        SELECT p.id AS participant_id, p.first_name, p.last_name, p.is_plan_managed, dri.id AS program_instance_id, dri.program_id, dri.date, dri.start_time, dri.end_time, dri.program_name, dri.venue_name
+        FROM pending_enrollment_changes pec
+        JOIN participants p ON pec.participant_id = p.id
+        JOIN date_range_instances dri ON pec.program_id = dri.program_id
+        WHERE pec.action = 'add' AND pec.effective_date <= dri.date
+      ),
+      removed_attendances AS (
+        SELECT pec.participant_id, dri.id AS program_instance_id
+        FROM pending_enrollment_changes pec
+        JOIN date_range_instances dri ON pec.program_id = dri.program_id
+        WHERE pec.action = 'remove' AND pec.effective_date <= dri.date
+      ),
+      final_attendances AS (
+        SELECT * FROM base_attendances
+        UNION
+        SELECT * FROM added_attendances
+      )
+      SELECT DISTINCT
+          fa.participant_id,
+          fa.first_name,
+          fa.last_name,
+          fa.program_instance_id,
+          fa.date AS activity_date,
+          fa.program_name,
+          fa.start_time,
+          fa.end_time,
+          fa.venue_name,
+          rli.id AS line_item_id,
+          rli.unit_price AS amount,
+          rli.support_number,
+          rli.description AS line_item_description,
+          COALESCE(att.status, 'confirmed') AS attendance_status,
+          COALESCE(att.notes, '') AS notes
+      FROM final_attendances fa
+      JOIN rate_line_items rli ON fa.program_id = rli.program_id
+      LEFT JOIN attendance att ON fa.participant_id = att.participant_id AND fa.program_instance_id = att.program_instance_id
+      /* join to billing_records so we can exclude already-billed items */
+      LEFT JOIN billing_records br
+             ON  br.participant_id      = fa.participant_id
+            AND br.program_instance_id = fa.program_instance_id
+            AND br.line_item_id        = rli.id
+      WHERE
+          fa.is_plan_managed = 1
+          AND NOT EXISTS (
+              SELECT 1 FROM removed_attendances ra
+              WHERE ra.participant_id = fa.participant_id AND ra.program_instance_id = fa.program_instance_id
+          )
+          /* only keep rows that have **no** billing record yet */
+          AND br.id IS NULL
+      ORDER BY fa.participant_id, fa.date, fa.start_time;
     `;
     
-    db.all(query, [startDate, endDate], (err, rows) => {
-      if (err) {
-        reject(err);
-        return;
-      }
+    const rows = await new Promise((resolve, reject) =>
+      db.all(query, [startDate, endDate], (err, r) => (err ? reject(err) : resolve(r)))
+    );
 
-      // Debug: how many invoice rows were returned
-      console.log('Invoices query returned', rows.length, 'rows');
+    console.log('Invoices query returned', rows.length, 'unbilled items');
+      
+      const recordsToInsert = [];
       
       // Group by participant
       const participantGroups = {};
@@ -237,12 +333,20 @@ const generateInvoicesCsv = (startDate, endDate) => {
         
         participantGroups[participantId].items.push(row);
         participantGroups[participantId].total_amount += row.amount;
+        
+        recordsToInsert.push({
+          participant_id: row.participant_id,
+          program_instance_id: row.program_instance_id,
+          line_item_id: row.line_item_id,
+          amount: row.amount,
+          status: 'billed',
+          notes: `Billed on ${new Date().toISOString().split('T')[0]}`
+        });
       });
       
       // Flatten the data for CSV
       const csvRows = [];
       Object.values(participantGroups).forEach(group => {
-        // Add invoice header row
         csvRows.push({
           record_type: 'INVOICE',
           participant_id: group.participant_id,
@@ -253,7 +357,6 @@ const generateInvoicesCsv = (startDate, endDate) => {
           item_count: group.items.length
         });
         
-        // Add line items
         group.items.forEach(item => {
           csvRows.push({
             record_type: 'LINE_ITEM',
@@ -269,14 +372,12 @@ const generateInvoicesCsv = (startDate, endDate) => {
             line_item_description: item.line_item_description,
             amount: item.amount.toFixed(2),
             attendance_status: item.attendance_status,
-            is_cancelled: item.is_cancelled,
-            notes: item.notes,
-            billing_id: item.billing_id
+            is_cancelled: ['cancelled','no-show'].includes(item.attendance_status) ? 'Yes' : 'No',
+            notes: item.notes
           });
         });
       });
       
-      // Define CSV headers
       const headers = [
         { id: 'record_type', title: 'Record Type' },
         { id: 'participant_id', title: 'Participant ID' },
@@ -295,32 +396,37 @@ const generateInvoicesCsv = (startDate, endDate) => {
         { id: 'amount', title: 'Amount' },
         { id: 'attendance_status', title: 'Status' },
         { id: 'is_cancelled', title: 'Late Cancellation' },
-        { id: 'notes', title: 'Notes' },
-        { id: 'billing_id', title: 'Billing ID' }
+        { id: 'notes', title: 'Notes' }
       ];
       
-      // Generate CSV
-      const csvData = generateCsvFromData(csvRows, headers);
-      
-      // Mark these records as billed
-      if (rows.length > 0) {
-        const billingIds = rows.map(row => row.billing_id);
-        const placeholders = billingIds.map(() => '?').join(',');
-        
+    const csvData = generateCsvFromData(csvRows, headers);
+
+    // Mark these records as billed
+    if (recordsToInsert.length > 0) {
+      const placeholders = recordsToInsert.map(() => '(?, ?, ?, ?, ?, ?)').join(',');
+      const values = recordsToInsert.flatMap(rec => [
+        rec.participant_id,
+        rec.program_instance_id,
+        rec.line_item_id,
+        rec.amount,
+        rec.status,
+        rec.notes,
+      ]);
+
+      await new Promise((resolve, reject) =>
         db.run(
-          `UPDATE billing_records SET status = 'billed' WHERE id IN (${placeholders})`,
-          billingIds,
-          (err) => {
-            if (err) {
-              console.error('Error updating billing status:', err);
-            }
-          }
-        );
-      }
-      
-      resolve(csvData);
-    });
-  });
+          `INSERT INTO billing_records (participant_id, program_instance_id, line_item_id, amount, status, notes) VALUES ${placeholders}`,
+          values,
+          (err) => (err ? reject(err) : resolve())
+        )
+      );
+      console.log(`Successfully marked ${recordsToInsert.length} items as billed.`);
+    }
+
+    return csvData;
+  } finally {
+    if (db) db.close();
+  }
 };
 
 module.exports = {

@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { triggerRecalculation } from '../api/api'; // calls backend to recalc when date changes
+import { processPendingChanges } from '../api/api'; // commit & recalc when date changes
 
 // 1. Create the context
 const AppContext = createContext();
@@ -22,7 +22,7 @@ export const AppContextProvider = ({ children }) => {
         // Convert Date object to YYYY-MM-DD for the API
         const isoStr = simulatedDate.toISOString().split('T')[0];
         // Fire-and-forget – frontend does not need the response here
-        triggerRecalculation(isoStr).catch((err) =>
+        processPendingChanges(isoStr).catch((err) =>
             // eslint-disable-next-line no-console
             console.error('Recalculation error:', err)
         );

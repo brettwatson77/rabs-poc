@@ -1,11 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { getStaff, createStaff, updateStaff, deleteStaff } from '../api/api';
+import {
+    getStaff,
+    createStaff,
+    updateStaff,
+    deleteStaff,
+    getStaffHours,
+} from '../api/api';
 import '../styles/CrudPage.css';
 
 const Staff = () => {
     const [staff, setStaff] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    // Map of staffId -> hours summary { allocated, percent_allocated, over_allocated }
+    const [staffHours, setStaffHours] = useState({});
     const [isFormVisible, setIsFormVisible] = useState(false);
     const [formData, setFormData] = useState(null);
     const [editMode, setEditMode] = useState(false); // false = adding, true = editing
@@ -19,6 +27,7 @@ const Staff = () => {
         postcode: '',
         contact_phone: '',
         contact_email: '',
+        contracted_hours: 30,
         notes: ''
     };
 
@@ -33,6 +42,22 @@ const Staff = () => {
         try {
             const data = await getStaff();
             setStaff(data);
+
+            /* ------------------------------------------------------
+             * Fetch utilisation for each staff member in parallel.
+             * ---------------------------------------------------- */
+            const hoursArr = await Promise.all(
+                data.map((s) =>
+                    getStaffHours(s.id).catch(() => null) // swallow errors to avoid breaking UI
+                )
+            );
+            const hoursMap = {};
+            hoursArr.forEach((h) => {
+                if (h && h.staff) {
+                    hoursMap[h.staff.id] = h.hours;
+                }
+            });
+            setStaffHours(hoursMap);
         } catch (err) {
             setError('Failed to fetch staff. Please ensure the backend is running.');
             console.error(err);
@@ -101,6 +126,7 @@ const Staff = () => {
     };
 
     return (
+        <>
         <div className="crud-page-container">
             <h1>Manage Staff</h1>
 
@@ -146,6 +172,17 @@ const Staff = () => {
                                 <label>Postcode</label>
                                 <input type="text" name="postcode" value={formData.postcode || ''} onChange={handleFormChange} />
                             </div>
+                            <div className="form-field">
+                                <label>Contracted&nbsp;Hours&nbsp;(per fortnight)</label>
+                                <input
+                                    type="number"
+                                    name="contracted_hours"
+                                    min="0"
+                                    max="80"
+                                    value={formData.contracted_hours}
+                                    onChange={handleFormChange}
+                                />
+                            </div>
                              <div className="form-field">
                                 <label>Contact Phone</label>
                                 <input type="tel" name="contact_phone" value={formData.contact_phone || ''} onChange={handleFormChange} />
@@ -178,6 +215,8 @@ const Staff = () => {
                                 <th>Name</th>
                                 <th>Contact Phone</th>
                                 <th>Contact Email</th>
+                                <th>Contract&nbsp;Hrs</th>
+                                <th style={{ width: '180px' }}>Utilisation</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -188,6 +227,41 @@ const Staff = () => {
                                     <td>{s.first_name} {s.last_name}</td>
                                     <td>{s.contact_phone || 'N/A'}</td>
                                     <td>{s.contact_email || 'N/A'}</td>
+                                    <td>{s.contracted_hours || 0}</td>
+                                    <td>
+                                        {staffHours[s.id] ? (
+                                            <>
+                                                <div
+                                                    style={{
+                                                        background: '#ddd',
+                                                        height: '8px',
+                                                        width: '100%',
+                                                        borderRadius: '4px',
+                                                        overflow: 'hidden',
+                                                    }}
+                                                >
+                                                    <div
+                                                        style={{
+                                                            width: `${Math.min(
+                                                                staffHours[s.id].percent_allocated,
+                                                                100
+                                                            )}%`,
+                                                            height: '100%',
+                                                            background: staffHours[s.id].over_allocated
+                                                                ? '#e63946'
+                                                                : '#4caf50',
+                                                        }}
+                                                    />
+                                                </div>
+                                                <small>
+                                                    {staffHours[s.id].allocated.toFixed(1)} /
+                                                    {s.contracted_hours} hrs
+                                                </small>
+                                            </>
+                                        ) : (
+                                            '…'
+                                        )}
+                                    </td>
                                     <td className="actions-cell">
                                         <button onClick={() => handleEditClick(s)} className="edit-button">Edit</button>
                                         <button onClick={() => handleDeleteClick(s.id)} className="delete-button">Delete</button>
@@ -199,6 +273,7 @@ const Staff = () => {
                 </div>
             )}
         </div>
+        </>
     );
 };
 

@@ -3,12 +3,14 @@ import { Link } from 'react-router-dom';
 
 const navStyles = {
   backgroundColor: '#2d3748',
-  padding: '1rem 2rem',
-  marginBottom: '2rem',
-  borderRadius: '8px',
+  /* 1rem top/bottom, 20px left/right to match main content padding */
+  padding: '1rem 20px',
+  /* Keep navbar flush; individual pages can manage their own spacing */
   display: 'flex',
   alignItems: 'center',
-  justifyContent: 'space-between',
+  justifyContent: 'flex-start',
+  /* Consistent spacing between any left-side items (future logo) and the ul */
+  gap: '1.5rem',
 };
 
 const ulStyles = {
@@ -31,6 +33,9 @@ const Navbar = () => {
     <nav style={navStyles}>
       <ul style={ulStyles}>
         <li>
+          <Link to="/dashboard" style={linkStyles}>Dashboard</Link>
+        </li>
+        <li>
           <Link to="/" style={linkStyles}>Master Schedule</Link>
         </li>
         <li>
@@ -50,6 +55,9 @@ const Navbar = () => {
         </li>
         <li>
           <Link to="/finance" style={linkStyles}>Finance</Link>
+        </li>
+        <li>
+          <Link to="/dynamic-demo" style={linkStyles}>Dynamic Demo</Link>
         </li>
       </ul>
     </nav>

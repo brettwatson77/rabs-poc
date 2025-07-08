@@ -1,5 +1,11 @@
 // backend/controllers/plannerController.js
-const plannerService = require('../services/plannerService');
+const { 
+  getParticipantEnrollments: getParticipantEnrollmentsService, 
+  getAllPrograms, 
+  updateParticipantEnrollments: updateParticipantEnrollmentsService,
+  getParticipantChangeHistory,
+  getParticipantEnrollmentHistory: getParticipantEnrollmentHistoryService
+} = require('../services/plannerService');
 
 /**
  * Get all program enrollments for a specific participant
@@ -19,10 +25,10 @@ const getParticipantEnrollments = async (req, res) => {
     }
     
     // Get enrollments from service
-    const enrollments = await plannerService.getParticipantEnrollments(participantId);
+    const enrollments = await getParticipantEnrollmentsService(participantId);
     
     // Get all available programs for selection
-    const availablePrograms = await plannerService.getAllPrograms();
+    const availablePrograms = await getAllPrograms();
     
     res.status(200).json({
       success: true,
@@ -67,7 +73,7 @@ const updateParticipantEnrollments = async (req, res) => {
     }
     
     // Update enrollments
-    const result = await plannerService.updateParticipantEnrollments(participantId, enrollments);
+    const result = await updateParticipantEnrollmentsService(participantId, enrollments);
     
     res.status(200).json({
       success: true,
@@ -94,7 +100,76 @@ const updateParticipantEnrollments = async (req, res) => {
   }
 };
 
+/**
+ * Get the change history log for a participant
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+const getChangeHistory = async (req, res) => {
+  try {
+    const participantId = req.params.participantId;
+    
+    if (!participantId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Participant ID is required'
+      });
+    }
+    
+    const history = await getParticipantChangeHistory(participantId);
+    
+    res.status(200).json({
+      success: true,
+      data: history
+    });
+    
+  } catch (error) {
+    console.error(`Error fetching change history for participant ${req.params.participantId}:`, error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching change history',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+/**
+ * Get the enrollment-only change history for a participant
+ * Shows only planner actions (add/remove) without attendance or cancellations
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+const getParticipantEnrollmentHistory = async (req, res) => {
+  try {
+    const participantId = req.params.participantId;
+    
+    if (!participantId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Participant ID is required'
+      });
+    }
+    
+    const history = await getParticipantEnrollmentHistoryService(participantId);
+    
+    res.status(200).json({
+      success: true,
+      data: history
+    });
+    
+  } catch (error) {
+    console.error(`Error fetching enrollment history for participant ${req.params.participantId}:`, error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching enrollment history',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 module.exports = {
   getParticipantEnrollments,
-  updateParticipantEnrollments
+  updateParticipantEnrollments,
+  getChangeHistory,
+  getParticipantEnrollmentHistory
 };

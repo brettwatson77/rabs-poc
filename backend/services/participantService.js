@@ -1,20 +1,24 @@
 // backend/services/participantService.js
-const db = require('../database');
+const { getDbConnection } = require('../database');
 
 /**
  * Get all participants from the database
  * @returns {Promise<Array>} Array of participant objects
  */
-const getAllParticipants = () => {
-  return new Promise((resolve, reject) => {
-    db.all('SELECT * FROM participants', [], (err, rows) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-      resolve(rows);
+const getAllParticipants = async () => {
+  let db;
+  try {
+    db = await getDbConnection();
+    const rows = await new Promise((resolve, reject) => {
+      db.all('SELECT * FROM participants', [], (err, result) => {
+        if (err) return reject(err);
+        resolve(result);
+      });
     });
-  });
+    return rows;
+  } finally {
+    if (db) db.close();
+  }
 };
 
 /**
@@ -22,16 +26,20 @@ const getAllParticipants = () => {
  * @param {number} id - Participant ID
  * @returns {Promise<Object>} Participant object
  */
-const getParticipantById = (id) => {
-  return new Promise((resolve, reject) => {
-    db.get('SELECT * FROM participants WHERE id = ?', [id], (err, row) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-      resolve(row);
+const getParticipantById = async (id) => {
+  let db;
+  try {
+    db = await getDbConnection();
+    const row = await new Promise((resolve, reject) => {
+      db.get('SELECT * FROM participants WHERE id = ?', [id], (err, result) => {
+        if (err) return reject(err);
+        resolve(result);
+      });
     });
-  });
+    return row;
+  } finally {
+    if (db) db.close();
+  }
 };
 
 /**
@@ -39,15 +47,24 @@ const getParticipantById = (id) => {
  * @param {Object} participantData - Participant data
  * @returns {Promise<Object>} Created participant object
  */
-const createParticipant = (participantData) => {
-  return new Promise((resolve, reject) => {
-    // Validate required fields
-    if (!participantData.first_name || !participantData.last_name || 
-        !participantData.address || !participantData.suburb || !participantData.postcode) {
-      reject(new Error('Missing required participant data: first_name, last_name, address, suburb, and postcode are required'));
-      return;
-    }
-    
+const createParticipant = async (participantData) => {
+  // Validate required fields
+  if (
+    !participantData.first_name ||
+    !participantData.last_name ||
+    !participantData.address ||
+    !participantData.suburb ||
+    !participantData.postcode
+  ) {
+    throw new Error(
+      'Missing required participant data: first_name, last_name, address, suburb, and postcode are required'
+    );
+  }
+
+  let db;
+  try {
+    db = await getDbConnection();
+
     const {
       first_name,
       last_name,
@@ -59,27 +76,39 @@ const createParticipant = (participantData) => {
       is_plan_managed = 0,
       contact_phone = null,
       contact_email = null,
-      notes = null
+      notes = null,
     } = participantData;
-    
-    db.run(
-      `INSERT INTO participants 
-       (first_name, last_name, address, suburb, state, postcode, ndis_number, is_plan_managed, contact_phone, contact_email, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [first_name, last_name, address, suburb, state, postcode, ndis_number, is_plan_managed, contact_phone, contact_email, notes],
-      function(err) {
-        if (err) {
-          reject(err);
-          return;
+
+    const lastID = await new Promise((resolve, reject) => {
+      db.run(
+        `INSERT INTO participants 
+         (first_name, last_name, address, suburb, state, postcode, ndis_number, is_plan_managed, contact_phone, contact_email, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          first_name,
+          last_name,
+          address,
+          suburb,
+          state,
+          postcode,
+          ndis_number,
+          is_plan_managed,
+          contact_phone,
+          contact_email,
+          notes,
+        ],
+        function (err) {
+          if (err) return reject(err);
+          resolve(this.lastID);
         }
-        
-        // Get the newly created participant
-        getParticipantById(this.lastID)
-          .then(participant => resolve(participant))
-          .catch(err => reject(err));
-      }
-    );
-  });
+      );
+    });
+
+    // Fetch and return the newly created participant using separate connection
+    return await getParticipantById(lastID);
+  } finally {
+    if (db) db.close();
+  }
 };
 
 /**
@@ -88,56 +117,61 @@ const createParticipant = (participantData) => {
  * @param {Object} participantData - Updated participant data
  * @returns {Promise<Object>} Updated participant object
  */
-const updateParticipant = (id, participantData) => {
-  return new Promise((resolve, reject) => {
-    // First check if the participant exists
-    getParticipantById(id)
-      .then(participant => {
-        if (!participant) {
-          resolve(null);
-          return;
-        }
-        
-        // Build the update query dynamically based on provided fields
-        const updates = [];
-        const values = [];
-        
-        Object.keys(participantData).forEach(key => {
-          // Only update valid fields
-          if (['first_name', 'last_name', 'address', 'suburb', 'state', 
-               'postcode', 'ndis_number', 'is_plan_managed', 'contact_phone', 'contact_email', 'notes'].includes(key)) {
-            updates.push(`${key} = ?`);
-            values.push(participantData[key]);
-          }
-        });
-        
-        // Add updated_at timestamp
-        updates.push('updated_at = CURRENT_TIMESTAMP');
-        
-        // Add the ID to the values array
-        values.push(id);
-        
-        const query = `UPDATE participants SET ${updates.join(', ')} WHERE id = ?`;
-        
-        db.run(query, values, function(err) {
-          if (err) {
-            reject(err);
-            return;
-          }
-          
-          if (this.changes === 0) {
-            resolve(null);
-            return;
-          }
-          
-          // Get the updated participant
-          getParticipantById(id)
-            .then(updatedParticipant => resolve(updatedParticipant))
-            .catch(err => reject(err));
-        });
-      })
-      .catch(err => reject(err));
+const updateParticipant = async (id, participantData) => {
+  // Ensure participant exists
+  const existing = await getParticipantById(id);
+  if (!existing) return null;
+
+  // Build update query
+  const updates = [];
+  const values = [];
+
+  Object.keys(participantData).forEach((key) => {
+    if (
+      [
+        'first_name',
+        'last_name',
+        'address',
+        'suburb',
+        'state',
+        'postcode',
+        'ndis_number',
+        'is_plan_managed',
+        'contact_phone',
+        'contact_email',
+        'notes',
+      ].includes(key)
+    ) {
+      updates.push(`${key} = ?`);
+      values.push(participantData[key]);
+    }
   });
+
+  if (updates.length === 0) return existing; // nothing to update
+
+  updates.push('updated_at = CURRENT_TIMESTAMP');
+  values.push(id);
+
+  let db;
+  try {
+    db = await getDbConnection();
+    const changes = await new Promise((resolve, reject) => {
+      db.run(
+        `UPDATE participants SET ${updates.join(', ')} WHERE id = ?`,
+        values,
+        function (err) {
+          if (err) return reject(err);
+          resolve(this.changes);
+        }
+      );
+    });
+
+    if (changes === 0) return null;
+
+    return await getParticipantById(id);
+  } finally {
+    if (db) db.close();
+  }
 };
 
 /**
@@ -145,18 +179,20 @@ const updateParticipant = (id, participantData) => {
  * @param {number} id - Participant ID
  * @returns {Promise<boolean>} True if deleted, false if not found
  */
-const deleteParticipant = (id) => {
-  return new Promise((resolve, reject) => {
-    db.run('DELETE FROM participants WHERE id = ?', [id], function(err) {
-      if (err) {
-        reject(err);
-        return;
-      }
-      
-      // Check if any row was deleted
-      resolve(this.changes > 0);
+const deleteParticipant = async (id) => {
+  let db;
+  try {
+    db = await getDbConnection();
+    const deleted = await new Promise((resolve, reject) => {
+      db.run('DELETE FROM participants WHERE id = ?', [id], function (err) {
+        if (err) return reject(err);
+        resolve(this.changes > 0);
+      });
     });
-  });
+    return deleted;
+  } finally {
+    if (db) db.close();
+  }
 };
 
 module.exports = {

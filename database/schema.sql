@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS staff (
     postcode TEXT,
     contact_phone TEXT,
     contact_email TEXT,
+    contracted_hours INTEGER DEFAULT 30,  -- Contracted hours per fortnight (0–80)
     notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { getParticipants, getParticipantEnrollments, updateParticipantEnrollments } from '../api/api';
+import {
+  getParticipants,
+  getParticipantEnrollments,
+  updateParticipantEnrollments,
+  getParticipantEnrollmentHistory,
+} from '../api/api';
 import { useAppContext } from '../context/AppContext';
 import '../styles/CrudPage.css'; // Using shared styles
 
@@ -17,6 +22,8 @@ const ParticipantPlanner = () => {
   
   // Holds changes that have been staged but not yet saved
   const [pendingChanges, setPendingChanges] = useState({});
+  // History of processed / pending changes
+  const [changeHistory, setChangeHistory] = useState([]);
   // Holds the value of each date picker input
   const [dateInputs, setDateInputs] = useState({});
   
@@ -46,6 +53,7 @@ const ParticipantPlanner = () => {
       setEnrollments([]);
       setAvailablePrograms([]);
       setPendingChanges({});
+      setChangeHistory([]);
       return;
     }
 
@@ -58,6 +66,10 @@ const ParticipantPlanner = () => {
         const data = await getParticipantEnrollments(selectedParticipant);
         setEnrollments(data.enrollments);
         setAvailablePrograms(data.availablePrograms);
+
+        // Fetch change-history log
+        const history = await getParticipantEnrollmentHistory(selectedParticipant);
+        setChangeHistory(history.slice(0, 15)); // keep latest 15
         // Initialize date inputs for all available programs
         const initialDates = data.availablePrograms.reduce((acc, prog) => {
           acc[prog.id] = new Date().toISOString().split('T')[0];
@@ -88,6 +100,9 @@ const ParticipantPlanner = () => {
         const data = await getParticipantEnrollments(selectedParticipant);
         setEnrollments(data.enrollments);
         setAvailablePrograms(data.availablePrograms);
+
+        const history = await getParticipantEnrollmentHistory(selectedParticipant);
+        setChangeHistory(history.slice(0, 15));
       } catch (err) {
         setError('Failed to refresh enrollment data.');
       } finally {
@@ -135,8 +150,13 @@ const ParticipantPlanner = () => {
     setError(null);
     setSuccessMessage('');
     try {
-      // The backend will need to be updated to handle this new payload format
-      const result = await updateParticipantEnrollments(selectedParticipant, pendingChanges);
+      // Convert pendingChanges object -> array the backend expects
+      const changesArray = Object.entries(pendingChanges).map(([programId, change]) => ({
+        program_id: Number(programId), // ensure numeric id, adjust if backend expects string
+        ...change,
+      }));
+
+      const result = await updateParticipantEnrollments(selectedParticipant, changesArray);
       setSuccessMessage(result.message || 'Changes saved successfully!');
       setPendingChanges({}); // Clear pending changes after save
       // Refetch data to show the new state
@@ -155,7 +175,10 @@ const ParticipantPlanner = () => {
   };
 
   return (
-    <div className="crud-page-container">
+    <div
+      className="crud-page-container"
+      style={{ padding: '20px', fontFamily: 'sans-serif' }}
+    >
       <h1>Participant Planner</h1>
 
       <div style={{ marginBottom: '20px' }}>
@@ -219,6 +242,37 @@ const ParticipantPlanner = () => {
               <button onClick={handleSave} style={{ marginTop: '20px' }} disabled={Object.keys(pendingChanges).length === 0}>
                 Save Pending Changes
               </button>
+            </div>
+          )}
+
+          {/* ------------------- Enrollment Planning History ------------------- */}
+          {changeHistory.length > 0 && (
+            <div style={{ marginTop: '40px' }}>
+              <h3>Enrollment Planning History (latest&nbsp;15)</h3>
+              <table className="crud-table">
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: 'left' }}>Program</th>
+                    <th style={{ textAlign: 'left' }}>Action</th>
+                    <th>Effective&nbsp;Date</th>
+                    <th>Logged&nbsp;At</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {changeHistory.map((h, idx) => {
+                    const rowStyle = { color: h.action === 'add' ? 'green' : 'red' };
+                    const programName = h.program_name || `Program ${h.program_id}`;
+                    return (
+                      <tr key={idx} style={rowStyle}>
+                        <td>{programName}</td>
+                        <td style={{ textTransform: 'capitalize' }}>{h.action}</td>
+                        <td>{h.effective_date}</td>
+                        <td>{h.created_at?.split('T')[0] || '-'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
