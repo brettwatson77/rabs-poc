@@ -70,9 +70,31 @@ const ParticipantPlanner = () => {
         // Fetch change-history log
         const history = await getParticipantEnrollmentHistory(selectedParticipant);
         setChangeHistory(history.slice(0, 15)); // keep latest 15
-        // Initialize date inputs for all available programs
+        /* ---------------------------------------------------------------
+         * Detect any enrollment changes that are still **pending**
+         * (i.e. effective date in the future relative to the current
+         * simulated date).  These should appear in the UI as already
+         * queued changes so the user can see / cancel them.
+         * ------------------------------------------------------------ */
+        const today = simulatedDate || new Date().toISOString().split('T')[0];
+        const initialPending = {};
+
+        history.forEach((h) => {
+          if (h.effective_date >= today) {
+            initialPending[h.program_id] = {
+              action: h.action,
+              effectiveDate: h.effective_date,
+            };
+          }
+        });
+
+        setPendingChanges(initialPending);
+
+        // Initialise date inputs, preferring any stored effectiveDate
         const initialDates = data.availablePrograms.reduce((acc, prog) => {
-          acc[prog.id] = new Date().toISOString().split('T')[0];
+          acc[prog.id] =
+            initialPending[prog.id]?.effectiveDate ||
+            new Date().toISOString().split('T')[0];
           return acc;
         }, {});
         setDateInputs(initialDates);
