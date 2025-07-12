@@ -151,7 +151,7 @@ const MasterSchedule = () => {
       }
       
       // After successful cancellation, re-fetch schedule data to update UI
-      fetchScheduleData();
+      await fetchScheduleData();
     } catch (err) {
       console.error('Error processing cancellation:', err);
       alert(`Failed to process cancellation: ${err.message}`);

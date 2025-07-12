@@ -160,6 +160,17 @@ const getParticipantsForProgramInstance = (db, programInstanceId) => {
                ON  idt.program_id = pec.program_id
         WHERE  pec.action = 'remove'
           AND  pec.effective_date <= idt.the_date
+      ),
+      /* --------------------------------------------------------------
+       * Participants who have an explicit **cancellation** attendance
+       * record for this program instance (short-notice or otherwise).
+       * These must also be excluded from the live participant list.
+       * ------------------------------------------------------------ */
+      cancelled AS (
+        SELECT a.participant_id
+        FROM   attendance a
+        WHERE  a.program_instance_id = ?
+          AND  a.status = 'cancelled'
       )
       SELECT *
       FROM (
@@ -168,10 +179,12 @@ const getParticipantsForProgramInstance = (db, programInstanceId) => {
         SELECT * FROM adds
       )
       WHERE id NOT IN (SELECT participant_id FROM removed)
+        AND id NOT IN (SELECT participant_id FROM cancelled)
       ORDER BY last_name, first_name;
     `;
 
-    db.all(query, [programInstanceId], (err, rows) => {
+    // Two identical parameters: one for instance_date, one for cancelled CTE
+    db.all(query, [programInstanceId, programInstanceId], (err, rows) => {
       if (err) {
         reject(err);
         return;
