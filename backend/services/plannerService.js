@@ -119,6 +119,48 @@ const updateParticipantEnrollments = async (participantId, pendingChanges) => {
 
     for (const change of validChanges) {
       console.log('[plannerService] Processing change', change);
+
+      /* -----------------------------------------------------------
+       * 1) APPLY CHANGE IMMEDIATELY TO program_enrollments
+       * --------------------------------------------------------- */
+      if (change.action === 'add') {
+        // Add a new enrollment row if it does not already exist
+        await new Promise((resolve, reject) =>
+          db.run(
+            `INSERT OR IGNORE INTO program_enrollments
+             (participant_id, program_id, start_date)
+             VALUES (?, ?, ?)`,
+            [
+              participantId,
+              parseInt(change.program_id, 10),
+              change.effectiveDate,
+            ],
+            (err) => (err ? reject(err) : resolve())
+          )
+        );
+      } else if (change.action === 'remove') {
+        // Soft-remove by stamping an end_date (only if currently active)
+        await new Promise((resolve, reject) =>
+          db.run(
+            `UPDATE program_enrollments
+               SET end_date = ?
+             WHERE participant_id = ?
+               AND program_id   = ?
+               AND (end_date IS NULL OR end_date >= ?)`,
+            [
+              change.effectiveDate,
+              participantId,
+              parseInt(change.program_id, 10),
+              change.effectiveDate,
+            ],
+            (err) => (err ? reject(err) : resolve())
+          )
+        );
+      }
+
+      /* -----------------------------------------------------------
+       * 2) ALWAYS RECORD INTO pending_enrollment_changes FOR AUDIT
+       * --------------------------------------------------------- */
       await new Promise((resolve, reject) =>
         db.run(
           `INSERT INTO pending_enrollment_changes 
