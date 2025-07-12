@@ -550,7 +550,7 @@ export const updateSingleStaffAssignment = async (
 };
 
 /**
- * Replace a staff member across ALL future instances of a program (“forever” option).
+ * Replace a staff member across ALL future instances of a program ("forever" option).
  * @param {number} programId
  * @param {string} oldStaffId
  * @param {string} newStaffId

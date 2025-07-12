@@ -389,6 +389,22 @@ const DynamicResourceDemo = () => {
               Optimize Routes
             </button>
           </div>
+
+          {/* ---------------- Staff Assignment List ---------------- */}
+          <div className="status-assignments">
+            <h4>Staff Assignments</h4>
+            {resourceStatus.staff.assignments.length === 0 ? (
+              <p>No staff assigned</p>
+            ) : (
+              <ul>
+                {resourceStatus.staff.assignments.map(a => (
+                  <li key={a.staff_id}>
+                    {a.role.charAt(0).toUpperCase() + a.role.slice(1)}: {a.first_name} {a.last_name}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       </div>
     );
