@@ -30,6 +30,12 @@ const CalendarView = ({ scheduleData, weekDates, handleCancel }) => {
     const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const { simulatedDate } = useAppContext();
 
+    // Debug: inspect incoming props (helps track weekDates .map crash)
+    console.log('CalendarView props:', { scheduleData, weekDates });
+    
+    // Safety check to prevent .map errors on non-array weekDates
+    const weeks = Array.isArray(weekDates) ? [weekDates.slice(0,7), weekDates.slice(7)] : [[],[]];
+
     /* ------------------------------------------------------------------
      * Modal state for detailed instance view
      * ---------------------------------------------------------------- */
@@ -259,11 +265,41 @@ const CalendarView = ({ scheduleData, weekDates, handleCancel }) => {
         if (!status) return '#888'; // gray for unknown
         switch (status.toLowerCase()) {
             case 'optimal': return '#4caf50'; // green
-            case 'balanced': return '#2196f3'; // blue
+            case 'balanced': return '#ff9800'; // orange (changed from blue to match legend)
             case 'warning': return '#ff9800'; // orange
             case 'critical': return '#f44336'; // red
             default: return '#888'; // gray
         }
+    };
+
+    // Render dynamic allocation status badge for an event
+    const renderDynamicBadge = (instanceId) => {
+        const status = resourceStatus[instanceId];
+        if (!status) return null;
+        
+        // Determine label based on status
+        const label = 
+            status.overall === 'optimal' ? 'Optimized' :
+            status.overall === 'balanced' ? 'Needs Optimization' :
+            status.overall === 'critical' ? 'Critical' :
+            'Unknown';
+        
+        return (
+            <div 
+                style={{
+                    display: 'inline-block',
+                    padding: '2px 6px',
+                    borderRadius: '12px',
+                    fontSize: '10px',
+                    fontWeight: 'bold',
+                    color: 'white',
+                    backgroundColor: getStatusColor(status.overall),
+                    marginLeft: '5px'
+                }}
+            >
+                {label}
+            </div>
+        );
     };
 
     if (!scheduleData) {
@@ -274,7 +310,7 @@ const CalendarView = ({ scheduleData, weekDates, handleCancel }) => {
         <>
         <div className="calendar-container">
             {/* Render two rows (weeks) – each row is a 7-day chunk */}
-            {[weekDates.slice(0, 7), weekDates.slice(7)].map((chunk, idx) => (
+            {weeks.map((chunk, idx) => (
                 <React.Fragment key={`week-row-${idx}`}>
                     {/* ---------- Header for the chunk ---------- */}
                     <div className="calendar-header">
@@ -386,43 +422,54 @@ const CalendarView = ({ scheduleData, weekDates, handleCancel }) => {
                         </div>
                     )}
 
-                    {/* Render the ScheduleCard component with all necessary props */}
-                    <ScheduleCard
-                        instance={{
-                            id: selectedEvent.id,
-                            name: selectedEvent.program_name,
-                            startTime: selectedEvent.start_time,
-                            endTime: selectedEvent.end_time
-                        }}
-                        participants={selectedEvent.participants}
-                        staffAssignments={selectedEvent.staff.map(s => ({ 
-                            staff_id: s.id, 
-                            first_name: s.first_name, 
-                            last_name: s.last_name, 
-                            role: s.role 
-                        }))}
-                        resourceStatus={{
-                            staff: {
-                                required: selectedEvent.dynamicStatus?.staff?.required || 0,
-                                assigned: selectedEvent.dynamicStatus?.staff?.assigned || 0
-                            },
-                            vehicles: {
-                                preferred: selectedEvent.dynamicStatus?.vehicles?.preferred || 0,
-                                assigned: selectedEvent.dynamicStatus?.vehicles?.assigned || 0
-                            },
-                            overall: selectedEvent.dynamicStatus?.overall || 'unknown'
-                        }}
-                        busRuns={(selectedEvent.dynamicStatus?.routes || []).map(r => ({ 
-                            id: r.id, 
-                            route_type: r.route_type, 
-                            stops: r.stops, 
-                            estimated_duration: r.estimated_duration, 
-                            estimated_distance: r.estimated_distance 
-                        }))}
-                        onCancel={(participantId, instanceId) => handleCancellation(participantId, instanceId, 'normal')}
-                        onShortNoticeCancel={(participantId, instanceId) => handleCancellation(participantId, instanceId, 'short_notice')}
-                        onSwapStaff={(staffId, instanceId) => {/* stub: implement staff swap */}}
-                    />
+                    {/* Determine busRuns for the card */}
+                    {(() => {
+                        // Determine busRuns for the card
+                        const runs = selectedEvent.busRuns
+                          ? selectedEvent.busRuns
+                          : selectedEvent.type === 'bus_run'
+                          ? [{
+                              id: selectedEvent.id,
+                              route_type: selectedEvent.runType === 'pickup' ? 'Pickup' : 'Dropoff',
+                              stops: selectedEvent.stops || [],
+                              estimated_duration: selectedEvent.estimated_duration || 0,
+                              estimated_distance: selectedEvent.estimated_distance || 0,
+                            }]
+                          : [];
+
+                        return (
+                            <ScheduleCard
+                                instance={{
+                                    id: selectedEvent.id,
+                                    name: selectedEvent.program_name,
+                                    startTime: selectedEvent.start_time,
+                                    endTime: selectedEvent.end_time
+                                }}
+                                participants={selectedEvent.participants}
+                                staffAssignments={selectedEvent.staff.map(s => ({ 
+                                    staff_id: s.id, 
+                                    first_name: s.first_name, 
+                                    last_name: s.last_name, 
+                                    role: s.role 
+                                }))}
+                                resourceStatus={{
+                                    staff: {
+                                        required: selectedEvent.dynamicStatus?.staff?.required || 0,
+                                        assigned: selectedEvent.dynamicStatus?.staff?.assigned || 0
+                                    },
+                                    vehicles: {
+                                        preferred: selectedEvent.dynamicStatus?.vehicles?.preferred || 0,
+                                        assigned: selectedEvent.dynamicStatus?.vehicles?.assigned || 0
+                                    },
+                                    overall: selectedEvent.dynamicStatus?.overall || 'unknown'
+                                }}
+                                busRuns={runs}
+                                onCancel={(participantId, instanceId) => handleCancellation(participantId, instanceId, 'normal')}
+                                onShortNoticeCancel={(participantId, instanceId) => handleCancellation(participantId, instanceId, 'short_notice')}
+                                onSwapStaff={(staffId, instanceId) => {/* stub: implement staff swap */}}
+                            />
+                        );
+                    })()}
                 </>
             )}
         </Modal>
