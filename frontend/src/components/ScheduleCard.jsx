@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import '../styles/ScheduleCard.css';
 import loadGoogleMaps from '../utils/loadGoogleMaps';
 
@@ -12,6 +12,11 @@ const ScheduleCard = ({
   onShortNoticeCancel = () => {},
   onSwapStaff = () => {},
 }) => {
+  // ------------------------------------------------------------------
+  // Local state so we can surface Google Maps loading issues in the UI
+  // ------------------------------------------------------------------
+  const [mapError, setMapError] = useState(null);
+
   const formatTime = (timeString) => {
     const date = new Date(`1970-01-01T${timeString}`);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -95,7 +100,10 @@ const ScheduleCard = ({
           }
         });
       })
-      .catch((e) => console.error('Google Maps load failed:', e));
+      .catch((e) => {
+        console.error('Google Maps load failed:', e);
+        setMapError(e.message || 'Failed to load Google Maps');
+      });
   }, [busRuns]);
 
   return (
@@ -150,6 +158,16 @@ const ScheduleCard = ({
           </ul>
         )}
       </div>
+
+      {/* Surface any map-loading error so the API key can be tested easily */}
+      {mapError && (
+        <p
+          className="map-error"
+          style={{ color: 'red', fontStyle: 'italic', marginTop: '8px' }}
+        >
+          Map error: {mapError}
+        </p>
+      )}
 
       <div className="bus-runs-section">
         <h4>Bus Runs</h4>
