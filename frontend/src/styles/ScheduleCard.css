@@ -1,0 +1,66 @@
+/* Basic styling for the ScheduleCard component */
+.schedule-card {
+  background: #ffffff;
+  border: 1px solid #d0d0d0;
+  border-radius: 6px;
+  padding: 16px;
+  margin: 12px 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  font-family: system-ui, sans-serif;
+}
+
+/* Header */
+.schedule-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.schedule-card-time {
+  font-size: 0.9rem;
+  color: #555;
+}
+
+/* Resource badge colours (bootstrap-like) */
+.badge-success   { background:#28a745; color:#fff; }
+.badge-warning   { background:#ffc107; color:#212529; }
+.badge-danger    { background:#dc3545; color:#fff; }
+.badge-secondary { background:#6c757d; color:#fff; }
+
+/* Sections */
+.participants-section,
+.staff-section,
+.resource-status-section,
+.bus-runs-section {
+  margin-top: 12px;
+}
+
+.participants-section ul,
+.staff-section ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.participants-section li,
+.staff-section li {
+  margin: 4px 0;
+}
+
+/* Small map container */
+.route-map {
+  width: 100%;
+  height: 150px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  margin-top: 8px;
+}
+
+/* Error surfaced when Google Maps fails to load */
+.map-error {
+  color: #dc3545;
+  font-style: italic;
+  margin-top: 8px;
+}
