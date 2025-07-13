@@ -4,6 +4,7 @@ import { getRoster } from '../api/api';
 import { formatDateForApi } from '../utils/dateUtils';
 import Modal from '../components/Modal'; // Import the Modal component
 import ActivityCard from '../components/ActivityCard'; // Reusable card
+import ScheduleCard from '../components/ScheduleCard'; // Import the ScheduleCard component
 import '../styles/Dashboard.css';
 
 // Helper to format a Date object into HH:mm
@@ -382,63 +383,48 @@ const Dashboard = () => {
 
             {selectedActivity && (
               <Modal onClose={() => setSelectedActivity(null)}>
-                <h2>{selectedActivity.program_name} Details</h2>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
-                    <div style={{ flex: 1 }}>
-                        <h3>Participants ({selectedActivity.participants.length})</h3>
-                        <ul>
-                          {selectedActivity.participants.map(p => (
-                            <li key={p.id}>{p.first_name} {p.last_name}</li>
-                          ))}
-                        </ul>
-                    </div>
-                    <div style={{ flex: 1 }}>
-                        <h3>Staff ({selectedActivity.staff.length})</h3>
-                        <ul>
-                          {selectedActivity.staff.map(s => (
-                            <li key={s.id}>{s.first_name} {s.last_name} ({s.role})</li>
-                          ))}
-                        </ul>
-                    </div>
-                    <div style={{ flex: 1 }}>
-                        <h3>Vehicles ({selectedActivity.vehicles.length})</h3>
-                        <ul>
-                          {selectedActivity.vehicles.map(v => (
-                            <li key={v.id}>
-                                {v.registration} ({v.description})
-                            </li>
-                          ))}
-                        </ul>
-                    </div>
-                </div>
-
-                {/* Render pickup OR drop-off route based on runType */}
-                {selectedActivity.type === 'bus_run' && (() => {
-                    const vehicle = selectedActivity.vehicles?.[0];
-                    if (!vehicle) return null;
-
-                    const isPickup = selectedActivity.runType === 'pickup';
-                    const route    = isPickup ? vehicle.pickup_route : vehicle.dropoff_route;
-
-                    if (!route || !Array.isArray(route.stops) || route.stops.length === 0) {
-                      return null;
-                    }
-
-                    return (
-                      <>
-                        <h3 style={{ marginTop: '1rem' }}>
-                          {isPickup ? 'Pickup Route Stops' : 'Drop-off Route Stops'}
-                        </h3>
-                        <ol>
-                          {route.stops.map((stop, idx) => (
-                            <li key={idx}>
-                              {stop.address} – ETA {stop.estimated_arrival_time}
-                            </li>
-                          ))}
-                        </ol>
-                      </>
-                    );
-                })()}
+                <ScheduleCard
+                  instance={{
+                    id: selectedActivity.id,
+                    name: selectedActivity.program_name,
+                    startTime: selectedActivity.start_time,
+                    endTime: selectedActivity.end_time
+                  }}
+                  participants={selectedActivity.participants}
+                  staffAssignments={selectedActivity.staff.map(s => ({ 
+                    staff_id: s.id, 
+                    first_name: s.first_name, 
+                    last_name: s.last_name, 
+                    role: s.role 
+                  }))}
+                  resourceStatus={{
+                    staff: { 
+                      required: selectedActivity.requiredStaffCount || 0, 
+                      assigned: selectedActivity.staff.length 
+                    },
+                    vehicles: { 
+                      preferred: selectedActivity.vehicles.length, 
+                      assigned: selectedActivity.vehicles.length 
+                    },
+                    overall: 'unknown'
+                  }}
+                  busRuns={
+                    selectedActivity.type === 'bus_run'
+                      ? [{
+                          id: selectedActivity.id,
+                          route_type: selectedActivity.runType === 'pickup' ? 'Pickup' : 'Dropoff',
+                          stops:
+                            (selectedActivity.vehicles[0]?.[selectedActivity.runType === 'pickup' ? 'pickup_route' : 'dropoff_route']?.stops || [])
+                              .map((stop, idx) => ({ address: stop.address, sequence: idx + 1 })),
+                          estimated_duration: 0,
+                          estimated_distance: 0
+                        }]
+                      : []
+                  }
+                  onCancel={() => {}}
+                  onShortNoticeCancel={() => {}}
+                  onSwapStaff={() => {}}
+                />
               </Modal>
             )}
         </div>
