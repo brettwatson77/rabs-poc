@@ -1,0 +1,68 @@
+/* ------------------------------------------------------------------
+ * Roster Page – minimal stylesheet
+ * ------------------------------------------------------------------*/
+
+/* Main flexible grid that contains staff or schedule columns */
+.roster-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+/* In Staff View we render one column per staff member */
+.staff-section {
+  flex: 1 1 320px;      /* grow/shrink with min-width 320px */
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Schedule-view simple vertical list */
+.schedule-view {
+  flex: 1 1 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Wrap the ScheduleCard so we can constrain width if desired */
+.event-card-wrapper {
+  width: 100%;
+}
+
+/* Staff name heading */
+.staff-name {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+/* ------------------------------------------------------------------
+ * View-mode toggle buttons
+ * ------------------------------------------------------------------*/
+.view-mode-toggle {
+  display: inline-flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.toggle-button {
+  background: #e2e8f0;
+  color: #2d3748;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-size: 0.9rem;
+}
+
+.toggle-button:hover {
+  background: #cbd5e0;
+}
+
+.toggle-button.active {
+  background: #2b6cb0;
+  color: #fff;
+}
