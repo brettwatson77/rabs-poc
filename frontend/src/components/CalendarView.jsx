@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import '../styles/CalendarView.css';
 import Modal from './Modal';
+import ScheduleCard from './ScheduleCard';
 import { formatDateForApi } from '../utils/dateUtils';
 import { useAppContext } from '../context/AppContext';
 import { differenceInCalendarDays } from 'date-fns';
@@ -340,36 +341,11 @@ const CalendarView = ({ scheduleData, weekDates, handleCancel }) => {
         </div>
 
         {/* ------------------------------------------------------------------
-         * Modal showing full event details
+         * Modal showing full event details using ScheduleCard component
          * ---------------------------------------------------------------- */}
         <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
             {selectedEvent && (
                 <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <h2 style={{ marginTop: 0 }}>{selectedEvent.program_name}</h2>
-                        {/* Dynamic status indicator if available */}
-                        {selectedEvent.dynamicStatus && (
-                            <div 
-                                style={{
-                                    padding: '4px 10px',
-                                    borderRadius: '16px',
-                                    fontSize: '12px',
-                                    fontWeight: 'bold',
-                                    color: 'white',
-                                    backgroundColor: getStatusColor(selectedEvent.dynamicStatus.overall),
-                                }}
-                            >
-                                {selectedEvent.dynamicStatus.overall === 'optimal' ? 'Optimized' : 'Needs Optimization'}
-                            </div>
-                        )}
-                    </div>
-                    
-                    <p>
-                        <strong>Date:</strong> {selectedEvent.date}<br />
-                        <strong>Time:</strong> {selectedEvent.start_time} - {selectedEvent.end_time}<br />
-                        <strong>Venue:</strong> {selectedEvent.venue_name}
-                    </p>
-
                     {/* Optimize Resources button */}
                     {selectedEvent.triggerRebalance && (
                         <div style={{ marginBottom: '20px' }}>
@@ -410,317 +386,43 @@ const CalendarView = ({ scheduleData, weekDates, handleCancel }) => {
                         </div>
                     )}
 
-                    {/* ------------------------------------------------------------------
-                     * Resources Summary (participants / staff / vehicles)
-                     * ---------------------------------------------------------------- */}
-                    {selectedEvent.dynamicStatus && (
-                        <>
-                            <h3>Resource Summary</h3>
-                            {/* Small helper to colour-code metrics */}
-                            {(() => {
-                                const {
-                                    participants,
-                                    staff,
-                                    vehicles,
-                                } = selectedEvent.dynamicStatus;
-
-                                const getMetricColor = (ok) =>
-                                    ok ? '#4caf50' : '#e63946';
-
-                                return (
-                                    <div
-                                        style={{
-                                            display: 'grid',
-                                            gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))',
-                                            gap: '12px',
-                                            marginBottom: '24px',
-                                        }}
-                                    >
-                                        {/* Participants */}
-                                        <div
-                                            style={{
-                                                padding: '8px',
-                                                borderRadius: '6px',
-                                                background: '#f0f4f8',
-                                            }}
-                                        >
-                                            <div style={{ fontSize: '14px', fontWeight: 'bold' }}>
-                                                Participants
-                                            </div>
-                                            <div style={{ fontSize: '20px' }}>
-                                                {participants.count}
-                                            </div>
-                                        </div>
-
-                                        {/* Staff */}
-                                        <div
-                                            style={{
-                                                padding: '8px',
-                                                borderRadius: '6px',
-                                                background: '#f0f4f8',
-                                            }}
-                                        >
-                                            <div style={{ fontSize: '14px', fontWeight: 'bold' }}>
-                                                Staff
-                                            </div>
-                                            <div
-                                                style={{
-                                                    fontSize: '20px',
-                                                    color: getMetricColor(
-                                                        staff.assigned >= staff.required,
-                                                    ),
-                                                }}
-                                            >
-                                                {staff.assigned}/{staff.required}
-                                            </div>
-                                        </div>
-
-                                        {/* Vehicles */}
-                                        <div
-                                            style={{
-                                                padding: '8px',
-                                                borderRadius: '6px',
-                                                background: '#f0f4f8',
-                                            }}
-                                        >
-                                            <div style={{ fontSize: '14px', fontWeight: 'bold' }}>
-                                                Vehicles
-                                            </div>
-                                            <div
-                                                style={{
-                                                    fontSize: '20px',
-                                                    color: getMetricColor(
-                                                        vehicles.assigned >= vehicles.preferred,
-                                                    ),
-                                                }}
-                                            >
-                                                {vehicles.assigned}/{vehicles.preferred}
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })()}
-                        </>
-                    )}
-
-                    {/* Participants */}
-                    <h3>Participants ({selectedEvent.participants.length})</h3>
-                    <ul>
-                        {selectedEvent.participants.map((p) => (
-                            <li key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span>
-                                    {p.first_name} {p.last_name} ({p.status})
-                                </span>
-                                {/* ---------------- Cancellation Buttons ---------------- */}
-                                {p.status !== 'cancelled' && (() => {
-                                    // Calculate day difference using date-fns (robust across TZ)
-                                    const diffDays = differenceInCalendarDays(
-                                        new Date(selectedEvent.date),
-                                        simulatedDate
-                                    );
-
-                                    const btnStyles = {
-                                        padding: '4px 8px',
-                                        fontSize: '0.75rem',
-                                        cursor: 'pointer'
-                                    };
-
-                                    const isNormalAllowed       = diffDays >= 7;
-                                    const isShortNoticeAllowed  = diffDays < 7;
-
-                                    return (
-                                      <>
-                                        <button
-                                          className="cancel-btn"
-                                          disabled={!isNormalAllowed || loadingCancelId === p.id}
-                                          style={btnStyles}
-                                          onClick={(e) => {
-                                              e.preventDefault();
-                                              e.stopPropagation();
-                                              handleCancellation(
-                                                p.id,
-                                                selectedEvent.id,
-                                                'normal'
-                                              );
-                                            }}
-                                        >
-                                            {loadingCancelId === p.id && isNormalAllowed
-                                                ? 'Cancelling...'
-                                                : 'Cancel'}
-                                        </button>
-                                        <button
-                                          className="cancel-btn"
-                                          disabled={!isShortNoticeAllowed || loadingCancelId === p.id}
-                                          style={btnStyles}
-                                          onClick={(e) => {
-                                              e.preventDefault();
-                                              e.stopPropagation();
-                                              handleCancellation(
-                                                p.id,
-                                                selectedEvent.id,
-                                                'short_notice'
-                                              );
-                                            }}
-                                        >
-                                            {loadingCancelId === p.id && isShortNoticeAllowed
-                                                ? 'Cancelling...'
-                                                : 'Short Notice Cancel'}
-                                        </button>
-                                      </>
-                                    );
-                                })()}
-                            </li>
-                        ))}
-                    </ul>
-
-                    {/* Staff */}
-                    <h3>
-                        Staff ({selectedEvent.staff.length} / {selectedEvent.requiredStaffCount})
-                    </h3>
-                    <ul>
-                        {selectedEvent.staff.map((s) => (
-                            <li key={s.id}>
-                                {/* Staff name w/ dropdown */}
-                                <select
-                                    defaultValue={s.id}
-                                    onClick={(e) => e.stopPropagation()}
-                                    onChange={async (e) => {
-                                        const newStaffId = e.target.value;
-                                        if (newStaffId === s.id) return;
-                                        const single = window.confirm('Replace only this shift? Click "Cancel" for future shifts as well.');
-                                        try {
-                                            if (single) {
-                                                await updateSingleStaffAssignment(
-                                                    selectedEvent.id,
-                                                    s.id,
-                                                    newStaffId,
-                                                    s.role,
-                                                );
-                                            } else {
-                                                await updateRecurringStaffAssignment(
-                                                    selectedEvent.program_id,
-                                                    s.id,
-                                                    newStaffId,
-                                                    s.role,
-                                                    selectedEvent.date,
-                                                );
-                                            }
-                                            // Reload staff info
-                                            await loadStaffMeta(selectedEvent);
-                                            // Optimistic UI update
-                                            setSelectedEvent((prev) => {
-                                                if (!prev) return prev;
-                                                const newStaffArr = prev.staff.map((st) =>
-                                                    st.id === s.id ? { ...st, id: newStaffId, first_name: availableStaff.find(a=>a.id===newStaffId)?.first_name||'', last_name: availableStaff.find(a=>a.id===newStaffId)?.last_name||'' } : st,
-                                                );
-                                                return { ...prev, staff: newStaffArr };
-                                            });
-                                        } catch (err) {
-                                            alert('Failed to update staff assignment.');
-                                            console.error(err);
-                                        }
-                                    }}
-                                >
-                                    {[s, ...availableStaff.filter((a) => a.id !== s.id)].map((opt) => (
-                                        <option key={opt.id} value={opt.id}>
-                                            {opt.first_name} {opt.last_name}
-                                        </option>
-                                    ))}
-                                </select>{' '}
-                                ({s.role})
-                                {/* Progress bar with hours display */}
-                                {staffHours[s.id] && (
-                                  <div style={{ display: 'inline-flex', alignItems: 'center', marginLeft: '8px' }}>
-                                      <div
-                                        style={{
-                                            display: 'inline-block',
-                                            width: '120px',
-                                            height: '6px',
-                                            background: '#ddd',
-                                            marginRight: '8px',
-                                            verticalAlign: 'middle',
-                                        }}
-                                      >
-                                          <div
-                                            style={{
-                                                width: `${staffHours[s.id].percent_allocated}%`,
-                                                height: '100%',
-                                                background:
-                                                    staffHours[s.id].over_allocated
-                                                        ? '#e63946'
-                                                        : '#4caf50',
-                                            }}
-                                          />
-                                      </div>
-                                      <small style={{ 
-                                          color: staffHours[s.id].over_allocated ? '#e63946' : '#4a5568',
-                                          fontWeight: staffHours[s.id].over_allocated ? 'bold' : 'normal',
-                                          whiteSpace: 'nowrap'   /* keep on one line so it doesn't wrap under bar */
-                                      }}>
-                                          {/* Display as allocated / contracted hrs */}
-                                          {(() => {
-                                              const { allocated = 0, remaining = 0 } = staffHours[s.id];
-                                              const contracted = allocated + remaining;
-                                              return `${allocated.toFixed(1)}/${contracted.toFixed(1)} hrs`;
-                                          })()}
-                                      </small>
-                                  </div>
-                                )}
-                            </li>
-                        ))}
-                    </ul>
-
-                    {/* Vehicles */}
-                    {selectedEvent.vehicles && selectedEvent.vehicles.length > 0 && (
-                        <>
-                            <h3>Vehicles ({selectedEvent.vehicles.length})</h3>
-                            <ul>
-                                {selectedEvent.vehicles.map((v) => (
-                                    <li key={v.id}>
-                                        {v.description} – Driver:{' '}
-                                        {v.driver_first_name ? v.driver_first_name : 'Unassigned'}
-                                    </li>
-                                ))}
-                            </ul>
-                        </>
-                    )}
-
-                    {/* Routes - Show if available from dynamic resource status */}
-                    {selectedEvent.dynamicStatus && selectedEvent.dynamicStatus.routes && selectedEvent.dynamicStatus.routes.length > 0 && (
-                        <>
-                            <h3>Routes ({selectedEvent.dynamicStatus.routes.length})</h3>
-                            <div style={{ marginBottom: '20px' }}>
-                                {selectedEvent.dynamicStatus.routes.map((route, index) => (
-                                    <div key={`route-${index}`} style={{ marginBottom: '10px', padding: '10px', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
-                                        <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
-                                            {route.name || `Route ${index + 1}`} ({route.type === 'pickup' ? 'Pickup' : 'Drop-off'})
-                                        </div>
-                                        <div>
-                                            <strong>Vehicle:</strong> {route.vehicle || 'Not assigned'}
-                                        </div>
-                                        <div>
-                                            <strong>Driver:</strong> {route.driver || 'Not assigned'}
-                                        </div>
-                                        {route.estimatedTime && (
-                                            <div>
-                                                <strong>Estimated time:</strong> {route.estimatedTime} minutes
-                                            </div>
-                                        )}
-                                        {route.distance && (
-                                            <div>
-                                                <strong>Distance:</strong> {route.distance} km
-                                            </div>
-                                        )}
-                                        {route.stops && route.stops.length > 0 && (
-                                            <div>
-                                                <strong>Stops:</strong> {route.stops.length}
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        </>
-                    )}
+                    {/* Render the ScheduleCard component with all necessary props */}
+                    <ScheduleCard
+                        instance={{
+                            id: selectedEvent.id,
+                            name: selectedEvent.program_name,
+                            startTime: selectedEvent.start_time,
+                            endTime: selectedEvent.end_time
+                        }}
+                        participants={selectedEvent.participants}
+                        staffAssignments={selectedEvent.staff.map(s => ({ 
+                            staff_id: s.id, 
+                            first_name: s.first_name, 
+                            last_name: s.last_name, 
+                            role: s.role 
+                        }))}
+                        resourceStatus={{
+                            staff: {
+                                required: selectedEvent.dynamicStatus?.staff?.required || 0,
+                                assigned: selectedEvent.dynamicStatus?.staff?.assigned || 0
+                            },
+                            vehicles: {
+                                preferred: selectedEvent.dynamicStatus?.vehicles?.preferred || 0,
+                                assigned: selectedEvent.dynamicStatus?.vehicles?.assigned || 0
+                            },
+                            overall: selectedEvent.dynamicStatus?.overall || 'unknown'
+                        }}
+                        busRuns={(selectedEvent.dynamicStatus?.routes || []).map(r => ({ 
+                            id: r.id, 
+                            route_type: r.route_type, 
+                            stops: r.stops, 
+                            estimated_duration: r.estimated_duration, 
+                            estimated_distance: r.estimated_distance 
+                        }))}
+                        onCancel={(participantId, instanceId) => handleCancellation(participantId, instanceId, 'normal')}
+                        onShortNoticeCancel={(participantId, instanceId) => handleCancellation(participantId, instanceId, 'short_notice')}
+                        onSwapStaff={(staffId, instanceId) => {/* stub: implement staff swap */}}
+                    />
                 </>
             )}
         </Modal>
