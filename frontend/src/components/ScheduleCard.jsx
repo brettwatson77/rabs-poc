@@ -52,18 +52,47 @@ const ScheduleCard = ({
           const map = new google.maps.Map(mapEl, { center: centre, zoom: 11 });
           mapEl.dataset.initialised = '1';
 
-          const geocoder = new google.maps.Geocoder();
-          run.stops.forEach((stop) => {
-            if (stop.latitude && stop.longitude) {
-              new google.maps.Marker({ map, position: { lat: stop.latitude, lng: stop.longitude } });
-            } else if (stop.address) {
-              geocoder.geocode({ address: stop.address }, (results, status) => {
-                if (status === 'OK' && results[0]) {
-                  new google.maps.Marker({ map, position: results[0].geometry.location });
+          // ------------------------------------------------------------------
+          // Real Google Directions API call to render an optimised route
+          // ------------------------------------------------------------------
+          const positions = run.stops
+            .map((s) =>
+              s.latitude && s.longitude ? { lat: s.latitude, lng: s.longitude } : null
+            )
+            .filter(Boolean);
+
+          if (positions.length > 1) {
+            const directionsService = new google.maps.DirectionsService();
+            const directionsRenderer = new google.maps.DirectionsRenderer({ map });
+
+            const origin = positions[0];
+            const destination = positions[positions.length - 1];
+            const waypoints = positions
+              .slice(1, -1)
+              .map((loc) => ({ location: loc, stopover: true }));
+
+            directionsService.route(
+              {
+                origin,
+                destination,
+                waypoints,
+                travelMode: google.maps.TravelMode.DRIVING,
+                optimizeWaypoints: true,
+              },
+              (result, status) => {
+                if (status === google.maps.DirectionsStatus.OK) {
+                  directionsRenderer.setDirections(result);
+                } else {
+                  console.error('Directions request failed:', status);
+                  // Fallback — simple markers so at least stops show on the map
+                  positions.forEach((loc) => new google.maps.Marker({ map, position: loc }));
                 }
-              });
-            }
-          });
+              }
+            );
+          } else {
+            // Not enough points for routing – just drop markers
+            positions.forEach((loc) => new google.maps.Marker({ map, position: loc }));
+          }
         });
       })
       .catch((e) => console.error('Google Maps load failed:', e));
