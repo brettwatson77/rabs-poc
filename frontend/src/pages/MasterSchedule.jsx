@@ -1,12 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { getSchedule, getWeeklyChangeLog, createCancellation } from '../api/api';
+import { getSchedule, getWeeklyChangeLog, createCancellation, getResourceStatus, triggerRebalance } from '../api/api';
 import { useAppContext } from '../context/AppContext';
 import CalendarView from '../components/CalendarView';
 import { formatDateForApi } from '../utils/dateUtils';
-import axios from 'axios';
-
-// API base URL for dynamic resource endpoints
-const API_BASE_URL = '/api/v1';
 
 const MasterSchedule = () => {
   const [scheduleData, setScheduleData] = useState(null);
@@ -51,10 +47,24 @@ const MasterSchedule = () => {
         const log = await getWeeklyChangeLog(startDate, endDate);
         setWeeklyLog(log);
         
-        // Fetch dynamic resource status for all programs in the schedule
+        // Get unique instance IDs from schedule data
         if (data && data.length > 0) {
-          const programIds = [...new Set(data.map(event => event.program_id))];
-          await fetchResourceStatus(programIds);
+          const instanceIds = [...new Set(data.map(event => event.id))];
+          
+          // Create a status map object
+          const statusMap = {};
+          
+          // Fetch resource status for each instance
+          for (const instanceId of instanceIds) {
+            try {
+              const status = await getResourceStatus(instanceId);
+              statusMap[instanceId] = status;
+            } catch (statusErr) {
+              console.error(`Failed to fetch status for instance ${instanceId}`, statusErr);
+            }
+          }
+          
+          setResourceStatus(statusMap);
         }
       } catch (logErr) {
         // Do not block schedule rendering if the log fails
@@ -66,55 +76,6 @@ const MasterSchedule = () => {
       console.error(err);
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Fetch resource allocation status for multiple programs
-  const fetchResourceStatus = async (programIds) => {
-    try {
-      const statusMap = {};
-      
-      // Fetch status for each program
-      for (const programId of programIds) {
-        const response = await axios.get(`${API_BASE_URL}/dynamic-resources/status/${programId}`);
-        if (response.data && response.data.status) {
-          statusMap[programId] = response.data.status;
-        }
-      }
-      
-      setResourceStatus(statusMap);
-    } catch (error) {
-      console.error('Failed to fetch resource status:', error);
-    }
-  };
-
-  // Trigger dynamic rebalancing for a program
-  const triggerRebalance = async (programId) => {
-    setIsRebalancing(true);
-    setRebalanceMessage(`Optimizing resources for program...`);
-    
-    try {
-      const response = await axios.post(`${API_BASE_URL}/dynamic-resources/rebalance/${programId}`);
-      
-      if (response.data && response.data.success) {
-        // Update the resource status for this program
-        setResourceStatus(prev => ({
-          ...prev,
-          [programId]: response.data.status
-        }));
-        
-        setRebalanceMessage('Resources successfully optimized!');
-        
-        // Clear success message after 3 seconds
-        setTimeout(() => {
-          setRebalanceMessage('');
-        }, 3000);
-      }
-    } catch (error) {
-      console.error('Failed to rebalance resources:', error);
-      setRebalanceMessage('Failed to optimize resources. Please try again.');
-    } finally {
-      setIsRebalancing(false);
     }
   };
 
@@ -143,12 +104,8 @@ const MasterSchedule = () => {
       await createCancellation({ participantId, programInstanceId, type: cancellationType });
       alert(`Successfully processed ${cancellationType.replace('_', ' ')} cancellation.`);
       
-      // Find the program_id for this instance to trigger rebalancing
-      const instance = scheduleData.find(inst => inst.id === programInstanceId);
-      if (instance && instance.program_id) {
-        // Trigger dynamic rebalancing after cancellation
-        await triggerRebalance(instance.program_id);
-      }
+      // Trigger dynamic rebalancing after cancellation using the instance ID directly
+      await triggerRebalance(programInstanceId);
       
       // After successful cancellation, re-fetch schedule data to update UI
       await fetchScheduleData();
@@ -180,7 +137,10 @@ const MasterSchedule = () => {
     if (!status) return '#888'; // gray for unknown
     switch (status.toLowerCase()) {
       case 'optimal': return '#4caf50'; // green
-      case 'balanced': return '#2196f3'; // blue
+      // Show 'balanced' with the same orange used for the legend to indicate
+      // that the shift still needs optimisation.
+      case 'balanced': return '#ff9800'; // orange
+      // 'warning' can be treated the same as balanced; keeping for backward compatibility
       case 'warning': return '#ff9800'; // orange
       case 'critical': return '#f44336'; // red
       default: return '#888'; // gray
@@ -188,8 +148,8 @@ const MasterSchedule = () => {
   };
 
   // Render dynamic allocation status badge for an event
-  const renderDynamicBadge = (programId) => {
-    const status = resourceStatus[programId];
+  const renderDynamicBadge = (instanceId) => {
+    const status = resourceStatus[instanceId];
     if (!status) return null;
     
     return (
@@ -213,9 +173,9 @@ const MasterSchedule = () => {
   // Enhance CalendarView with dynamic resource information
   const enhancedScheduleData = scheduleData?.map(event => ({
     ...event,
-    dynamicStatus: resourceStatus[event.program_id] || null,
-    renderDynamicBadge: () => renderDynamicBadge(event.program_id),
-    triggerRebalance: () => triggerRebalance(event.program_id)
+    dynamicStatus: resourceStatus[event.id] || null,
+    renderDynamicBadge: () => renderDynamicBadge(event.id),
+    triggerRebalance: () => triggerRebalance(event.id)
   }));
 
   return (

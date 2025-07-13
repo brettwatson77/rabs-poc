@@ -319,6 +319,24 @@ const getResourceStatus = async (req, res) => {
           details: routes
         }
       };
+
+      /* -------------------------------------------------------------
+       * Derive an aggregate "overall" indicator so the frontend can
+       * colour-code schedule cards without re-calculating the logic.
+       * ----------------------------------------------------------- */
+      let overall;
+      const staffOk    = status.staff.assigned     >= status.staff.required;
+      const vehicleOk  = status.vehicles.assigned  >= status.vehicles.preferred;
+
+      if (staffOk && vehicleOk) {
+        overall = 'optimal';
+      } else if (!staffOk && !vehicleOk) {
+        overall = 'critical';
+      } else {
+        overall = 'balanced';
+      }
+
+      status.overall = overall;
       
       res.status(200).json({
         success: true,
