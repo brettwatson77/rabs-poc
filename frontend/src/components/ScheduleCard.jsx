@@ -176,7 +176,9 @@ const ScheduleCard = ({
             <div key={run.id} className="bus-run-item">
               <div>{run.route_type}</div>
               <ol>
-                {run.stops.map((stop, idx) => <li key={idx}>{stop.address}</li>)}
+                {run.stops.map((stop, idx) => (
+                  <li key={`${run.id}-${idx}`}>{stop.address}</li>
+                ))}
               </ol>
               <div id={`map-${run.id}`} className="route-map" style={{ height: '150px' }} />
             </div>
