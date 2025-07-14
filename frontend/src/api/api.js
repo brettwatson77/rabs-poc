@@ -724,11 +724,33 @@ export const getRouteDetails = async (programInstanceId) => {
     const response = await api.get(
       `/dynamic-resources/routes/${programInstanceId}`
     );
-    return response.data.data;
+    // Return only the array of route objects (per latest spec)
+    return response.data.data.routes;
   } catch (error) {
     console.error(
       `Error fetching route details for program instance ${programInstanceId}:`,
       error
+    );
+    throw error;
+  }
+};
+
+/**
+ * Trigger route optimisation via the rebalance endpoint but
+ * return the inner `data` payload directly.
+ * @param {number} programInstanceId
+ * @returns {Promise<Object>} backend `data` field
+ */
+export const triggerRouteOptimization = async (programInstanceId) => {
+  try {
+    const response = await api.post(
+      `/dynamic-resources/rebalance/${programInstanceId}`,
+    );
+    return response.data.data;
+  } catch (error) {
+    console.error(
+      `Error triggering route optimisation for program instance ${programInstanceId}:`,
+      error,
     );
     throw error;
   }

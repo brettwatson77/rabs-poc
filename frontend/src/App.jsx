@@ -15,6 +15,7 @@ import ParticipantPlanner from './pages/ParticipantPlanner';
 import Finance from './pages/Finance';
 import Participants from './pages/Participants';
 import Staff from './pages/Staff';
+import Roster from './pages/Roster';
 import Vehicles from './pages/Vehicles';
 import Venues from './pages/Venues';
 import Dashboard from './pages/Dashboard';
@@ -44,6 +45,8 @@ function App() {
             <Route path="/planner" element={<ParticipantPlanner />} />
             <Route path="/participants" element={<Participants />} />
             <Route path="/staff" element={<Staff />} />
+            {/* Staff-centric roster (shift view) */}
+            <Route path="/roster" element={<Roster />} />
             <Route path="/vehicles" element={<Vehicles />} />
             <Route path="/venues" element={<Venues />} />
             <Route path="/finance" element={<Finance />} />

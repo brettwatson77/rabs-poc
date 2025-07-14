@@ -425,8 +425,14 @@ const CalendarView = ({ scheduleData, weekDates, handleCancel }) => {
                     {/* Determine busRuns for the card */}
                     {(() => {
                         // Determine busRuns for the card
-                        const runs = selectedEvent.busRuns
-                          ? selectedEvent.busRuns
+                        const runs = Array.isArray(selectedEvent.dynamicStatus?.routes)
+                          ? selectedEvent.dynamicStatus.routes.map(route => ({
+                              id: route.id,
+                              route_type: route.route_type,
+                              stops: route.stops || [],
+                              estimated_duration: route.estimated_duration || 0,
+                              estimated_distance: route.estimated_distance || 0,
+                            }))
                           : selectedEvent.type === 'bus_run'
                           ? [{
                               id: selectedEvent.id,

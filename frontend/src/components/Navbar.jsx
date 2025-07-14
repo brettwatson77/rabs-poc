@@ -11,6 +11,10 @@ const navStyles = {
   justifyContent: 'flex-start',
   /* Consistent spacing between any left-side items (future logo) and the ul */
   gap: '1.5rem',
+  /* Make the navbar stick to the top of the viewport */
+  position: 'sticky',
+  top: 0,
+  zIndex: 1000,
 };
 
 const ulStyles = {
@@ -46,6 +50,10 @@ const Navbar = () => {
         </li>
         <li>
           <Link to="/staff" style={linkStyles}>Staff</Link>
+        </li>
+        {/* Staff-centric roster view */}
+        <li>
+          <Link to="/roster" style={linkStyles}>Roster</Link>
         </li>
         <li>
           <Link to="/vehicles" style={linkStyles}>Vehicles</Link>

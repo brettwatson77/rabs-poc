@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { getRoster } from '../api/api';
+import { getRoster, createCancellation, updateSingleStaffAssignment } from '../api/api';
 import { formatDateForApi } from '../utils/dateUtils';
 import ScheduleCard from '../components/ScheduleCard';
 import '../styles/Roster.css';
@@ -20,25 +20,72 @@ const Roster = () => {
     const [error, setError] = useState(null);
     const [viewMode, setViewMode] = useState('staff'); // 'staff' or 'schedule'
 
-    useEffect(() => {
-        const fetchRosterData = async () => {
-            setLoading(true);
-            setError(null);
-            try {
-                // Fetch current day's roster
-                const dateString = formatDateForApi(simulatedDate);
-                const data = await getRoster(dateString);
-                setRosterData(data);
-            } catch (err) {
-                setError('Failed to fetch roster data. Please ensure the backend is running.');
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        };
+    const fetchRosterData = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            // Fetch current day's roster
+            const dateString = formatDateForApi(simulatedDate);
+            const data = await getRoster(dateString);
+            setRosterData(data);
+        } catch (err) {
+            setError('Failed to fetch roster data. Please ensure the backend is running.');
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
+    useEffect(() => {
         fetchRosterData();
     }, [simulatedDate]);
+
+    const handleCancel = async (participantId, programInstanceId) => {
+        try {
+            await createCancellation({ 
+                participantId, 
+                programInstanceId, 
+                type: 'normal' 
+            });
+            await fetchRosterData();
+        } catch (err) {
+            alert('Failed to cancel participant.');
+            console.error(err);
+        }
+    };
+
+    const handleShortNoticeCancel = async (participantId, programInstanceId) => {
+        try {
+            await createCancellation({ 
+                participantId, 
+                programInstanceId, 
+                type: 'short_notice' 
+            });
+            await fetchRosterData();
+        } catch (err) {
+            alert('Failed to process short-notice cancellation.');
+            console.error(err);
+        }
+    };
+
+    const handleSwapStaff = async (staffId, instanceId) => {
+        const newStaffId = window.prompt('Enter new staff ID:');
+        if (!newStaffId) return;
+        
+        const role = 'support'; // default since Roster view
+        try {
+            await updateSingleStaffAssignment(
+                instanceId,
+                staffId,
+                newStaffId,
+                role
+            );
+            await fetchRosterData();
+        } catch (err) {
+            alert('Failed to swap staff member.');
+            console.error(err);
+        }
+    };
 
     // Process roster data into events
     const events = useMemo(() => {
@@ -258,9 +305,9 @@ const Roster = () => {
                                                                 }]
                                                                 : []
                                                         }
-                                                        onCancel={() => {}}
-                                                        onShortNoticeCancel={() => {}}
-                                                        onSwapStaff={() => {}}
+                                                        onCancel={handleCancel}
+                                                        onShortNoticeCancel={handleShortNoticeCancel}
+                                                        onSwapStaff={handleSwapStaff}
                                                     />
                                                 </div>
                                             ))}
@@ -315,9 +362,9 @@ const Roster = () => {
                                                     }]
                                                     : []
                                             }
-                                            onCancel={() => {}}
-                                            onShortNoticeCancel={() => {}}
-                                            onSwapStaff={() => {}}
+                                            onCancel={handleCancel}
+                                            onShortNoticeCancel={handleShortNoticeCancel}
+                                            onSwapStaff={handleSwapStaff}
                                         />
                                     </div>
                                 ))

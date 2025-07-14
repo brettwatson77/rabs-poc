@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { getRoster } from '../api/api';
+import { 
+    getRoster, 
+    getResourceStatus, 
+    createCancellation, 
+    updateSingleStaffAssignment 
+} from '../api/api';
 import { formatDateForApi } from '../utils/dateUtils';
 import Modal from '../components/Modal'; // Import the Modal component
 import ActivityCard from '../components/ActivityCard'; // Reusable card
@@ -22,34 +27,116 @@ const Dashboard = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [selectedActivity, setSelectedActivity] = useState(null); // State for the modal
+    // Map of instanceId -> dynamic resource status fetched from backend
+    const [resourceStatusMap, setResourceStatusMap] = useState({});
 
+    /* ------------------------------------------------------------------
+     * Shared function: (re)load today & tomorrow roster data
+     * ---------------------------------------------------------------- */
+    const fetchRosterData = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            // Today
+            const todayStr = formatDateForApi(simulatedDate);
+            const data     = await getRoster(todayStr);
+            setRoster(data);
+
+            // Tomorrow (for early-morning bus-run preview)
+            const nextDateObj = new Date(simulatedDate);
+            nextDateObj.setDate(nextDateObj.getDate() + 1);
+            const nextStr   = formatDateForApi(nextDateObj);
+            const nextData  = await getRoster(nextStr);
+            setNextRoster(nextData);
+        } catch (err) {
+            setError('Failed to fetch daily roster. Please ensure the backend is running.');
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    /* Initial load and whenever simulatedDate changes */
     useEffect(() => {
-        const fetchRosterData = async () => {
-            setLoading(true);
-            setError(null);
-            try {
-                // Fetch current day's roster
-                const dateString = formatDateForApi(simulatedDate);
-                const data = await getRoster(dateString);
-                setRoster(data);
-
-                // Fetch next day's roster to show upcoming morning runs
-                const nextDateObj = new Date(simulatedDate);
-                nextDateObj.setDate(nextDateObj.getDate() + 1);
-                const nextDateStr = formatDateForApi(nextDateObj);
-                const nextData = await getRoster(nextDateStr);
-                setNextRoster(nextData);
-
-            } catch (err) {
-                setError('Failed to fetch daily roster. Please ensure the backend is running.');
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchRosterData();
     }, [simulatedDate]);
+
+    /* ------------------------------------------------------------------
+     * Fetch dynamic resource status for each program instance
+     * whenever the roster data is (re)loaded.
+     * ---------------------------------------------------------------- */
+    useEffect(() => {
+        const fetchStatuses = async () => {
+            if (!roster || !Array.isArray(roster.programInstances)) return;
+            const map = {};
+            for (const pi of roster.programInstances) {
+                try {
+                    map[pi.id] = await getResourceStatus(pi.id);
+                } catch (e) {
+                    console.error(`Failed to fetch resource status for ${pi.id}`, e);
+                }
+            }
+            setResourceStatusMap(map);
+        };
+        fetchStatuses();
+    }, [roster]);
+
+    /* ------------------------------------------------------------------
+     * Participant cancellation handlers
+     * ---------------------------------------------------------------- */
+    const handleCancel = async (participantId, programInstanceId) => {
+        try {
+            await createCancellation({
+                participantId,
+                programInstanceId,
+                type: 'normal',
+            });
+            await fetchRosterData(); // refresh UI
+        } catch (err) {
+            alert('Failed to cancel participant.');
+            console.error(err);
+        }
+    };
+
+    const handleShortNoticeCancel = async (participantId, programInstanceId) => {
+        try {
+            await createCancellation({
+                participantId,
+                programInstanceId,
+                type: 'short_notice',
+            });
+            await fetchRosterData();
+        } catch (err) {
+            alert('Failed to process short-notice cancellation.');
+            console.error(err);
+        }
+    };
+
+    /* ------------------------------------------------------------------
+     * Staff swap handler
+     * ---------------------------------------------------------------- */
+    const handleSwapStaff = async (staffId, instanceId) => {
+        const newStaffId = window.prompt('Enter new staff ID:');
+        if (!newStaffId) return;
+
+        // Infer role from current selected activity
+        const role =
+            selectedActivity?.staff.find((s) => s.id === staffId)?.role ||
+            'support';
+
+        try {
+            await updateSingleStaffAssignment(
+                instanceId,
+                staffId,
+                newStaffId,
+                role,
+            );
+            await fetchRosterData();
+        } catch (err) {
+            alert('Failed to swap staff member.');
+            console.error(err);
+        }
+    };
 
     // Calculate dashboard metrics from roster data
     const dashboardMetrics = useMemo(() => {
@@ -397,17 +484,19 @@ const Dashboard = () => {
                     last_name: s.last_name, 
                     role: s.role 
                   }))}
-                  resourceStatus={{
-                    staff: { 
-                      required: selectedActivity.requiredStaffCount || 0, 
-                      assigned: selectedActivity.staff.length 
-                    },
-                    vehicles: { 
-                      preferred: selectedActivity.vehicles.length, 
-                      assigned: selectedActivity.vehicles.length 
-                    },
-                    overall: 'unknown'
-                  }}
+                  resourceStatus={
+                    (() => {
+                      // For bus_run cards, use the parent program instance id (before first '-')
+                      const key = selectedActivity.type === 'bus_run'
+                        ? selectedActivity.id.split('-')[0]
+                        : selectedActivity.id;
+                      return resourceStatusMap[key] || {
+                        staff: { required: 0, assigned: 0 },
+                        vehicles: { preferred: 0, assigned: 0 },
+                        overall: 'unknown'
+                      };
+                    })()
+                  }
                   busRuns={
                     selectedActivity.type === 'bus_run'
                       ? [{
@@ -421,9 +510,9 @@ const Dashboard = () => {
                         }]
                       : []
                   }
-                  onCancel={() => {}}
-                  onShortNoticeCancel={() => {}}
-                  onSwapStaff={() => {}}
+                  onCancel={handleCancel}
+                  onShortNoticeCancel={handleShortNoticeCancel}
+                  onSwapStaff={handleSwapStaff}
                 />
               </Modal>
             )}
