@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
-  base: '/', // ✅ Good for production builds
+  base: '/',
   plugins: [react()],
   server: {
     host: '0.0.0.0',
@@ -11,15 +11,15 @@ export default defineConfig({
     allowedHosts: [
       'rabspoc.codexdiz.com',
       'rabsp.codexdiz.com',
-      '192.168.77.6',
+      '192.168.77.8',  // ← your VM’s IP
       'localhost'
-    ],
-    proxy: {
-      '/api': {
-        target: 'http://127.0.0.1:3009',
-        changeOrigin: true,
-        secure: false
-      }
+  ],
+  proxy: {
+    '/api': {
+      target: 'http://192.168.77.8:3009', // ← backend on the Linux box
+      changeOrigin: true,
+      secure: false
     }
+   }
   }
 });

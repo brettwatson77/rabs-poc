@@ -33,8 +33,10 @@ const app = express();
 const whitelist = [
   'http://localhost:3008',
   'http://localhost:3009',
-  'http://192.168.77.6:3009',
-  'http://192.168.77.6:3008',
+  'http://127.0.0.1:3008',
+  'http://127.0.0.1:3009',
+  'http://192.168.77.8:3008',
+  'http://192.168.77.8:3009',
   'https://rabspoc.codexdiz.com',
   'https://rabspoc.codexdiz.com/api/v1/',
   'https://www.rabs.ai'
