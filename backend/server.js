@@ -16,6 +16,9 @@ const programsRouter     = require('./routes/programs');
 const scheduleRouter     = require('./routes/schedule');
 const plannerRouter      = require('./routes/planner');
 const rosterRouter       = require('./routes/roster');
+// API v1 routers (cards & dashboard live inside routes/api/v1)
+const cardsRouter        = require('./routes/api/v1/cards');
+const dashboardRouter    = require('./routes/api/v1/dashboard');
 const financeRouter      = require('./routes/finance');
 const ratesRouter        = require('./routes/rates');
 const systemRouter       = require('./routes/system');
@@ -90,6 +93,9 @@ app.use('/api/v1/programs',     programsRouter);
 app.use('/api/v1/schedule',     scheduleRouter);
 app.use('/api/v1/planner',      plannerRouter);
 app.use('/api/v1/roster',       rosterRouter);
+// v1 specialised routers
+app.use('/api/v1/cards',        cardsRouter);
+app.use('/api/v1/dashboard',    dashboardRouter);
 app.use('/api/v1/finance',      financeRouter);
 app.use('/api/v1/rates',        ratesRouter);
 app.use('/api/v1/system',       systemRouter);

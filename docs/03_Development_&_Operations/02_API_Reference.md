@@ -1,4 +1,4 @@
-\# RABS-POC: API Reference (Version 1)
+# RABS-POC: API Reference (Version 1)
 
 
 
@@ -14,7 +14,7 @@ This document provides a summary of the key REST API endpoints available in the 
 
 
 
-\## 1. Schedule \& Enrollment
+\## 1. Schedule & Enrollment
 
 
 
@@ -68,7 +68,7 @@ These endpoints interact with the dynamic resource allocation engine.
 
 
 
-\## 3. Finance \& Billing
+\## 3. Finance & Billing
 
 
 
@@ -90,7 +90,7 @@ These endpoints are used for generating billing artifacts.
 
 
 
-\## 4. Rates \& Configuration
+\## 4. Rates & Configuration
 
 
 
@@ -112,7 +112,7 @@ These endpoints manage the billing rate table.
 
 
 
-\## 5. Transport \& Rosters
+\## 5. Transport & Rosters
 
 
 

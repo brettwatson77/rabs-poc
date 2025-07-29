@@ -19,7 +19,6 @@ import Roster from './pages/Roster';
 import Vehicles from './pages/Vehicles';
 import Venues from './pages/Venues';
 import Dashboard from './pages/Dashboard';
-import DynamicResourceDemo from './pages/DynamicResourceDemo';
 
 // UI
 import Navbar from './components/Navbar';
@@ -50,8 +49,6 @@ function App() {
             <Route path="/vehicles" element={<Vehicles />} />
             <Route path="/venues" element={<Venues />} />
             <Route path="/finance" element={<Finance />} />
-            {/* Dynamic resource-allocation demo */}
-            <Route path="/dynamic-demo" element={<DynamicResourceDemo />} />
           </Routes>
         </main>
       </Router>

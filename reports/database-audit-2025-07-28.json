@@ -1,0 +1,275 @@
+{
+  "database": {
+    "name": "rabspocdb",
+    "tables": 26,
+    "foreignKeys": 15
+  },
+  "api": {
+    "endpoints": 0,
+    "tablesReferenced": 0
+  },
+  "missingTables": [],
+  "missingColumns": {
+    "loom_participant_attendance": [
+      {
+        "column": "instance_id",
+        "serviceFile": "dashboardFinanceService.js",
+        "query": "\n        SELECT COALESCE(SUM(rli.unit_price), 0) as total_revenue\n        FROM loom_participant_atte..."
+      }
+    ],
+    "loom_instances": [
+      {
+        "column": "program_id",
+        "serviceFile": "dashboardFinanceService.js",
+        "query": "\n        SELECT COALESCE(SUM(rli.unit_price), 0) as total_revenue\n        FROM loom_participant_atte..."
+      },
+      {
+        "column": "date",
+        "serviceFile": "dashboardFinanceService.js",
+        "query": "\n        SELECT COALESCE(SUM(rli.unit_price), 0) as total_revenue\n        FROM loom_participant_atte..."
+      },
+      {
+        "column": "quality_flag",
+        "serviceFile": "eventCardService.js",
+        "query": "\n      SELECT cm.*, li.program_id, li.date, li.quality_flag, li.override_status\n      FROM event_car..."
+      },
+      {
+        "column": "override_status",
+        "serviceFile": "eventCardService.js",
+        "query": "\n      SELECT cm.*, li.program_id, li.date, li.quality_flag, li.override_status\n      FROM event_car..."
+      }
+    ],
+    "payment_diamonds": [
+      {
+        "column": "attendance_id",
+        "serviceFile": "dashboardFinanceService.js",
+        "query": "\n        SELECT COALESCE(SUM(rli.unit_price), 0) as total_revenue\n        FROM loom_participant_atte..."
+      }
+    ],
+    "loom_staff_assignments": [
+      {
+        "column": "end_time",
+        "serviceFile": "dashboardFinanceService.js",
+        "query": "\n        SELECT \n          s.id,\n          s.schads_level,\n          EXTRACT(EPOCH FROM (lsa.end_tim..."
+      },
+      {
+        "column": "start_time",
+        "serviceFile": "dashboardFinanceService.js",
+        "query": "\n        SELECT \n          s.id,\n          s.schads_level,\n          EXTRACT(EPOCH FROM (lsa.end_tim..."
+      },
+      {
+        "column": "instance_id",
+        "serviceFile": "dashboardFinanceService.js",
+        "query": "\n        SELECT \n          s.id,\n          s.schads_level,\n          EXTRACT(EPOCH FROM (lsa.end_tim..."
+      },
+      {
+        "column": "assignment_type",
+        "serviceFile": "timesheetService.js",
+        "query": "\n        SELECT \n          lsa.id AS assignment_id,\n          lsa.staff_id,\n          s.first_name,\n..."
+      }
+    ],
+    "programs": [
+      {
+        "column": "day_of_week",
+        "serviceFile": "dynamicResourceService.js",
+        "query": "\n      SELECT \n        pi.id,\n        pi.program_id,\n        pi.date,\n        pi.start_time,\n       ..."
+      },
+      {
+        "column": "venue_id",
+        "serviceFile": "dynamicResourceService.js",
+        "query": "\n      SELECT \n        pi.id,\n        pi.program_id,\n        pi.date,\n        pi.start_time,\n       ..."
+      },
+      {
+        "column": "start_time",
+        "serviceFile": "plannerService.js",
+        "query": "\n      SELECT \n        pe.id,\n        pe.participant_id,\n        pe.program_id,\n        pe.start_dat..."
+      },
+      {
+        "column": "end_time",
+        "serviceFile": "plannerService.js",
+        "query": "\n      SELECT \n        pe.id,\n        pe.participant_id,\n        pe.program_id,\n        pe.start_dat..."
+      },
+      {
+        "column": "is_weekend",
+        "serviceFile": "plannerService.js",
+        "query": "\n      SELECT \n        pe.id,\n        pe.participant_id,\n        pe.program_id,\n        pe.start_dat..."
+      },
+      {
+        "column": "is_centre_based",
+        "serviceFile": "plannerService.js",
+        "query": "\n      SELECT \n        pe.id,\n        pe.participant_id,\n        pe.program_id,\n        pe.start_dat..."
+      },
+      {
+        "column": "active",
+        "serviceFile": "plannerService.js",
+        "query": "\n      SELECT \n        p.id,\n        p.name,\n        p.description,\n        p.day_of_week,\n        p..."
+      }
+    ],
+    "event_card_map": [
+      {
+        "column": "instance_id",
+        "serviceFile": "eventCardService.js",
+        "query": "\n      SELECT cm.*, li.program_id, li.date, li.quality_flag, li.override_status\n      FROM event_car..."
+      },
+      {
+        "column": "start_time",
+        "serviceFile": "eventCardService.js",
+        "query": "\n      SELECT cm.*, li.program_id, li.date, li.quality_flag, li.override_status\n      FROM event_car..."
+      }
+    ],
+    "staff": [
+      {
+        "column": "name",
+        "serviceFile": "eventCardService.js",
+        "query": "\n      SELECT sa.*, s.name as staff_name, s.qualifications\n      FROM loom_staff_assignments sa\n    ..."
+      },
+      {
+        "column": "qualifications",
+        "serviceFile": "eventCardService.js",
+        "query": "\n      SELECT sa.*, s.name as staff_name, s.qualifications\n      FROM loom_staff_assignments sa\n    ..."
+      }
+    ]
+  },
+  "columnMismatches": [
+    {
+      "type": "Column Mismatch",
+      "table": "event_card_map",
+      "expectedColumn": "instance_id",
+      "actualColumn": "loom_instance_id",
+      "serviceFile": "eventCardService.js"
+    }
+  ],
+  "actionPlan": {
+    "Simple": [
+      {
+        "type": "Add Column",
+        "target": "loom_participant_attendance.instance_id",
+        "relatedPages": "",
+        "description": "Add missing column 'instance_id' to table 'loom_participant_attendance' referenced in dashboardFinanceService.js"
+      },
+      {
+        "type": "Add Column",
+        "target": "loom_instances.program_id",
+        "relatedPages": "",
+        "description": "Add missing column 'program_id' to table 'loom_instances' referenced in dashboardFinanceService.js"
+      },
+      {
+        "type": "Add Column",
+        "target": "loom_instances.date",
+        "relatedPages": "",
+        "description": "Add missing column 'date' to table 'loom_instances' referenced in dashboardFinanceService.js"
+      },
+      {
+        "type": "Add Column",
+        "target": "loom_instances.quality_flag",
+        "relatedPages": "",
+        "description": "Add missing column 'quality_flag' to table 'loom_instances' referenced in eventCardService.js"
+      },
+      {
+        "type": "Add Column",
+        "target": "loom_instances.override_status",
+        "relatedPages": "",
+        "description": "Add missing column 'override_status' to table 'loom_instances' referenced in eventCardService.js"
+      },
+      {
+        "type": "Add Column",
+        "target": "payment_diamonds.attendance_id",
+        "relatedPages": "",
+        "description": "Add missing column 'attendance_id' to table 'payment_diamonds' referenced in dashboardFinanceService.js"
+      },
+      {
+        "type": "Add Column",
+        "target": "loom_staff_assignments.end_time",
+        "relatedPages": "",
+        "description": "Add missing column 'end_time' to table 'loom_staff_assignments' referenced in dashboardFinanceService.js"
+      },
+      {
+        "type": "Add Column",
+        "target": "loom_staff_assignments.start_time",
+        "relatedPages": "",
+        "description": "Add missing column 'start_time' to table 'loom_staff_assignments' referenced in dashboardFinanceService.js"
+      },
+      {
+        "type": "Add Column",
+        "target": "loom_staff_assignments.instance_id",
+        "relatedPages": "",
+        "description": "Add missing column 'instance_id' to table 'loom_staff_assignments' referenced in dashboardFinanceService.js"
+      },
+      {
+        "type": "Add Column",
+        "target": "loom_staff_assignments.assignment_type",
+        "relatedPages": "",
+        "description": "Add missing column 'assignment_type' to table 'loom_staff_assignments' referenced in timesheetService.js"
+      },
+      {
+        "type": "Add Column",
+        "target": "programs.day_of_week",
+        "relatedPages": "",
+        "description": "Add missing column 'day_of_week' to table 'programs' referenced in dynamicResourceService.js"
+      },
+      {
+        "type": "Add Column",
+        "target": "programs.venue_id",
+        "relatedPages": "",
+        "description": "Add missing column 'venue_id' to table 'programs' referenced in dynamicResourceService.js"
+      },
+      {
+        "type": "Add Column",
+        "target": "programs.start_time",
+        "relatedPages": "",
+        "description": "Add missing column 'start_time' to table 'programs' referenced in plannerService.js"
+      },
+      {
+        "type": "Add Column",
+        "target": "programs.end_time",
+        "relatedPages": "",
+        "description": "Add missing column 'end_time' to table 'programs' referenced in plannerService.js"
+      },
+      {
+        "type": "Add Column",
+        "target": "programs.is_weekend",
+        "relatedPages": "",
+        "description": "Add missing column 'is_weekend' to table 'programs' referenced in plannerService.js"
+      },
+      {
+        "type": "Add Column",
+        "target": "programs.is_centre_based",
+        "relatedPages": "",
+        "description": "Add missing column 'is_centre_based' to table 'programs' referenced in plannerService.js"
+      },
+      {
+        "type": "Add Column",
+        "target": "programs.active",
+        "relatedPages": "",
+        "description": "Add missing column 'active' to table 'programs' referenced in plannerService.js"
+      },
+      {
+        "type": "Add Column",
+        "target": "event_card_map.instance_id",
+        "relatedPages": "",
+        "description": "Add missing column 'instance_id' to table 'event_card_map' referenced in eventCardService.js"
+      },
+      {
+        "type": "Add Column",
+        "target": "event_card_map.start_time",
+        "relatedPages": "",
+        "description": "Add missing column 'start_time' to table 'event_card_map' referenced in eventCardService.js"
+      },
+      {
+        "type": "Add Column",
+        "target": "staff.name",
+        "relatedPages": "",
+        "description": "Add missing column 'name' to table 'staff' referenced in eventCardService.js"
+      },
+      {
+        "type": "Add Column",
+        "target": "staff.qualifications",
+        "relatedPages": "",
+        "description": "Add missing column 'qualifications' to table 'staff' referenced in eventCardService.js"
+      }
+    ],
+    "Moderate": [],
+    "Complex": []
+  },
+  "tablesByPage": {}
+}

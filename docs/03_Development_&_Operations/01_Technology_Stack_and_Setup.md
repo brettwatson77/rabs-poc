@@ -1,220 +1,149 @@
-\# RABS-POC: Technology Stack \& Setup Guide
+# RABS-POC: Technology Stack & Setup Guide
 
+## 1. Introduction to the Proof-of-Concept (POC)
 
+**R.A.B.S. (Real-time Adaptive Backend System)** is a next-generation scheduling and resource-coordination platform.  
+This repository, `rabs-poc`, is a **local-only sandbox** created to test feasibility and core logic for the future production RABS system.
 
-\## 1. Introduction to the Proof-of-Concept (POC)
+Primary POC goals:
 
+* Add and remove clients from scheduled activities.  
+* Dynamically adjust staffing, billing and vehicle assignments in response to changes.  
+* Provide a robust API that can be consumed by other services (e.g. a voice agent).
 
+### What This POC Is *Not*
 
-\*\*R.A.B.S. (Real-time Adaptive Backend System)\*\* is a next-generation scheduling and resource coordination platform. This repository, `rabs-poc`, is a \*\*local-only sandbox\*\* created to test the feasibility and core logic of the future RABS system. It is not intended for production use.
+* ❌ Not secure  
+* ❌ Not online by default  
+* ❌ Not production-ready  
+* ❌ Not privacy-compliant  
 
+> ⚠️ **Reminder:** The real RABS system will be built in a separate repository using production-grade architecture and security patterns.
 
+---
 
-The primary goals of this POC are to prove that the system can:
+## 2. Technology Stack
 
+* **Backend:** Node.js + Express  
+* **Frontend:** React (Vite)  
+* **Database:** SQLite (fast swap-friendly prototyping)  
+* **Authentication:** Hard-coded dev session to simulate user context—no real login flow required.
 
+---
 
-\*   Add and remove clients from scheduled activities.
+## 3. Project Structure
 
-\*   Dynamically adjust staffing, billing, and vehicle assignments in response to changes.
-
-\*   Provide a robust API that could be used by other services, such as a voice agent.
-
-
-
-\### What This POC Is Not:
-
-\*   ❌ Not secure
-
-\*   ❌ Not online by default
-
-\*   ❌ Not production-ready
-
-\*   ❌ Not privacy-compliant
-
-
-
-> ⚠️ \*\*Reminder:\*\* The real R.A.B.S. system will be built in a separate repository using production-grade architecture and security.
-
-
-
-\## 2. Technology Stack
-
-
-
-\*   \*\*Backend:\*\* Node.js + Express
-
-\*   \*\*Frontend:\*\* React (built with Vite)
-
-\*   \*\*Database:\*\* SQLite (swap-friendly for prototyping)
-
-\*   \*\*Authentication:\*\* Hardcoded development session for simulating API use. No real login flows are required for the POC.
-
-
-
-\## 3. Project Structure
-
-
-
+```
 rabs-poc/
+├─ backend/
+│  ├─ routes/
+│  ├─ models/
+│  ├─ services/    # formerly "logic/"
+│  └─ server.js
+├─ frontend/
+│  ├─ src/
+│  └─ public/
+├─ data/
+│  └─ rabs-poc.db  # created on first run
+├─ docs/
+│  └─ (...this documentation)
+├─ scripts/
+│  └─ seed.js
+├─ .env.example
+└─ README.md
+```
 
-├── backend/
+---
 
-│ ├── routes/
+## 4. Getting Started
 
-│ ├── models/
+### Prerequisites
 
-│ ├── services/ // (Previously named logic/)
+* Node.js ≥ 16  
+* npm (bundled with Node)
 
-│ └── server.js
+### Installation
 
-├── frontend/
+```bash
+# Clone
+git clone https://github.com/your-username/rabs-poc.git
+cd rabs-poc
+```
 
-│ ├── src/
+Install dependencies:
 
-│ └── public/
+```bash
+# Backend
+cd backend
+npm install
+cd ..
 
-├── data/
+# Frontend
+cd frontend
+npm install
+cd ..
+```
 
-│ └── rabs-poc.db (Generated on first run)
+### Configuration
 
-├── docs/
+```bash
+cp .env.example .env
+```
 
-│ └── (All project documentation)
+Edit `.env` and set variables such as `PORT` and `API_PORT`.
 
-├── scripts/
+### Running the Application
 
-│ └── seed.js
+1. **Start the backend**
 
-├── .env.example
+   ```bash
+   cd backend
+   npm start
+   ```
 
-└── README.md
+2. **Start the frontend**
 
+   Open a second terminal:
 
+   ```bash
+   cd frontend
+   npm start
+   ```
 
+3. **Seed the database** (one-time)
 
+   ```bash
+   cd backend
+   npm run seed
+   ```
 
-\## 4. Getting Started
+The React UI should now be available at the Vite address (e.g. `http://localhost:5173`).
 
+---
 
+## 5. Mock Data
 
-\### Prerequisites
+`seed.js` populates the database with:
 
-\*   Node.js (version 16 or higher)
+* 10 clients  
+* 5 staff members  
+* 2 centres  
+* 4 vehicles  
+* A sample activity schedule  
+* Fake billing + HR logic (timesheet calc)
 
-\*   npm (usually comes with Node.js)
+---
 
+## 6. Production RABS Insights
 
+Lessons from this sandbox that will influence the production stack:
 
-\### Installation
+| Area            | Insight to Carry Forward |
+|-----------------|--------------------------|
+| Database        | SQLite met POC speed needs but **PostgreSQL + pgvector** will be standard in production for RAG & embeddings. |
+| Services Layer  | Splitting `services/` from `routes/` made logic reusable—keep this pattern, migrate to **NestJS** or **tRPC** for stronger typing. |
+| Environment     | Single `.env` with prefixed variables (`FRONTEND_`, `BACKEND_`) avoided collisions—adopt in prod CI/CD. |
+| Seed Strategy   | Deterministic seed script allowed repeatable tests—retain but switch to **database factories** + fixtures. |
+| Frontend Build  | Vite hot-reload saved hours—production will upgrade to **Vite + SWC** but keep the same folder conventions. |
 
-1\.  Clone the repository:
-
-&nbsp;   ```bash
-
-&nbsp;   git clone https://github.com/YOUR-USERNAME/rabs-poc.git
-
-&nbsp;   cd rabs-poc
-
-&nbsp;   ```
-
-2\.  Install dependencies for both backend and frontend:
-
-&nbsp;   ```bash
-
-&nbsp;   # Install backend dependencies
-
-&nbsp;   cd backend
-
-&nbsp;   npm install
-
-&nbsp;   cd ..
-
-
-
-&nbsp;   # Install frontend dependencies
-
-&nbsp;   cd frontend
-
-&nbsp;   npm install
-
-&nbsp;   cd ..
-
-&nbsp;   ```
-
-
-
-\### Configuration
-
-1\.  In the project root, create a `.env` file by copying the example:
-
-&nbsp;   ```bash
-
-&nbsp;   cp .env.example .env
-
-&nbsp;   ```
-
-2\.  Edit the `.env` file and fill in the required variables, such as `PORT` and `API\_PORT`.
-
-
-
-\### Running the Application
-
-1\.  \*\*Start the Backend Server:\*\*
-
-&nbsp;   ```bash
-
-&nbsp;   cd backend
-
-&nbsp;   npm start
-
-&nbsp;   ```
-
-2\.  \*\*Start the Frontend Development Server:\*\*
-
-&nbsp;   Open a new terminal window.
-
-&nbsp;   ```bash
-
-&nbsp;   cd frontend
-
-&nbsp;   npm start
-
-&nbsp;   ```
-
-3\.  \*\*Seed the Database:\*\*
-
-&nbsp;   Open a third terminal window. This only needs to be done once on the first run.
-
-&nbsp;   ```bash
-
-&nbsp;   cd backend
-
-&nbsp;   npm run seed
-
-&nbsp;   ```
-
-
-
-You should now be able to access the React frontend in your browser at the address provided by Vite (e.g., `http://localhost:5173`).
-
-
-
-\## 5. Mock Data
-
-The `seed.js` script populates the database with a set of mock data to make the POC functional out-of-the-box:
-
-\*   10 clients (fake participant profiles)
-
-\*   5 staff members
-
-\*   2 centers
-
-\*   4 vehicles
-
-\*   A sample activity schedule with time slots and metadata
-
-\*   A fake billing engine
-
-\*   Fake HR logic for timesheet calculation
-
+These insights are also logged in **POC-LOG.md** so they remain part of the living knowledge base.

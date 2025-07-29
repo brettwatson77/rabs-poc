@@ -1,8 +1,8 @@
-\# RABS Architectural Blueprint \& Project Structure
+# RABS Architectural Blueprint & Project Structure
 
 
 
-\## 1. Executive Summary
+# 1. Executive Summary
 
 
 
@@ -10,47 +10,47 @@ RABS (Realtime Adaptive Back-end System) is designed to be more than a simple sc
 
 
 
-The architecture is built on the \*\*"Rules, Overrides, and Projections"\*\* model. This allows us to manage an indefinite future and a long history without performance degradation, while providing the flexibility to handle the complexities of daily operations. The system will not only streamline administration but also become an engine for proactive quality assurance and long-term strategic analysis.
+The architecture is built on the **“Rules, Overrides, and Projections”** model. This allows us to manage an indefinite future and a long history without performance degradation, while providing the flexibility to handle the complexities of daily operations. The system will not only streamline administration but also become an engine for proactive quality assurance and long-term strategic analysis.
 
 
 
-\## 2. Core Concepts (The RABS Metaphor)
+# 2. Core Concepts (The RABS Metaphor)
 
 
 
-\*   \*\*The Unwoven Future (Rules \& Intentions):\*\* The system's source of truth is not a list of future events, but a set of \*rules\* and \*templates\*. This includes recurring program schedules, staff and participant default assignments, and business logic (e.g., staffing ratios). This layer represents \*intent\*.
+\* **The Unwoven Future (Rules & Intentions):** The system's source of truth is not a list of future events, but a set of *rules* and *templates*. This includes recurring program schedules, staff and participant default assignments, and business logic (e.g., staffing ratios). This layer represents *intent*.
 
 
 
-\*   \*\*The Loom of the Present (The Projection Window):\*\* This is a rolling, operational window (e.g., the next 6 weeks) where the system takes the abstract rules and "weaves" them into concrete, editable shifts. This is the active, operational view where temporary overrides are managed.
+\* **The Loom of the Present (The Projection Window):** This is a rolling, operational window (e.g., the next 6 weeks) where the system takes the abstract rules and “weaves” them into concrete, editable shifts. This is the active, operational view where temporary overrides are managed.
 
 
 
-\*   \*\*The Woven Past (The History Ribbon):\*\* Once a shift is completed, it becomes part of an immutable historical log. This "ribbon" is a permanent record of what happened. It serves as a relational anchor to which all related data (notes, reports, billing status) is "pinned," creating a rich, queryable history.
+\* **The Woven Past (The History Ribbon):** Once a shift is completed, it becomes part of an immutable historical log. This “ribbon” is a permanent record of what happened. It serves as a relational anchor to which all related data (notes, reports, billing status) is “pinned,” creating a rich, queryable history.
 
 
 
-\## 3. Key Architectural Features
+# 3. Key Architectural Features
 
 
 
-\*   \*\*The Configurable Loom Window:\*\* The projection window is not fixed. A central configuration setting will control its length (e.g., `LOOM\_DURATION\_WEEKS = 6`). This allows administrators to shrink the window (e.g., to 2 weeks) at the end of a year to prevent auto-generation of the new year's shifts before final reviews are complete, or expand it for long-term planning.
+\* **The Configurable Loom Window:** The projection window is not fixed. A central configuration setting controls its length (e.g., `LOOM_DURATION_WEEKS = 6`). Administrators can shrink the window (e.g., to 2 weeks) at year-end to prevent premature generation of the new year’s shifts or expand it for long-term planning.
 
 
 
-\*   \*\*Permanent vs. Temporary Changes:\*\* The system clearly distinguishes between changing a core rule (a permanent change affecting the future) and overriding a single instance in the Loom (a temporary, "just for now" change).
+\* **Permanent vs. Temporary Changes:** The system clearly distinguishes between changing a core rule (a permanent change affecting the future) and overriding a single instance in the Loom (a temporary, “just for now” change).
 
 
 
-\*   \*\*The Analysis Engine:\*\* By propagating tags from the rule level down to the History Ribbon, the system becomes a powerful data analysis tool. It can perform complex queries to identify trends, compare outcomes, and generate strategic reports.
+\* **The Analysis Engine:** By propagating tags from the rule level down to the History Ribbon, the system becomes a powerful data-analysis tool. It can perform complex queries to identify trends, compare outcomes, and generate strategic reports.
 
 
 
-\*   \*\*The Proactive Quality Agent:\*\* The system actively participates in quality assurance by randomly flagging shifts for "spot audits," triggering a workflow that includes data verification and automated feedback collection from staff and participants.
+\* **The Proactive Quality Agent:** The system actively participates in quality assurance by randomly flagging shifts for “spot audits,” triggering a workflow that includes data verification and automated feedback collection from staff and participants.
 
 
 
-\## 4. Proposed Project Folder Structure
+# 4. Proposed Project Folder Structure
 
 
 
@@ -122,7 +122,7 @@ The architecture is built on the \*\*"Rules, Overrides, and Projections"\*\* mod
 
 └── package.json
 
-5. File & Module Descriptions
+# 5. File & Module Descriptions
 
 This section describes the intended structure for the full RABS production application, not necessarily the current POC.
 /config/

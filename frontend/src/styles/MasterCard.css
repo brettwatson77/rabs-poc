@@ -1,0 +1,578 @@
+/* MasterCard.css */
+/* Revolutionary card styling for RABS disability services dashboard */
+
+/* Card Container */
+.master-card {
+  position: relative;
+  width: 100%;
+  border-radius: 12px;
+  background-color: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  cursor: pointer;
+  margin-bottom: 8px;
+  border-left: 4px solid #ccc;
+}
+
+.master-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px) scale(1.01);
+}
+
+.master-card:active {
+  transform: translateY(1px);
+}
+
+/* Card Types */
+.master-card-program {
+  border-left: 4px solid #673ab7;
+  background: linear-gradient(to right, rgba(103, 58, 183, 0.05), transparent);
+}
+
+.master-card-pickup {
+  border-left: 4px solid #2196f3;
+  background: linear-gradient(to right, rgba(33, 150, 243, 0.05), transparent);
+}
+
+.master-card-dropoff {
+  border-left: 4px solid #00bcd4;
+  background: linear-gradient(to right, rgba(0, 188, 212, 0.05), transparent);
+}
+
+.master-card-activity {
+  border-left: 4px solid #4caf50;
+  background: linear-gradient(to right, rgba(76, 175, 80, 0.05), transparent);
+}
+
+.master-card-roster {
+  border-left: 4px solid #ff9800;
+  background: linear-gradient(to right, rgba(255, 152, 0, 0.05), transparent);
+}
+
+/* Column-specific styling */
+.earlier-column-card {
+  opacity: 0.85;
+}
+
+.before-column-card {
+  opacity: 0.92;
+}
+
+.now-column-card {
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.5), 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.next-column-card {
+  animation: subtle-pulse 3s infinite;
+}
+
+@keyframes subtle-pulse {
+  0% { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); }
+  50% { box-shadow: 0 4px 12px rgba(255, 193, 7, 0.2); }
+  100% { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); }
+}
+
+/* Card Header */
+.master-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  background-color: rgba(255, 255, 255, 0.8);
+}
+
+.master-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.master-card-title h4 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+.master-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background-color: #673ab7;
+  color: white;
+  border-radius: 50%;
+  font-size: 0.7rem;
+  font-weight: 700;
+  box-shadow: 0 2px 4px rgba(103, 58, 183, 0.3);
+}
+
+.master-card-time {
+  font-size: 0.85rem;
+  color: #666;
+  font-weight: 500;
+}
+
+/* Card Body */
+.master-card-body {
+  padding: 12px 16px;
+}
+
+/* Participants Section */
+.master-card-participants {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.participant-count {
+  display: flex;
+  flex-direction: column;
+}
+
+.count-number {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #333;
+  line-height: 1;
+}
+
+.count-label {
+  font-size: 0.75rem;
+  color: #666;
+}
+
+/* Supervision Indicator */
+.supervision-indicator {
+  flex: 1;
+  margin-left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.supervision-bar {
+  height: 6px;
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.supervision-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+.supervision-normal .supervision-fill {
+  background-color: #4caf50;
+}
+
+.supervision-elevated .supervision-fill {
+  background-color: #ff9800;
+}
+
+.supervision-high .supervision-fill {
+  background-color: #f44336;
+}
+
+.supervision-critical .supervision-fill {
+  background-color: #9c27b0;
+  animation: pulse-critical 2s infinite;
+}
+
+@keyframes pulse-critical {
+  0% { opacity: 0.7; }
+  50% { opacity: 1; }
+  100% { opacity: 0.7; }
+}
+
+.supervision-value {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: right;
+}
+
+.supervision-normal .supervision-value {
+  color: #4caf50;
+}
+
+.supervision-elevated .supervision-value {
+  color: #ff9800;
+}
+
+.supervision-high .supervision-value {
+  color: #f44336;
+}
+
+.supervision-critical .supervision-value {
+  color: #9c27b0;
+}
+
+/* Financial Summary Section */
+.master-card-financials {
+  background-color: rgba(250, 250, 250, 0.7);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 8px 0;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+.master-card-financials:hover {
+  background-color: rgba(245, 245, 245, 0.9);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.financial-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 0.85rem;
+}
+
+.financial-label {
+  color: #666;
+  font-weight: 500;
+}
+
+.financial-value {
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.revenue {
+  color: #2196f3;
+}
+
+.cost {
+  color: #f44336;
+}
+
+.admin-cost {
+  color: #ff9800;
+}
+
+.profit {
+  color: #4caf50;
+}
+
+.loss {
+  color: #f44336;
+}
+
+.admin-percent {
+  font-size: 0.7rem;
+  background-color: rgba(255, 152, 0, 0.15);
+  padding: 2px 4px;
+  border-radius: 4px;
+  color: #e65100;
+  font-weight: 700;
+  cursor: help;
+}
+
+.profit-percent {
+  font-size: 0.7rem;
+  background-color: rgba(76, 175, 80, 0.15);
+  padding: 2px 4px;
+  border-radius: 4px;
+  color: #2e7d32;
+  font-weight: 700;
+}
+
+.admin-row {
+  padding-top: 4px;
+  border-top: 1px dashed rgba(0, 0, 0, 0.1);
+}
+
+.profit-row {
+  padding-top: 4px;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Staff Assignment Section */
+.master-card-staff {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.staff-badge {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background-color: #2196f3;
+  color: white;
+  border-radius: 50%;
+  font-size: 0.8rem;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(33, 150, 243, 0.3);
+  transition: all 0.2s ease;
+}
+
+.staff-badge:hover {
+  transform: scale(1.1);
+  box-shadow: 0 3px 6px rgba(33, 150, 243, 0.4);
+}
+
+.schads-indicator {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 14px;
+  height: 14px;
+  background-color: #ff9800;
+  color: white;
+  border-radius: 50%;
+  font-size: 0.6rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid white;
+}
+
+/* Vehicle Assignment */
+.master-card-vehicle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 6px 10px;
+  background-color: rgba(33, 150, 243, 0.1);
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.vehicle-icon {
+  font-size: 1rem;
+}
+
+.vehicle-name {
+  font-weight: 500;
+  color: #2196f3;
+}
+
+/* Card Footer */
+.master-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  background-color: rgba(250, 250, 250, 0.7);
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.master-card-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-badge {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-confirmed {
+  background-color: rgba(76, 175, 80, 0.15);
+  color: #2e7d32;
+}
+
+.status-pending {
+  background-color: rgba(255, 152, 0, 0.15);
+  color: #e65100;
+}
+
+.status-cancelled {
+  background-color: rgba(244, 67, 54, 0.15);
+  color: #c62828;
+}
+
+.detail-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #666;
+  font-size: 0.8rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.detail-toggle:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: #333;
+}
+
+/* Expanded Details Panel */
+.master-card-details {
+  padding: 12px 16px;
+  background-color: rgba(245, 245, 245, 0.9);
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; max-height: 0; }
+  to { opacity: 1; max-height: 500px; }
+}
+
+.master-card-details h5 {
+  margin: 0 0 8px 0;
+  font-size: 0.9rem;
+  color: #333;
+  font-weight: 600;
+}
+
+/* Financial Details */
+.financial-details {
+  margin-bottom: 12px;
+}
+
+.financial-table {
+  width: 100%;
+  font-size: 0.8rem;
+  border-collapse: collapse;
+}
+
+.financial-table td {
+  padding: 4px 0;
+}
+
+.financial-table td:first-child {
+  color: #666;
+}
+
+.financial-table td:last-child {
+  text-align: right;
+  font-weight: 600;
+  color: #333;
+}
+
+.profit-detail td:last-child {
+  color: #4caf50;
+}
+
+/* Supervision Details */
+.supervision-details {
+  margin-bottom: 12px;
+}
+
+.supervision-details p {
+  font-size: 0.8rem;
+  color: #333;
+  margin: 0;
+}
+
+.multiplier-note {
+  color: #ff9800;
+  font-weight: 500;
+}
+
+/* Staff Details */
+.staff-details {
+  margin-bottom: 12px;
+}
+
+.staff-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.staff-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 0.8rem;
+}
+
+.staff-name {
+  font-weight: 500;
+  color: #333;
+}
+
+.staff-schads {
+  color: #ff9800;
+  font-weight: 600;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .master-card-title h4 {
+    max-width: 120px;
+  }
+  
+  .master-card-financials {
+    font-size: 0.8rem;
+  }
+  
+  .count-number {
+    font-size: 1.2rem;
+  }
+}
+
+/* Fancy hover effects */
+.master-card-program:hover::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(to right, #673ab7, transparent);
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Profit margin visualization */
+.profit-row:hover .profit-percent {
+  transform: scale(1.1);
+  transition: transform 0.2s ease;
+}
+
+/* Primadonna Rate Easter Egg */
+.admin-percent:hover::after {
+  content: "Brett's Primadonna Rate";
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  background-color: #333;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 100;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}

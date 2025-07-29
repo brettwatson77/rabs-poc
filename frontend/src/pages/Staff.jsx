@@ -7,6 +7,7 @@ import {
     getStaffHours,
 } from '../api/api';
 import '../styles/CrudPage.css';
+import '../styles/Staff.css'; // new stylesheet for revolutionary look
 
 const Staff = () => {
     const [staff, setStaff] = useState([]);
@@ -17,6 +18,7 @@ const Staff = () => {
     const [isFormVisible, setIsFormVisible] = useState(false);
     const [formData, setFormData] = useState(null);
     const [editMode, setEditMode] = useState(false); // false = adding, true = editing
+    const [search, setSearch] = useState('');        // search / filter term
 
     const initialFormState = {
         id: '',
@@ -71,6 +73,41 @@ const Staff = () => {
         setEditMode(false);               // we're adding a new record
         setIsFormVisible(true);
     };
+
+    /* ----------------------------------------------------------
+     * Utility helpers
+     * -------------------------------------------------------- */
+    const getSchadsColour = (level) => {
+        if (!level) return '#808080';
+        const l = parseInt(level, 10);
+        switch (l) {
+            case 1:
+            case 2:
+                return '#4caf50';
+            case 3:
+            case 4:
+                return '#2196f3';
+            case 5:
+            case 6:
+                return '#ff9800';
+            case 7:
+            case 8:
+                return '#e53935';
+            default:
+                return '#757575';
+        }
+    };
+
+    const filteredStaff = staff.filter((s) => {
+        if (!search.trim()) return true;
+        const term = search.toLowerCase();
+        return (
+            s.first_name.toLowerCase().includes(term) ||
+            s.last_name.toLowerCase().includes(term) ||
+            (s.suburb && s.suburb.toLowerCase().includes(term)) ||
+            (s.schads_level && `${s.schads_level}`.includes(term))
+        );
+    });
 
     const handleEditClick = (staffMember) => {
         setFormData({ ...staffMember });
@@ -207,70 +244,103 @@ const Staff = () => {
             {loading && <p>Loading staff...</p>}
 
             {!loading && !isFormVisible && (
-                <div className="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Staff ID</th>
-                                <th>Name</th>
-                                <th>Contact Phone</th>
-                                <th>Contact Email</th>
-                                <th>Contract&nbsp;Hrs</th>
-                                <th style={{ width: '180px' }}>Utilisation</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {staff.map(s => (
-                                <tr key={s.id}>
-                                    <td>{s.id}</td>
-                                    <td>{s.first_name} {s.last_name}</td>
-                                    <td>{s.contact_phone || 'N/A'}</td>
-                                    <td>{s.contact_email || 'N/A'}</td>
-                                    <td>{s.contracted_hours || 0}</td>
-                                    <td>
-                                        {staffHours[s.id] ? (
-                                            <>
-                                                <div
-                                                    style={{
-                                                        background: '#ddd',
-                                                        height: '8px',
-                                                        width: '100%',
-                                                        borderRadius: '4px',
-                                                        overflow: 'hidden',
-                                                    }}
-                                                >
-                                                    <div
-                                                        style={{
-                                                            width: `${Math.min(
-                                                                staffHours[s.id].percent_allocated,
-                                                                100
-                                                            )}%`,
-                                                            height: '100%',
-                                                            background: staffHours[s.id].over_allocated
-                                                                ? '#e63946'
-                                                                : '#4caf50',
-                                                        }}
-                                                    />
-                                                </div>
-                                                <small>
-                                                    {staffHours[s.id].allocated.toFixed(1)} /
-                                                    {s.contracted_hours} hrs
-                                                </small>
-                                            </>
-                                        ) : (
-                                            '…'
+                <>
+                    {/* --- Search & Filter Bar -------------------------------- */}
+                    <div className="staff-search-bar">
+                        <input
+                            type="text"
+                            placeholder="Search staff by name, suburb, SCHADS level..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                    </div>
+
+                    {/* --- Card-based layout ---------------------------------- */}
+                    <div className="staff-card-grid">
+                        {filteredStaff.map((s) => {
+                            const util = staffHours[s.id];
+                            const utilPct = util ? Math.min(util.percent_allocated, 100) : 0;
+                            const schadsColour = getSchadsColour(s.schads_level);
+                            return (
+                                <div className="staff-card" key={s.id}>
+                                    <div className="staff-card-header">
+                                        <div
+                                            className="staff-photo"
+                                            /* TODO: replace with real staff photo */
+                                            style={{ backgroundColor: '#cfd8dc' }}
+                                        ></div>
+                                        <div className="staff-main-info">
+                                            <h3>
+                                                {s.first_name} {s.last_name}
+                                            </h3>
+                                            <span className="staff-id">ID: {s.id}</span>
+                                        </div>
+                                        {s.schads_level && (
+                                            <span
+                                                className="schads-chip"
+                                                title={`Base Rate: $${s.base_rate || '?'} / hr`}
+                                                style={{ backgroundColor: schadsColour }}
+                                            >
+                                                SWL&nbsp;{s.schads_level}
+                                            </span>
                                         )}
-                                    </td>
-                                    <td className="actions-cell">
-                                        <button onClick={() => handleEditClick(s)} className="edit-button">Edit</button>
-                                        <button onClick={() => handleDeleteClick(s.id)} className="delete-button">Delete</button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                                    </div>
+
+                                    {/* Utilisation meter */}
+                                    <div className="utilisation-meter">
+                                        <div className="util-bar-bg">
+                                            <div
+                                                className="util-bar-fg"
+                                                style={{
+                                                    width: `${utilPct}%`,
+                                                    background:
+                                                        util && util.over_allocated
+                                                            ? '#e63946'
+                                                            : '#4caf50',
+                                                }}
+                                            ></div>
+                                        </div>
+                                        <small>
+                                            {util
+                                                ? `${util.allocated.toFixed(1)} / ${s.contracted_hours} hrs`
+                                                : 'Loading…'}
+                                        </small>
+                                    </div>
+
+                                    {/* Quick Metrics */}
+                                    <div className="staff-quick-metrics">
+                                        <div>
+                                            <strong>Phone:</strong>{' '}
+                                            {s.contact_phone || 'N/A'}
+                                        </div>
+                                        <div>
+                                            <strong>Email:</strong>{' '}
+                                            {s.contact_email || 'N/A'}
+                                        </div>
+                                        {/* TODO: add weekend penalty preview, cost analysis */}
+                                    </div>
+
+                                    {/* Actions */}
+                                    <div className="staff-card-actions">
+                                        <button
+                                            className="edit-button"
+                                            onClick={() => handleEditClick(s)}
+                                        >
+                                            Edit
+                                        </button>
+                                        <button
+                                            className="delete-button"
+                                            onClick={() => handleDeleteClick(s.id)}
+                                        >
+                                            Delete
+                                        </button>
+                                        {/* TODO: add Timesheet, Schedule buttons */}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </>
             )}
         </div>
         </>

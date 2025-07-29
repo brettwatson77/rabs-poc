@@ -1,72 +1,41 @@
-\# Welcome to the RABS-POC Documentation
+# RABS-POC Documentation Hub
 
+Welcome! This site contains **all documentation for the RABS Proof-of-Concept (rabs-poc)**—architecture, development history, and future vision.
 
+---
 
-This documentation hub contains the complete history, architectural vision, and implementation details for the \*\*RABS Proof-of-Concept (rabs-poc)\*\* project.
+## 📚 Reading Guide
 
+### 1. Project Vision & Architecture
+Start here for the “why” and high-level design.
 
+* **[01 Architectural Blueprint](./01_Project_Vision_&_Architecture/01_RABS_Architectural_Blueprint.md)** – Rules → Overrides → Projections model  
+* **[02 Core Concepts Deep Dive](./01_Project_Vision_&_Architecture/02_Core_Concepts_Deep_Dive.md)** – Loom & History Ribbon metaphors  
+* **[03 Dynamic Resource System](./01_Project_Vision_&_Architecture/03_Dynamic_Resource_System.md)** – Intelligent allocation engine
 
-\## Reading Guide
+### 2. Proof-of-Concept Journey
+Historical record of how the POC has evolved.
 
+* **[01 POC Specification](./02_Proof_of_Concept_Journey/01_POC_Specification.md)** – Original requirements  
+* **[02 POC Development Plan](./02_Proof_of_Concept_Journey/02_POC_Development_Plan.md)** – Phased delivery roadmap  
+* **[03 POC Next Steps Roadmap](./02_Proof_of_Concept_Journey/03_POC_Next_Steps_Roadmap.md)** – Task-oriented backlog  
+* **[04 POC Implementation Log](./02_Proof_of_Concept_Journey/04_POC_Implementation_Log.md)** – Chronological feature & refinement log
 
+### 3. Development & Operations
+Practical setup and day-to-day reference.
 
-If you are new to the project, we recommend reading the documents in the following order to understand our vision, architecture, and progress.
+* **[01 Technology Stack & Setup](./03_Development_&_Operations/01_Technology_Stack_and_Setup.md)** – Project structure & local dev  
+* **[02 API Reference](./03_Development_&_Operations/02_API_Reference.md)** – Key endpoints  
+* **[03 Billing & Rules Engine](./03_Development_&_Operations/03_Billing_and_Rules_Engine.md)** – Staffing & billing logic
 
+### 4. Future Vision
+Where we’re heading beyond the proof-of-concept.
 
+* **[01 Enhancement Proposals](./04_Future_Vision/01_Enhancement_Proposals.md)** – From POC foundations to full SaaS
 
-\### 1. Project Vision and Architecture
+---
 
-This is the core of the RABS project. It explains the "why" and "how" of our system.
-
-
-
-\*   \*\*\[01\_RABS\_Architectural\_Blueprint.md](./01\_Project\_Vision\_and\_Architecture/01\_RABS\_Architectural\_Blueprint.md)\*\*: The foundational document explaining our "Rules, Overrides, and Projections" model.
-
-\*   \*\*\[02\_Core\_Concepts\_Deep\_Dive.md](./01\_Project\_Vision\_and\_Architecture/02\_Core\_Concepts\_Deep\_Dive.md)\*\*: A detailed exploration of the metaphors (Loom, History Ribbon) that guide our design.
-
-\*   \*\*\[03\_Dynamic\_Resource\_System.md](./01\_Project\_Vision\_and\_Architecture/03\_Dynamic\_Resource\_System.md)\*\*: A deep dive into our intelligent resource allocation engine.
-
-
-
-\### 2. Proof of Concept Journey
-
-This section contains the historical documents that chart the evolution of the rabs-poc, from initial ideas to implemented features.
-
-
-
-\*   \*\*\[01\_POC\_Specification.md](./02\_Proof\_of\_Concept\_Journey/01\_POC\_Specification.md)\*\*: The original requirements for the proof-of-concept.
-
-\*   \*\*\[02\_POC\_Development\_Plan.md](./02\_Proof\_of\_Concept\_Journey/02\_POC\_Development\_Plan.md)\*\*: The phased development plan created for the POC.
-
-\*   \*\*\[03\_POC\_Next\_Steps\_Roadmap.md](./02\_Proof\_of\_Concept\_Journey/03\_POC\_Next\_Steps\_Roadmap.md)\*\*: The detailed, task-oriented roadmap for specific features like Cancellations and Billing.
-
-\*   \*\*\[04\_POC\_Implementation\_Log.md](./02\_Proof\_of\_Concept\_Journey/04\_POC\_Implementation\_Log.md)\*\*: A combined log of features and refinements implemented in July 2025.
-
-
-
-\### 3. Development and Operations
-
-This section contains the practical information needed to set up and work with the POC.
-
-
-
-\*   \*\*\[01\_Technology\_Stack\_and\_Setup.md](./03\_Development\_and\_Operations/01\_Technology\_Stack\_and\_Setup.md)\*\*: A guide to the tech stack, project structure, and setup instructions.
-
-\*   \*\*\[02\_API\_Reference.md](./03\_Development\_and\_Operations/02\_API\_Reference.md)\*\*: A summary of the key API endpoints available in the POC.
-
-\*   \*\*\[03\_Billing\_and\_Rules\_Engine.md](./03\_Development\_and\_Operations/03\_Billing\_and\_Rules\_Engine.md)\*\*: Details on the specific business rules for billing and staffing.
-
-
-
-\### 4. Future Vision
-
-This section contains forward-looking ideas and proposals for the future of the RABS platform.
-
-
-
-\*   \*\*\[01\_Enhancement\_Proposals.md](./04\_Future\_Vision/01\_Enhancement\_Proposals.md)\*\*: A vision for extending the POC's foundational elements into a comprehensive SaaS application.
-
-
+**Need real-world insights?** Check the living **[POC-LOG.md](../POC-LOG.md)**—every lesson learned in the sandbox, dated and actionable.
 
 ---
 

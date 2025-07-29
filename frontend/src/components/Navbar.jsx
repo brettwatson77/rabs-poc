@@ -64,9 +64,6 @@ const Navbar = () => {
         <li>
           <Link to="/finance" style={linkStyles}>Finance</Link>
         </li>
-        <li>
-          <Link to="/dynamic-demo" style={linkStyles}>Dynamic Demo</Link>
-        </li>
       </ul>
     </nav>
   );

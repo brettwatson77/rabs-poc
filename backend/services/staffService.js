@@ -1,23 +1,45 @@
 // backend/services/staffService.js
+const { Pool } = require('pg');
 const { getDbConnection } = require('../database');
+
+// Direct PostgreSQL pool (used when wrapper fails)
+const pool = new Pool({
+  user: process.env.POSTGRES_USER || 'postgres',
+  password: process.env.POSTGRES_PASSWORD || 'postgres',
+  host: process.env.POSTGRES_HOST || 'localhost',
+  port: parseInt(process.env.POSTGRES_PORT || '5432', 10),
+  database: process.env.POSTGRES_DB || 'rabspocdb'
+});
 
 /**
  * Get all staff members from the database
  * @returns {Promise<Array>} Array of staff objects
  */
 const getAllStaff = async () => {
-  let db;
   try {
-    db = await getDbConnection();
-    const rows = await new Promise((resolve, reject) => {
-      db.all('SELECT * FROM staff', [], (err, result) => {
-        if (err) return reject(err);
-        resolve(result);
-      });
-    });
-    return rows;
-  } finally {
-    if (db) db.close();
+    // Attempt via wrapper first (2 s timeout guard)
+    const wrapperPromise = (async () => {
+      let db;
+      try {
+        db = await getDbConnection();
+        return await new Promise((resolve, reject) => {
+          db.all('SELECT * FROM staff', [], (err, result) => {
+            if (err) return reject(err);
+            resolve(result);
+          });
+        });
+      } finally {
+        if (db) db.close();
+      }
+    })();
+    const timeout = new Promise((_, rej) =>
+      setTimeout(() => rej(new Error('wrapper timeout')), 2000)
+    );
+    return await Promise.race([wrapperPromise, timeout]);
+  } catch (err) {
+    // Fallback to direct pg
+    const res = await pool.query('SELECT * FROM staff');
+    return res.rows;
   }
 };
 
@@ -27,18 +49,12 @@ const getAllStaff = async () => {
  * @returns {Promise<Object>} Staff object
  */
 const getStaffById = async (id) => {
-  let db;
   try {
-    db = await getDbConnection();
-    const row = await new Promise((resolve, reject) => {
-      db.get('SELECT * FROM staff WHERE id = ?', [id], (err, result) => {
-        if (err) return reject(err);
-        resolve(result);
-      });
-    });
-    return row;
-  } finally {
-    if (db) db.close();
+    const result = await pool.query('SELECT * FROM staff WHERE id = $1', [id]);
+    return result.rows[0] || null;
+  } catch (err) {
+    console.error(`Error fetching staff ${id}:`, err.message);
+    throw err;
   }
 };
 
@@ -53,10 +69,7 @@ const createStaff = async (staffData) => {
     throw new Error('Missing required staff data: id, first_name, and last_name are required');
   }
 
-  let db;
   try {
-    db = await getDbConnection();
-
     const {
       id,
       first_name,
@@ -70,23 +83,16 @@ const createStaff = async (staffData) => {
       notes = null
     } = staffData;
 
-    await new Promise((resolve, reject) => {
-      db.run(
-        `INSERT INTO staff 
-         (id, first_name, last_name, address, suburb, state, postcode, contact_phone, contact_email, notes)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [id, first_name, last_name, address, suburb, state, postcode, contact_phone, contact_email, notes],
-        function(err) {
-          if (err) return reject(err);
-          resolve();
-        }
-      );
-    });
-
-    // Fetch and return the newly created staff member
-    return await getStaffById(id);
-  } finally {
-    if (db) db.close();
+    const result = await pool.query(
+      `INSERT INTO staff 
+       (id, first_name, last_name, address, suburb, state, postcode, contact_phone, contact_email, notes)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+      [id, first_name, last_name, address, suburb, state, postcode, contact_phone, contact_email, notes]
+    );
+    return result.rows[0];
+  } catch (err) {
+    console.error('Error creating staff:', err.message);
+    throw err;
   }
 };
 
@@ -124,26 +130,15 @@ const updateStaff = async (id, staffData) => {
   updates.push('updated_at = CURRENT_TIMESTAMP');
   values.push(id);
 
-  const query = `UPDATE staff SET ${updates.join(', ')} WHERE id = ?`;
+  const setClause = updates.join(', ');
+  const query = `UPDATE staff SET ${setClause} WHERE id = $${values.length + 1} RETURNING *`;
 
-  let db;
   try {
-    db = await getDbConnection();
-    const changes = await new Promise((resolve, reject) => {
-      db.run(query, values, function(err) {
-        if (err) return reject(err);
-        resolve(this.changes);
-      });
-    });
-
-    if (changes === 0) {
-      return null;
-    }
-
-    // Get the updated staff member
-    return await getStaffById(id);
-  } finally {
-    if (db) db.close();
+    const result = await pool.query(query, values);
+    return result.rows[0] || null;
+  } catch (err) {
+    console.error('Error updating staff:', err.message);
+    throw err;
   }
 };
 
@@ -153,19 +148,21 @@ const updateStaff = async (id, staffData) => {
  * @returns {Promise<boolean>} True if deleted, false if not found
  */
 const deleteStaff = async (id) => {
-  let db;
   try {
-    db = await getDbConnection();
-    const changes = await new Promise((resolve, reject) => {
-      db.run('DELETE FROM staff WHERE id = ?', [id], function(err) {
-        if (err) return reject(err);
-        resolve(this.changes);
-      });
-    });
-    return changes > 0;
-  } finally {
-    if (db) db.close();
+    const result = await pool.query('DELETE FROM staff WHERE id = $1 RETURNING id', [id]);
+    return result.rowCount > 0;
+  } catch (err) {
+    console.error('Error deleting staff:', err.message);
+    throw err;
   }
+};
+
+/**
+ * TEMPORARY stub so frontend widget doesn't crash.
+ * Once `staff_assignments` table exists, implement real logic.
+ */
+const getStaffHours = async (from, to) => {
+  return []; // return empty list so React component renders nothing
 };
 
 module.exports = {
@@ -173,5 +170,6 @@ module.exports = {
   getStaffById,
   createStaff,
   updateStaff,
-  deleteStaff
+  deleteStaff,
+  getStaffHours
 };

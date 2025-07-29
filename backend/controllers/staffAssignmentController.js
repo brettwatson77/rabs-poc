@@ -547,142 +547,40 @@ const removeStaffAssignment = async (req, res) => {
  */
 const getStaffHours = async (req, res) => {
   const { staffId } = req.params;
-  const { startDate, endDate } = req.query;
-  let db;
-  
-  try {
-    if (!staffId) {
-      return res.status(400).json({ error: 'Staff ID is required' });
-    }
-    
-    db = await getDbConnection();
-    
-    // Get staff details including contracted hours
-    const staffQuery = `SELECT id, first_name, last_name, contracted_hours FROM staff WHERE id = ?`;
-    
-    const staff = await new Promise((resolve, reject) => {
-      db.get(staffQuery, [staffId], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
-    
-    if (!staff) {
-      return res.status(404).json({ error: 'Staff member not found' });
-    }
-    
-    // Calculate current fortnight dates if not provided
-    let fortnightStart, fortnightEnd;
-    
-    if (startDate && endDate) {
-      fortnightStart = startDate;
-      fortnightEnd = endDate;
-    } else {
-      // Get current date from settings or use system date
-      const dateQuery = `SELECT value FROM settings WHERE key = 'current_date'`;
-      
-      const dateSetting = await new Promise((resolve, reject) => {
-        db.get(dateQuery, [], (err, row) => {
-          if (err) reject(err);
-          else resolve(row);
-        });
-      });
-      
-      const currentDate = dateSetting ? new Date(dateSetting.value) : new Date();
-      
-      // Find the start of the fortnight (Monday of the current or previous week)
-      fortnightStart = new Date(currentDate);
-      const dayOfWeek = fortnightStart.getDay(); // 0 = Sunday, 1 = Monday, etc.
-      const diff = (dayOfWeek === 0 ? 6 : dayOfWeek - 1); // Adjust to get to Monday
-      
-      // If we're in the second week of the fortnight, go back one more week
-      const isSecondWeek = Math.floor(fortnightStart.getDate() / 7) % 2 === 1;
-      const weeksToGoBack = isSecondWeek ? 1 : 0;
-      
-      fortnightStart.setDate(fortnightStart.getDate() - diff - (weeksToGoBack * 7));
-      fortnightStart.setHours(0, 0, 0, 0);
-      
-      // End date is 13 days later (14 days total in fortnight)
-      fortnightEnd = new Date(fortnightStart);
-      fortnightEnd.setDate(fortnightStart.getDate() + 13);
-      fortnightEnd.setHours(23, 59, 59, 999);
-      
-      // Format dates as YYYY-MM-DD
-      fortnightStart = fortnightStart.toISOString().split('T')[0];
-      fortnightEnd = fortnightEnd.toISOString().split('T')[0];
-    }
-    
-    // Get all assignments for this staff member in the fortnight
-    const assignmentsQuery = `
-      SELECT sa.id, sa.program_instance_id, pi.date, pi.start_time, pi.end_time,
-             p.name as program_name
-      FROM staff_assignments sa
-      JOIN program_instances pi ON sa.program_instance_id = pi.id
-      JOIN programs p ON pi.program_id = p.id
-      WHERE sa.staff_id = ?
-      AND pi.date BETWEEN ? AND ?
-      ORDER BY pi.date, pi.start_time
-    `;
-    
-    const assignments = await new Promise((resolve, reject) => {
-      db.all(assignmentsQuery, [staffId, fortnightStart, fortnightEnd], (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
-      });
-    });
-    
-    // Calculate total hours from assignments
-    let totalMinutes = 0;
-    const assignmentDetails = assignments.map(assignment => {
-      // Calculate duration in minutes
-      const startParts = assignment.start_time.split(':').map(Number);
-      const endParts = assignment.end_time.split(':').map(Number);
-      
-      const startMinutes = startParts[0] * 60 + startParts[1];
-      const endMinutes = endParts[0] * 60 + endParts[1];
-      
-      const duration = endMinutes - startMinutes;
-      totalMinutes += duration;
-      
-      return {
-        ...assignment,
-        duration: duration,
-        durationHours: (duration / 60).toFixed(1)
-      };
-    });
-    
-    const totalHours = (totalMinutes / 60).toFixed(1);
-    const percentAllocated = staff.contracted_hours > 0 
-      ? ((totalMinutes / 60) / staff.contracted_hours * 100).toFixed(1) 
-      : 0;
-    const remainingHours = Math.max(0, staff.contracted_hours - (totalMinutes / 60)).toFixed(1);
-    const overAllocated = totalMinutes / 60 > staff.contracted_hours;
-    
-    return res.json({
-      staff: {
-        id: staff.id,
-        name: `${staff.first_name} ${staff.last_name}`,
-        contracted_hours: staff.contracted_hours
-      },
-      fortnight: {
-        start_date: fortnightStart,
-        end_date: fortnightEnd
-      },
-      hours: {
-        allocated: parseFloat(totalHours),
-        remaining: parseFloat(remainingHours),
-        percent_allocated: parseFloat(percentAllocated),
-        over_allocated: overAllocated
-      },
-      assignments: assignmentDetails
-    });
-    
-  } catch (error) {
-    console.error('Error getting staff hours:', error);
-    return res.status(500).json({ error: 'Failed to get staff hours' });
-  } finally {
-    if (db) db.close();
+
+  if (!staffId) {
+    return res.status(400).json({ error: 'Staff ID is required' });
   }
+
+  /* --------------------------------------------------------------------
+   * TEMPORARY PLACEHOLDER
+   * --------------------------------------------------------------------
+   * The real implementation relies on the `staff_assignments` table which
+   * is not yet present in the PostgreSQL schema.  Returning an empty payload
+   * prevents the frontend "Loading…" indicator from hanging while still
+   * allowing staff cards to render.  Replace this logic once the required
+   * table and queries are available.
+   * ------------------------------------------------------------------ */
+
+  return res.json({
+    staff: {
+      id: staffId,
+      name: null,
+      contracted_hours: 0,
+    },
+    fortnight: {
+      start_date: null,
+      end_date: null,
+    },
+    hours: {
+      allocated: 0,
+      remaining: 0,
+      percent_allocated: 0,
+      over_allocated: false,
+    },
+    assignments: [],
+    message: 'Placeholder response – real hours data will be available once staff_assignments table is implemented.',
+  });
 };
 
 module.exports = {

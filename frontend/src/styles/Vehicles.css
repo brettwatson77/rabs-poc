@@ -1,0 +1,363 @@
+/* ==========================================================================
+   Vehicles.css - Revolutionary Fleet Management Interface
+   ========================================================================== */
+
+/* Main Layout & Container Styles
+   ========================================================================== */
+.vehicle-control-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.vehicle-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    flex: 1;
+    justify-content: flex-end;
+}
+
+.vehicle-search {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 2.5rem;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    background-color: #f9f9f9;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    min-width: 250px;
+    flex: 1;
+}
+
+.vehicle-search:focus {
+    outline: none;
+    border-color: #2196f3;
+    box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
+    background-color: #fff;
+}
+
+.vehicle-filters .filter-select {
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    background-color: #f9f9f9;
+    font-size: 0.9rem;
+    min-width: 150px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.vehicle-filters .filter-select:focus {
+    outline: none;
+    border-color: #2196f3;
+    box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
+}
+
+/* Vehicle Card Grid Layout
+   ========================================================================== */
+.vehicle-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+/* Vehicle Card Design
+   ========================================================================== */
+.vehicle-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    border: 1px solid #e0e0e0;
+}
+
+.vehicle-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
+    border-color: #bdbdbd;
+}
+
+.vehicle-card-header {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid #f0f0f0;
+    position: relative;
+}
+
+.vehicle-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-right: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f5f5f5;
+    font-size: 1.5rem;
+}
+
+.vehicle-card-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #333;
+    flex: 1;
+}
+
+.vehicle-id {
+    font-size: 0.8rem;
+    color: #757575;
+    font-weight: normal;
+}
+
+/* Status Indicators
+   ========================================================================== */
+.status-chip {
+    padding: 0.25rem 0.5rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: white;
+    display: inline-block;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Capacity Visualization
+   ========================================================================== */
+.capacity-section {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.capacity-bar-bg {
+    height: 8px;
+    background-color: #f0f0f0;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+.capacity-bar-fg {
+    height: 100%;
+    background-color: #2196f3;
+    border-radius: 4px;
+}
+
+.capacity-section small {
+    display: flex;
+    justify-content: space-between;
+    color: #757575;
+    font-size: 0.9rem;
+}
+
+.wheelchair-flag {
+    background-color: #e3f2fd;
+    color: #1565c0;
+    padding: 0.1rem 0.3rem;
+    border-radius: 4px;
+    margin-left: 0.5rem;
+    cursor: help;
+}
+
+/* Vehicle Information
+   ========================================================================== */
+.vehicle-info {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 0.9rem;
+    color: #616161;
+}
+
+.vehicle-info div {
+    margin-bottom: 0.5rem;
+}
+
+.vehicle-info div:last-child {
+    margin-bottom: 0;
+}
+
+/* Action Buttons
+   ========================================================================== */
+.vehicle-card-actions {
+    padding: 0.75rem 1rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: auto;
+    background-color: #fafafa;
+}
+
+.vehicle-card-actions button {
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+}
+
+.vehicle-card-actions .edit-button {
+    background-color: #2196f3;
+    color: white;
+}
+
+.vehicle-card-actions .edit-button:hover {
+    background-color: #1976d2;
+    box-shadow: 0 2px 5px rgba(33, 150, 243, 0.3);
+}
+
+.vehicle-card-actions .delete-button {
+    background-color: #f44336;
+    color: white;
+}
+
+.vehicle-card-actions .delete-button:hover {
+    background-color: #d32f2f;
+    box-shadow: 0 2px 5px rgba(244, 67, 54, 0.3);
+}
+
+/* Enhanced Form Styling
+   ========================================================================== */
+.form-container .form-field select {
+    width: 100%;
+    padding: 0.75rem;
+    border-radius: 6px;
+    border: 1px solid #e0e0e0;
+    background-color: #f9f9f9;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+}
+
+.form-container .form-field select:focus {
+    outline: none;
+    border-color: #2196f3;
+    box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
+}
+
+.form-container .form-field input[type="date"] {
+    width: 100%;
+    padding: 0.75rem;
+    border-radius: 6px;
+    border: 1px solid #e0e0e0;
+    background-color: #f9f9f9;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+}
+
+.form-container .form-field input[type="date"]:focus {
+    outline: none;
+    border-color: #2196f3;
+    box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
+}
+
+.form-container .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.form-container .checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+/* Responsive Design
+   ========================================================================== */
+@media (max-width: 768px) {
+    .vehicle-control-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .vehicle-filters {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .filter-select {
+        width: 100%;
+    }
+    
+    .vehicle-card-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .vehicle-card-header {
+        flex-wrap: wrap;
+    }
+    
+    .status-chip {
+        margin-top: 0.5rem;
+    }
+}
+
+@media (min-width: 769px) and (max-width: 1200px) {
+    .vehicle-card-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 1201px) {
+    .vehicle-card-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (min-width: 1600px) {
+    .vehicle-card-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+/* Animations & Transitions
+   ========================================================================== */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.vehicle-card.new-vehicle {
+    animation: pulse 2s ease;
+    border-left: 4px solid #4caf50;
+}
+
+.vehicle-card.maintenance {
+    border-left: 4px solid #ff9800;
+}
+
+.vehicle-card.out-of-service {
+    border-left: 4px solid #f44336;
+}
+
+/* Loading States
+   ========================================================================== */
+.vehicle-card.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.loading-placeholder {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+    border-radius: 4px;
+}
+
+@keyframes loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
