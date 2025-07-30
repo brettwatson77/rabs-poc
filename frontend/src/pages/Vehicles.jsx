@@ -164,27 +164,41 @@ const Vehicles = () => {
   return (
     <>
       <div className="crud-page-container">
-        <h1>Fleet Management</h1>
+        {/* ---------- Universal Header Pattern ---------------- */}
+        <div className="vehicles-header">
+          {/* Left – title & subtitle */}
+          <div className="vehicles-title">
+            <h1>Fleet Management</h1>
+            <p className="vehicles-subtitle">
+              Manage vehicles, maintenance schedules, and capacity planning
+            </p>
+          </div>
+
+          {/* Right – search & primary action */}
+          <div className="vehicles-actions">
+            <div className="search-container">
+              <input
+                type="text"
+                placeholder="Search by description, rego, ID..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="search-input"
+              />
+            </div>
+
+            {!isFormVisible && (
+              <button onClick={handleAddClick} className="add-button">
+                Add New Vehicle
+              </button>
+            )}
+          </div>
+        </div>
+
         {error && <p className="error-message">{error}</p>}
         {!isFormVisible && (
           <>
             <div className="vehicle-control-bar">
-              <button
-                onClick={handleAddClick}
-                className="add-new-button"
-              >
-                Add New Vehicle
-              </button>
-
               <div className="vehicle-filters">
-                <input
-                  type="text"
-                  placeholder="Search by ID, description, rego..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="vehicle-search"
-                />
-
                 <select
                   value={filterType}
                   onChange={(e) => setFilterType(e.target.value)}

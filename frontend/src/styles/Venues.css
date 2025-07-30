@@ -5,6 +5,74 @@
 
 /* Main Layout & Container Styles
    ========================================================================== */
+
+/* Universal Header Pattern
+   ========================================================================== */
+.venues-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+  padding: 1rem 0;
+}
+
+.venues-title h1 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+.venues-subtitle {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.venues-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.venues-actions .search-container {
+  position: relative;
+}
+
+.venues-actions .search-input {
+  width: 300px;
+  padding: 0.75rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  background: #ffffff;
+  transition: all 0.2s ease;
+}
+
+.venues-actions .search-input:focus {
+  outline: none;
+  border-color: #4287f5;
+  box-shadow: 0 0 0 2px rgba(66, 135, 245, 0.1);
+}
+
+.venues-actions .add-button {
+  background: linear-gradient(135deg, #4287f5, #2c3e50);
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.75rem 1.25rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.venues-actions .add-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
 .venue-control-bar {
     display: flex;
     flex-wrap: wrap;

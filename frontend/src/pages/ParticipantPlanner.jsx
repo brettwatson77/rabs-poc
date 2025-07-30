@@ -444,40 +444,41 @@ const ParticipantPlanner = () => {
     }).format(value);
   };
 
+  /* -----------------------------------------------------------
+   *  Helper – is a participant currently enrolled in program?
+   * --------------------------------------------------------- */
+  const isParticipantEnrolled = (programId) =>
+    (enrollments || []).some((e) => e.program_id === programId);
+
+  /* Tiny alias so the new button label matches guidelines */
+  const saveChanges = () => saveEnrollmentChanges();
+
   // Render participant selection section
   const renderParticipantSelection = () => {
     return (
       <div className="participant-selection">
-        <div className="search-container">
-          <input
-            type="text"
-            placeholder="Search participants..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="search-input"
-          />
-          <div className="filter-tags">
-            {Object.keys(SUPPORT_TAGS).map(tag => (
-              <div 
-                key={tag}
-                className={`filter-tag ${filterTags.includes(tag) ? 'active' : ''}`}
-                style={{ backgroundColor: filterTags.includes(tag) ? SUPPORT_TAGS[tag].color : 'transparent' }}
-                onClick={() => {
-                  if (filterTags.includes(tag)) {
-                    setFilterTags(filterTags.filter(t => t !== tag));
-                  } else {
-                    setFilterTags([...filterTags, tag]);
-                  }
-                }}
-              >
-                <span className="tag-icon">{SUPPORT_TAGS[tag].icon}</span>
-                <span className="tag-name">{tag}</span>
-              </div>
-            ))}
-          </div>
+        <div className="filter-tags">
+          {Object.keys(SUPPORT_TAGS).map(tag => (
+            <div 
+              key={tag}
+              className={`filter-tag ${filterTags.includes(tag) ? 'active' : ''}`}
+              style={{ backgroundColor: filterTags.includes(tag) ? SUPPORT_TAGS[tag].color : 'transparent' }}
+              onClick={() => {
+                if (filterTags.includes(tag)) {
+                  setFilterTags(filterTags.filter(t => t !== tag));
+                } else {
+                  setFilterTags([...filterTags, tag]);
+                }
+              }}
+            >
+              <span className="tag-icon">{SUPPORT_TAGS[tag].icon}</span>
+              <span className="tag-name">{tag}</span>
+            </div>
+          ))}
         </div>
         
-        <div className="participants-grid">
+        {/* ==== Compact Tiles Grid for up to 200 participants ==== */}
+        <div className="participants-grid-compact">
           {loading.participants ? (
             <div className="loading-container">
               <div className="spinner"></div>
@@ -485,46 +486,69 @@ const ParticipantPlanner = () => {
             </div>
           ) : (
             filteredParticipants.map(participant => (
-              <div 
+              <div
                 key={participant.id}
-                className={`participant-card ${selectedParticipant?.id === participant.id ? 'selected' : ''}`}
+                className={`participant-tile ${
+                  selectedParticipant?.id === participant.id ? 'selected' : ''
+                }`}
                 onClick={() => setSelectedParticipant(participant)}
+                title={`${participant.first_name} ${participant.last_name} - NDIS: ${
+                  participant.ndis_number || 'N/A'
+                }`}
               >
-                <div className="participant-photo">
-                  {participant.first_name.charAt(0)}{participant.last_name.charAt(0)}
+                <div className="tile-photo">
+                  {participant.first_name.charAt(0)}
+                  {participant.last_name.charAt(0)}
                 </div>
-                <div className="participant-info">
-                  <h3>{participant.first_name} {participant.last_name}</h3>
-                  <p className="ndis-number">NDIS: {participant.ndis_number || 'N/A'}</p>
-                  <div className="support-tags">
-                    {participant.mobility_requirements?.toLowerCase().includes('wheelchair') && (
-                      <span className="support-tag" style={{ backgroundColor: SUPPORT_TAGS['Wheelchair'].color }}>
-                        {SUPPORT_TAGS['Wheelchair'].icon}
+
+                <div className="tile-name">
+                  {participant.first_name}
+                  <br />
+                  <span className="last-initial">
+                    {participant.last_name.charAt(0)}.
+                  </span>
+                </div>
+
+                {/* Compact indicators */}
+                <div className="tile-indicators">
+                  {participant.mobility_requirements
+                    ?.toLowerCase()
+                    .includes('wheelchair') && (
+                      <span
+                        className="indicator wheelchair"
+                        title="Wheelchair"
+                      >
+                        ♿
                       </span>
                     )}
-                    {participant.behavior_support_plan && (
-                      <span className="support-tag" style={{ backgroundColor: SUPPORT_TAGS['Behavioral'].color }}>
-                        {SUPPORT_TAGS['Behavioral'].icon}
-                      </span>
-                    )}
-                    {participant.dietary_requirements && (
-                      <span className="support-tag" style={{ backgroundColor: SUPPORT_TAGS['Dietary'].color }}>
-                        {SUPPORT_TAGS['Dietary'].icon}
-                      </span>
-                    )}
-                    {participant.medical_requirements && (
-                      <span className="support-tag" style={{ backgroundColor: SUPPORT_TAGS['Medical'].color }}>
-                        {SUPPORT_TAGS['Medical'].icon}
-                      </span>
-                    )}
-                  </div>
+                  {participant.behavior_support_plan && (
+                    <span
+                      className="indicator behavioral"
+                      title="Behavioral Support"
+                    >
+                      🔔
+                    </span>
+                  )}
+                  {participant.dietary_requirements && (
+                    <span
+                      className="indicator dietary"
+                      title="Dietary Requirements"
+                    >
+                      🍽️
+                    </span>
+                  )}
+                  {participant.medical_requirements && (
+                    <span className="indicator medical" title="Medical">
+                      💊
+                    </span>
+                  )}
                 </div>
               </div>
             ))
           )}
           
           {!loading.participants && filteredParticipants.length === 0 && (
-            <div className="no-results">
+            <div className="no-results-compact">
               <p>No participants found matching your search criteria.</p>
             </div>
           )}
@@ -1095,53 +1119,109 @@ const ParticipantPlanner = () => {
 
   return (
     <div className="participant-planner">
-      <div className="planner-header">
-        <div className="planner-title">
+      {/* ===== Universal Header ===== */}
+      <div className="planner-header universal-header">
+        <div className="header-left">
           <h1>Participant Planner</h1>
-          <p className="planner-subtitle">
-            Manage participant profiles, support needs, and program enrollments
+          <p className="header-subtitle">
+            Manage participant program schedules and recurring attendance
           </p>
         </div>
-        
-        <div className="planner-actions">
+
+        <div className="header-right">
+          <div className="participant-search-container">
+            <input
+              type="text"
+              placeholder="Search participants..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="participant-search-input"
+            />
+            <span className="search-icon">🔍</span>
+          </div>
+
           <button className="add-button" onClick={() => setShowAddModal(true)}>
             Add New Participant
           </button>
         </div>
       </div>
-      
-      {renderParticipantSelection()}
-      
-      {selectedParticipant && (
-        <div className="participant-dashboard">
-          <div className="dashboard-tabs">
-            <button 
-              className={activeTab === 'profile' ? 'active' : ''} 
-              onClick={() => setActiveTab('profile')}
+
+      {/* ===== Main Content ===== */}
+      {!selectedParticipant ? (
+        /* ---- Participant Grid ---- */
+        renderParticipantSelection()
+      ) : (
+        /* ---- Full Participant Profile with Tabs ---- */
+        <div className="participant-profile">
+          {/* Header */}
+          <div className="profile-header">
+            <div className="profile-photo">
+              {selectedParticipant.first_name.charAt(0)}
+              {selectedParticipant.last_name.charAt(0)}
+            </div>
+
+            <div className="profile-name-section">
+              <h1 className="profile-name">
+                {selectedParticipant.first_name} {selectedParticipant.last_name}
+              </h1>
+              <p className="profile-ndis">
+                NDIS: {selectedParticipant.ndis_number || 'N/A'}
+              </p>
+              <span
+                className={`management-type management-${
+                  selectedParticipant.is_plan_managed ? 'plan' : 'agency'
+                }`}
+              >
+                {selectedParticipant.is_plan_managed
+                  ? 'Plan Managed'
+                  : 'Agency Managed'}
+              </span>
+            </div>
+
+            <button
+              className="back-button"
+              onClick={() => setSelectedParticipant(null)}
             >
-              Profile & Support Needs
-            </button>
-            <button 
-              className={activeTab === 'supervision' ? 'active' : ''} 
-              onClick={() => setActiveTab('supervision')}
-            >
-              Supervision Multiplier
-            </button>
-            <button 
-              className={activeTab === 'programs' ? 'active' : ''} 
-              onClick={() => setActiveTab('programs')}
-            >
-              Program Enrollments
-            </button>
-            <button 
-              className={activeTab === 'reports' ? 'active' : ''} 
-              onClick={() => setActiveTab('reports')}
-            >
-              Reports & Analytics
+              ← Back to List
             </button>
           </div>
-          
-          <div className="dashboard-content">
+
+          {/* Tabs */}
+          <div className="profile-tabs">
+            <button
+              className={`tab-button ${activeTab === 'profile' ? 'active' : ''}`}
+              onClick={() => setActiveTab('profile')}
+            >
+              Profile
+            </button>
+            <button
+              className={`tab-button ${
+                activeTab === 'supervision' ? 'active' : ''
+              }`}
+              onClick={() => setActiveTab('supervision')}
+            >
+              Supervision
+            </button>
+            <button
+              className={`tab-button ${
+                activeTab === 'programs' ? 'active' : ''
+              }`}
+              onClick={() => setActiveTab('programs')}
+            >
+              Programs
+            </button>
+            <button
+              className={`tab-button ${
+                activeTab === 'reports' ? 'active' : ''
+              }`}
+              onClick={() => setActiveTab('reports')}
+            >
+              Reports
+            </button>
+          </div>
+
+          {/* Tab Content */}
+          <div className="tab-content">
             {activeTab === 'profile' && renderProfileTab()}
             {activeTab === 'supervision' && renderSupervisionTab()}
             {activeTab === 'programs' && renderProgramsTab()}
@@ -1149,13 +1229,13 @@ const ParticipantPlanner = () => {
           </div>
         </div>
       )}
-      
+
       {successMessage && (
         <div className="success-message">
           <p>{successMessage}</p>
         </div>
       )}
-      
+
       {renderContactModal()}
     </div>
   );

@@ -165,13 +165,37 @@ const Staff = () => {
     return (
         <>
         <div className="crud-page-container">
-            <h1>Manage Staff</h1>
+            {/* Universal 3-section header */}
+            <div className="staff-header">
+                {/* Left – title */}
+                <div className="staff-title">
+                    <h1>Staff Management</h1>
+                    <p className="staff-subtitle">
+                        Manage staff profiles, SCHADS levels, and work allocation
+                    </p>
+                </div>
+
+                {/* Right – actions & search */}
+                <div className="staff-actions">
+                    <div className="search-container">
+                        <input
+                            type="text"
+                            placeholder="Search staff by name, suburb, SCHADS level..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="search-input"
+                        />
+                    </div>
+
+                    {!isFormVisible && (
+                        <button onClick={handleAddClick} className="add-button">
+                            Add New Staff
+                        </button>
+                    )}
+                </div>
+            </div>
 
             {error && <p className="error-message">{error}</p>}
-
-            {!isFormVisible && (
-                <button onClick={handleAddClick} className="add-new-button">Add New Staff</button>
-            )}
 
             {isFormVisible && formData && (
                 <div className="form-container">
@@ -245,16 +269,6 @@ const Staff = () => {
 
             {!loading && !isFormVisible && (
                 <>
-                    {/* --- Search & Filter Bar -------------------------------- */}
-                    <div className="staff-search-bar">
-                        <input
-                            type="text"
-                            placeholder="Search staff by name, suburb, SCHADS level..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                        />
-                    </div>
-
                     {/* --- Card-based layout ---------------------------------- */}
                     <div className="staff-card-grid">
                         {filteredStaff.map((s) => {

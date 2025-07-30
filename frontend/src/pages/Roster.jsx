@@ -25,6 +25,8 @@ const Roster = () => {
   const [filterText, setFilterText] = useState('');
   const [filterSchadsLevel, setFilterSchadsLevel] = useState('all');
   const [filterShiftStatus, setFilterShiftStatus] = useState('all');
+  const [filterSchedule, setFilterSchedule] = useState('all');
+  const [filterStaffMember, setFilterStaffMember] = useState('all');
   const [dateRange, setDateRange] = useState({
     startDate: simulatedDate,
     endDate: new Date(simulatedDate.getTime() + 6 * 24 * 60 * 60 * 1000) // Default to week view
@@ -278,9 +280,17 @@ const Roster = () => {
         (filterShiftStatus === 'complete' && shift.notes_completed) ||
         (filterShiftStatus === 'incomplete' && !shift.notes_completed);
       
-      return textMatch && statusMatch;
+      // Schedule filter
+      const scheduleMatch = filterSchedule === 'all' || 
+        (shift.program_type && shift.program_type.toLowerCase() === filterSchedule.toLowerCase());
+      
+      // Staff member filter
+      const staffMemberMatch = filterStaffMember === 'all' || 
+        (shift.staff && shift.staff.some(s => s.id.toString() === filterStaffMember));
+      
+      return textMatch && statusMatch && scheduleMatch && staffMemberMatch;
     });
-  }, [rosterData, filterText, filterShiftStatus]);
+  }, [rosterData, filterText, filterShiftStatus, filterSchedule, filterStaffMember]);
   
   // Group shifts by staff for Staff View
   const shiftsByStaff = useMemo(() => {
@@ -385,23 +395,81 @@ const Roster = () => {
   
   return (
     <div className="roster-container">
-      <div className="roster-header">
-        <div className="roster-title">
+      <div className="roster-header universal-header">
+        <div className="header-left">
           <h1>Staff Roster</h1>
-          <p className="roster-subtitle">
+          <p className="header-subtitle">
             SCHADS-integrated staff management with timesheet exports
           </p>
         </div>
         
-        <div className="roster-actions">
-          <button 
-            className="action-button timesheet-button" 
-            onClick={() => setShowTimesheetModal(true)}
-            title="Export timesheets to Xero/MYOB format"
-          >
-            <span className="button-icon">📊</span>
-            Export Timesheets
-          </button>
+        <div className="header-right">
+          <div className="search-container">
+            <input 
+              type="text" 
+              placeholder="Search staff or programs..."
+              value={filterText}
+              onChange={(e) => setFilterText(e.target.value)}
+            />
+            <span className="search-icon">🔍</span>
+          </div>
+          
+          <div className="filter-group">
+            <label>Schedule:</label>
+            <select 
+              value={filterSchedule}
+              onChange={(e) => setFilterSchedule(e.target.value)}
+            >
+              <option value="all">All Schedules</option>
+              <option value="centre-based">Centre-Based</option>
+              <option value="community">Community</option>
+              <option value="transport">Transport</option>
+            </select>
+          </div>
+          
+          <div className="filter-group">
+            <label>Staff Member:</label>
+            <select 
+              value={filterStaffMember}
+              onChange={(e) => setFilterStaffMember(e.target.value)}
+            >
+              <option value="all">All Staff</option>
+              {staffData.map(staff => (
+                <option key={staff.id} value={staff.id}>
+                  {staff.first_name} {staff.last_name}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <div className="filter-group">
+            <label>SCHADS Level:</label>
+            <select 
+              value={filterSchadsLevel}
+              onChange={(e) => setFilterSchadsLevel(e.target.value)}
+            >
+              <option value="all">All Levels</option>
+              <option value="1">Level 1</option>
+              <option value="2">Level 2</option>
+              <option value="3">Level 3</option>
+              <option value="4">Level 4</option>
+              <option value="5">Level 5</option>
+              <option value="6">Level 6</option>
+              <option value="7">Level 7</option>
+            </select>
+          </div>
+          
+          <div className="filter-group">
+            <label>Status:</label>
+            <select 
+              value={filterShiftStatus}
+              onChange={(e) => setFilterShiftStatus(e.target.value)}
+            >
+              <option value="all">All Shifts</option>
+              <option value="complete">Notes Complete</option>
+              <option value="incomplete">Notes Pending</option>
+            </select>
+          </div>
           
           <div className="view-toggle">
             <button 
@@ -418,35 +486,14 @@ const Roster = () => {
             </button>
           </div>
           
-          <div className="date-range-selector">
-            <button 
-              className="date-range-button"
-              onClick={() => handleDateRangeChange({
-                startDate: simulatedDate,
-                endDate: new Date(simulatedDate.getTime() + 6 * 24 * 60 * 60 * 1000)
-              })}
-            >
-              Week
-            </button>
-            <button 
-              className="date-range-button"
-              onClick={() => handleDateRangeChange({
-                startDate: simulatedDate,
-                endDate: new Date(simulatedDate.getTime() + 13 * 24 * 60 * 60 * 1000)
-              })}
-            >
-              Fortnight
-            </button>
-            <button 
-              className="date-range-button"
-              onClick={() => handleDateRangeChange({
-                startDate: simulatedDate,
-                endDate: new Date(simulatedDate.getTime() + 29 * 24 * 60 * 60 * 1000)
-              })}
-            >
-              Month
-            </button>
-          </div>
+          <button 
+            className="action-button timesheet-button" 
+            onClick={() => setShowTimesheetModal(true)}
+            title="Export timesheets to Xero/MYOB format"
+          >
+            <span className="button-icon">📊</span>
+            Export Timesheets
+          </button>
         </div>
       </div>
       
@@ -456,6 +503,36 @@ const Roster = () => {
           {dateRange.startDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })} - 
           {dateRange.endDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
         </h2>
+        
+        <div className="date-range-selector">
+          <button 
+            className="date-range-button"
+            onClick={() => handleDateRangeChange({
+              startDate: simulatedDate,
+              endDate: new Date(simulatedDate.getTime() + 6 * 24 * 60 * 60 * 1000)
+            })}
+          >
+            Week
+          </button>
+          <button 
+            className="date-range-button"
+            onClick={() => handleDateRangeChange({
+              startDate: simulatedDate,
+              endDate: new Date(simulatedDate.getTime() + 13 * 24 * 60 * 60 * 1000)
+            })}
+          >
+            Fortnight
+          </button>
+          <button 
+            className="date-range-button"
+            onClick={() => handleDateRangeChange({
+              startDate: simulatedDate,
+              endDate: new Date(simulatedDate.getTime() + 29 * 24 * 60 * 60 * 1000)
+            })}
+          >
+            Month
+          </button>
+        </div>
       </div>
       
       {/* Financial Metrics */}
@@ -494,48 +571,6 @@ const Roster = () => {
             )}
           </div>
           <div className="metric-label">For timesheet export</div>
-        </div>
-      </div>
-      
-      {/* Filters */}
-      <div className="roster-filters">
-        <div className="search-box">
-          <input 
-            type="text" 
-            placeholder={viewMode === 'staff' ? "Search staff..." : "Search shifts..."}
-            value={filterText}
-            onChange={(e) => setFilterText(e.target.value)}
-          />
-          <span className="search-icon">🔍</span>
-        </div>
-        
-        <div className="filter-group">
-          <label>SCHADS Level:</label>
-          <select 
-            value={filterSchadsLevel}
-            onChange={(e) => setFilterSchadsLevel(e.target.value)}
-          >
-            <option value="all">All Levels</option>
-            <option value="1">Level 1</option>
-            <option value="2">Level 2</option>
-            <option value="3">Level 3</option>
-            <option value="4">Level 4</option>
-            <option value="5">Level 5</option>
-            <option value="6">Level 6</option>
-            <option value="7">Level 7</option>
-          </select>
-        </div>
-        
-        <div className="filter-group">
-          <label>Shift Status:</label>
-          <select 
-            value={filterShiftStatus}
-            onChange={(e) => setFilterShiftStatus(e.target.value)}
-          >
-            <option value="all">All Shifts</option>
-            <option value="complete">Notes Complete</option>
-            <option value="incomplete">Notes Pending</option>
-          </select>
         </div>
       </div>
       

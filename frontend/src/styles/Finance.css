@@ -68,6 +68,7 @@
 .finance-period-selector {
   display: flex;
   flex-direction: column;
+  align-items: center;            /* center inner content horizontally */
   margin-bottom: 20px;
   background-color: white;
   border-radius: 8px;
@@ -77,6 +78,7 @@
 
 .period-tabs {
   display: flex;
+  justify-content: center;        /* center the buttons row */
   gap: 5px;
   margin-bottom: 10px;
 }

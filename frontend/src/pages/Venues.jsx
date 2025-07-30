@@ -320,28 +320,42 @@ const Venues = () => {
 
     return (
         <div className="crud-page-container">
-            <h1>Venue Management</h1>
+            {/* ---------- Universal Header Pattern ---------------- */}
+            <div className="venues-header">
+                {/* Left – title & subtitle */}
+                <div className="venues-title">
+                    <h1>Venue Management</h1>
+                    <p className="venues-subtitle">
+                        Manage venues, capacity, accessibility, and facility requirements
+                    </p>
+                </div>
+
+                {/* Right – search & primary action */}
+                <div className="venues-actions">
+                    <div className="search-container">
+                        <input
+                            type="text"
+                            placeholder="Search by name, address, suburb..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="search-input"
+                        />
+                    </div>
+
+                    {!isFormVisible && (
+                        <button onClick={handleAddClick} className="add-button">
+                            Add New Venue
+                        </button>
+                    )}
+                </div>
+            </div>
             {error && <p className="error-message">{error}</p>}
             
             {!isFormVisible && (
                 <>
                     {/* --- Control Bar -------------------------------- */}
                     <div className="venue-control-bar">
-                        <button onClick={handleAddClick} className="add-new-button">
-                            Add New Venue
-                        </button>
-                        
                         <div className="venue-filters">
-                            <div className="search-container">
-                                <input
-                                    type="text"
-                                    placeholder="Search venues..."
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                    className="venue-search"
-                                />
-                            </div>
-                            
                             <select 
                                 value={filterType} 
                                 onChange={(e) => setFilterType(e.target.value)}

@@ -8,7 +8,10 @@ const navStyles = {
   /* Keep navbar flush; individual pages can manage their own spacing */
   display: 'flex',
   alignItems: 'center',
-  justifyContent: 'flex-start',
+  /* Center menu items for consistent look across pages */
+  justifyContent: 'center',
+  /* Ensure navbar spans full viewport width */
+  width: '100%',
   /* Consistent spacing between any left-side items (future logo) and the ul */
   gap: '1.5rem',
   /* Make the navbar stick to the top of the viewport */

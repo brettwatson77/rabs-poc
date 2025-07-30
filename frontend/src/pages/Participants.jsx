@@ -271,7 +271,30 @@ const Participants = () => {
     return (
         <>
         <div className="crud-page-container">
-            <h1>Participant Management</h1>
+            <div className="participants-header">
+                <div className="participants-title">
+                    <h1>Participant Management</h1>
+                    <p className="participants-subtitle">
+                        Manage participant profiles, NDIS plans, and support requirements
+                    </p>
+                </div>
+                
+                <div className="participants-actions">
+                    <div className="search-container">
+                        <input
+                            type="text"
+                            placeholder="Search by name, NDIS, suburb..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="search-input"
+                        />
+                    </div>
+                    
+                    <button onClick={handleAddClick} className="add-button">
+                        Add New Participant
+                    </button>
+                </div>
+            </div>
 
             {error && <p className="error-message">{error}</p>}
 
@@ -279,21 +302,7 @@ const Participants = () => {
                 <>
                     {/* --- Control Bar -------------------------------- */}
                     <div className="participant-control-bar">
-                        <button onClick={handleAddClick} className="add-new-button">
-                            Add New Participant
-                        </button>
-                        
                         <div className="participant-filters">
-                            <div className="search-container">
-                                <input
-                                    type="text"
-                                    placeholder="Search by name, NDIS, suburb..."
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                    className="participant-search"
-                                />
-                            </div>
-                            
                             <select 
                                 value={filterStatus} 
                                 onChange={(e) => setFilterStatus(e.target.value)}
@@ -357,23 +366,29 @@ const Participants = () => {
                                                 </div>
                                                 
                                                 <div className="participant-main-info">
-                                                    <h3>{p.first_name} {p.last_name}</h3>
+                                                    {/* --- TOP ROW -------------------------------------------------- */}
+                                                    <div className="participant-top-row">
+                                                        <h3>{p.first_name} {p.last_name}</h3>
+                                                        
+                                                        <div className="participant-ndis">
+                                                            {p.ndis_number ? (
+                                                                <>NDIS: {p.ndis_number}</>
+                                                            ) : (
+                                                                <span className="no-ndis">No NDIS Number</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                     
-                                                    <div className="participant-ndis">
-                                                        {p.ndis_number ? (
-                                                            <>NDIS: {p.ndis_number}</>
-                                                        ) : (
-                                                            <span className="no-ndis">No NDIS Number</span>
-                                                        )}
+                                                    {/* --- BOTTOM ROW --------------------------------------------- */}
+                                                    <div className="participant-bottom-row">
+                                                        <span 
+                                                            className="management-chip"
+                                                            style={{ backgroundColor: managementColor }}
+                                                        >
+                                                            {getManagementTypeDisplay(managementType)}
+                                                        </span>
                                                     </div>
                                                 </div>
-                                                
-                                                <span 
-                                                    className="management-chip"
-                                                    style={{ backgroundColor: managementColor }}
-                                                >
-                                                    {getManagementTypeDisplay(managementType)}
-                                                </span>
                                             </div>
                                             
                                             {/* Supervision Multiplier */}

@@ -38,6 +38,161 @@ const MasterSchedule = () => {
     totalSupervisionLoad: 0,
     highSupportHours: 0
   });
+
+  /* ------------------------------------------------------------------
+   * Repeating Program – Enhanced Create-Modal form state management
+   * ------------------------------------------------------------------
+   *  • programForm – holds all fields required for a flexible, repeating
+   *    program (including advanced slot-based breakdown for dashboard).
+   *  • nextSlotId  – simple counter for generating unique ids for new
+   *    time-slots on the fly.
+   *  • slotTypes & repeatPatterns – dropdown meta for easy maintenance.
+   * ------------------------------------------------------------------ */
+  const [programForm, setProgramForm] = useState({
+    // Basic details
+    name: '',
+    type: 'center_based',               // centre_based | community | transport …
+    notes: '',
+
+    // Repeating pattern
+    isRepeating: false,
+    repeatPattern: 'none',              // none | weekly | fortnightly | monthly
+    repeatEnd: '',                      // yyyy-mm-dd
+
+    // Core timing
+    startDate: '',                      // yyyy-mm-dd (defaults to selectedDay)
+    startTime: '08:30',
+    endTime: '16:30',
+
+    // Fine-grained slot breakdown (array of {id, startTime, endTime, type, description})
+    timeSlots: [
+      { id: 1, startTime: '08:30', endTime: '09:30', type: 'pickups', description: '' }
+    ],
+
+    // Participants & billing
+    participants: [],                   // array of participant ids
+    billingCodes: [],                   // array of code ids
+
+    // Staffing
+    staffAssignment: 'manual'           // manual | auto | always_same
+  });
+
+  const [nextSlotId, setNextSlotId] = useState(2);
+
+  // Static dropdown helpers
+  const slotTypes = [
+    { value: 'pickups',   label: '1) Pickups' },
+    { value: 'activity',  label: '2) Activity/Program' },
+    { value: 'dropoffs',  label: '3) Dropoffs' },
+    { value: 'meal',      label: '4) Meal' },
+    { value: 'other',     label: '5) Other' }
+  ];
+
+  const repeatPatterns = [
+    { value: 'none',       label: 'One-time event' },
+    { value: 'weekly',     label: 'Weekly' },
+    { value: 'fortnightly',label: 'Every 2 Weeks' },
+    { value: 'monthly',    label: 'Monthly' }
+  ];
+
+  /* ------------------------------------------------------------------
+   *  NDIS Billing Code Options  (for dropdown)
+   * ------------------------------------------------------------------ */
+  const ndisCodeOptions = [
+    { value: '01_011_0103_6_1', label: '01_011_0103_6_1 - Individual Skills Development' },
+    { value: '01_013_0117_6_1', label: '01_013_0117_6_1 - Group Community Access' },
+    { value: '01_015_0120_6_1', label: '01_015_0120_6_1 - Transport to Community Activities' },
+    { value: '04_104_0136_6_1', label: '04_104_0136_6_1 - Assistance with Daily Living' },
+    { value: '07_011_0115_6_1', label: '07_011_0115_6_1 - Participation in Community' },
+    { value: '08_001_0128_6_1', label: '08_001_0128_6_1 - Plan Management' },
+    { value: '15_001_0107_1_3', label: '15_001_0107_1_3 - Innovative Community Participation' },
+    { value: '04_799_0136_6_1', label: '04_799_0136_6_1 - Other Assistance with Daily Living' }
+  ];
+
+  /* ------------------------------------------------------------------
+   *  Billing – track hours & codes for each participant id
+   * ------------------------------------------------------------------ */
+  const [billingData, setBillingData] = useState({});
+
+  const updateParticipantBilling = (
+    participantId,
+    field,
+    value,
+    codeIndex = null
+  ) => {
+    setBillingData((prev) => {
+      // ensure base structure
+      const currentParticipant =
+        prev[participantId] || { hours: '', codes: [{ code: '', hours: '' }] };
+
+      // Update total hours
+      if (field === 'hours' && codeIndex === null) {
+        return {
+          ...prev,
+          [participantId]: {
+            ...currentParticipant,
+            hours: value
+          }
+        };
+      }
+
+      // Update specific code entry (code / codeHours)
+      if (field === 'code' || field === 'codeHours') {
+        const newCodes = [...(currentParticipant.codes || [])];
+
+        // Ensure target index exists
+        if (!newCodes[codeIndex]) {
+          newCodes[codeIndex] = { code: '', hours: '' };
+        }
+
+        if (field === 'code') newCodes[codeIndex].code = value;
+        if (field === 'codeHours') newCodes[codeIndex].hours = value;
+
+        return {
+          ...prev,
+          [participantId]: {
+            ...currentParticipant,
+            codes: newCodes
+          }
+        };
+      }
+
+      return prev;
+    });
+  };
+
+  // Add a blank billing code row for participant
+  const addBillingCode = (participantId) => {
+    setBillingData((prev) => {
+      const currentParticipant =
+        prev[participantId] || { hours: '', codes: [{ code: '', hours: '' }] };
+      return {
+        ...prev,
+        [participantId]: {
+          ...currentParticipant,
+          codes: [...currentParticipant.codes, { code: '', hours: '' }]
+        }
+      };
+    });
+  };
+
+  // Remove billing code row (keep at least one)
+  const removeBillingCode = (participantId, codeIndex) => {
+    setBillingData((prev) => {
+      const currentParticipant =
+        prev[participantId] || { hours: '', codes: [{ code: '', hours: '' }] };
+      const newCodes = currentParticipant.codes.filter(
+        (_, idx) => idx !== codeIndex
+      );
+      return {
+        ...prev,
+        [participantId]: {
+          ...currentParticipant,
+          codes: newCodes.length > 0 ? newCodes : [{ code: '', hours: '' }]
+        }
+      };
+    });
+  };
   
   // Modal states
   const [showCardModal, setShowCardModal] = useState(false);
@@ -297,6 +452,25 @@ const MasterSchedule = () => {
           </p>
         </div>
         
+        {/* Center section - View toggle */}
+        <div className="view-toggle-container">
+          <div className="view-toggle">
+            <button 
+              className={`toggle-button ${viewMode === 'week' ? 'active' : ''}`}
+              onClick={() => setViewMode('week')}
+            >
+              Week
+            </button>
+            <button 
+              className={`toggle-button ${viewMode === 'fortnight' ? 'active' : ''}`}
+              onClick={() => setViewMode('fortnight')}
+            >
+              Fortnight
+            </button>
+          </div>
+        </div>
+
+        {/* Right section - Action buttons */}
         <div className="schedule-actions">
           <button 
             className="action-button create-button" 
@@ -313,21 +487,6 @@ const MasterSchedule = () => {
             <span className="button-icon">💰</span>
             Financial Projections
           </button>
-          
-          <div className="view-toggle">
-            <button 
-              className={`toggle-button ${viewMode === 'week' ? 'active' : ''}`}
-              onClick={() => setViewMode('week')}
-            >
-              Week
-            </button>
-            <button 
-              className={`toggle-button ${viewMode === 'fortnight' ? 'active' : ''}`}
-              onClick={() => setViewMode('fortnight')}
-            >
-              Fortnight
-            </button>
-          </div>
         </div>
       </div>
       
@@ -630,13 +789,13 @@ const MasterSchedule = () => {
         </Modal>
       )}
       
-      {/* Create Master Card Modal */}
-      {showCreateModal && (
-        <Modal onClose={() => setShowCreateModal(false)} className="create-modal">
-          <div className="create-modal-header">
-            <h2>Create Master Card</h2>
-            <p className="create-modal-date">
-              {selectedDay?.toLocaleDateString('en-AU', { 
+      {/* Revolutionary Repeating Programs Modal */}
+      {showCreateModal && selectedDay && (
+        <Modal onClose={() => setShowCreateModal(false)} className="advanced-program-modal">
+          <div className="program-modal-header">
+            <h2>Create Master Program</h2>
+            <p className="modal-date">
+              {selectedDay.toLocaleDateString('en-AU', {
                 weekday: 'long',
                 day: 'numeric',
                 month: 'long',
@@ -644,105 +803,424 @@ const MasterSchedule = () => {
               })}
             </p>
           </div>
-          
-          <div className="create-modal-body">
-            <div className="create-form">
-              <div className="form-group">
-                <label htmlFor="title">Event Title</label>
-                <input type="text" id="title" placeholder="Enter event title" />
-              </div>
-              
+
+          <div className="program-modal-body">
+            {/* Basic Program Info */}
+            <div className="program-section">
+              <h3>Program Details</h3>
               <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="startTime">Start Time</label>
-                  <input type="time" id="startTime" defaultValue="09:00" />
+                  <label>Program Name</label>
+                  <input
+                    type="text"
+                    value={programForm.name}
+                    onChange={(e) =>
+                      setProgramForm({ ...programForm, name: e.target.value })
+                    }
+                    placeholder="e.g., Saturday Adventure, Bowling Night"
+                  />
                 </div>
-                
                 <div className="form-group">
-                  <label htmlFor="endTime">End Time</label>
-                  <input type="time" id="endTime" defaultValue="15:00" />
-                </div>
-              </div>
-              
-              <div className="form-group">
-                <label htmlFor="programType">Program Type</label>
-                <select id="programType">
-                  <option value="centre-based">Centre-based Program</option>
-                  <option value="community">Community Access</option>
-                  <option value="bowling">Bowling Night</option>
-                  <option value="spin-win">Spin & Win</option>
-                  <option value="adventure">Saturday Adventure</option>
-                </select>
-              </div>
-              
-              <div className="form-group">
-                <label htmlFor="venue">Venue</label>
-                <select id="venue">
-                  <option value="">Select a venue...</option>
-                  <option value="1">Main Centre</option>
-                  <option value="2">Community Hall</option>
-                  <option value="3">Bowling Alley</option>
-                  <option value="4">Adventure Park</option>
-                </select>
-              </div>
-              
-              <div className="form-group">
-                <label>Participants</label>
-                <div className="participant-selector">
-                  <div className="participant-search">
-                    <input type="text" placeholder="Search participants..." />
-                    <button className="search-button">Search</button>
-                  </div>
-                  
-                  <div className="participant-options">
-                    <div className="participant-option">
-                      <input type="checkbox" id="participant1" />
-                      <label htmlFor="participant1">John Smith (1.5x)</label>
-                    </div>
-                    <div className="participant-option">
-                      <input type="checkbox" id="participant2" />
-                      <label htmlFor="participant2">Sarah Johnson (1.0x)</label>
-                    </div>
-                    <div className="participant-option">
-                      <input type="checkbox" id="participant3" />
-                      <label htmlFor="participant3">Michael Brown (2.0x)</label>
-                    </div>
-                    <div className="participant-option">
-                      <input type="checkbox" id="participant4" />
-                      <label htmlFor="participant4">Emma Wilson (1.25x)</label>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="form-group">
-                <label>Transport Options</label>
-                <div className="transport-options">
-                  <div className="transport-option">
-                    <input type="checkbox" id="pickupRequired" />
-                    <label htmlFor="pickupRequired">Pickup Required</label>
-                  </div>
-                  <div className="transport-option">
-                    <input type="checkbox" id="dropoffRequired" />
-                    <label htmlFor="dropoffRequired">Dropoff Required</label>
-                  </div>
+                  <label>Program Type</label>
+                  <select
+                    value={programForm.type}
+                    onChange={(e) =>
+                      setProgramForm({ ...programForm, type: e.target.value })
+                    }
+                  >
+                    <option value="center_based">Centre-based Program</option>
+                    <option value="community">Community Access</option>
+                    <option value="bowling">Bowling Program</option>
+                    <option value="adventure">Adventure Program</option>
+                    <option value="transport">Transport Service</option>
+                  </select>
                 </div>
               </div>
             </div>
+
+            {/* Repeating Pattern */}
+            <div className="program-section">
+              <h3>Repeating Schedule</h3>
+              <div className="repeating-controls">
+                {/* Simplified checkbox – just says “Repeat” */}
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={programForm.isRepeating}
+                    onChange={(e) =>
+                      setProgramForm({
+                        ...programForm,
+                        isRepeating: e.target.checked,
+                        repeatPattern: e.target.checked ? 'weekly' : 'none'
+                      })
+                    }
+                  />
+                  Repeat
+                </label>
+
+                {programForm.isRepeating && (
+                  <div className="repeat-options">
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label>Repeat Pattern</label>
+                        <select
+                          value={programForm.repeatPattern}
+                          onChange={(e) =>
+                            setProgramForm({
+                              ...programForm,
+                              repeatPattern: e.target.value
+                            })
+                          }
+                        >
+                          <option value="weekly">Every Week</option>
+                          <option value="fortnightly">Every 2 Weeks</option>
+                          <option value="monthly">Every Month</option>
+                        </select>
+                      </div>
+                      <div className="form-group">
+                        <label>End Date (optional)</label>
+                        <input
+                          type="date"
+                          value={programForm.repeatEnd}
+                          onChange={(e) =>
+                            setProgramForm({
+                              ...programForm,
+                              repeatEnd: e.target.value
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Time Slot Breakdown */}
+            <div className="program-section">
+              <h3>Time Slot Breakdown</h3>
+              <p className="section-description">
+                Break down your program into detailed time slots for accurate
+                dashboard cards and billing
+              </p>
+
+              <div className="time-slots">
+                {programForm.timeSlots.map((slot, index) => (
+                  <div key={slot.id} className="time-slot-row">
+                    <div className="slot-number">{index + 1}</div>
+
+                    <div className="form-group">
+                      <label>Start Time</label>
+                      <input
+                        type="time"
+                        value={slot.startTime}
+                        onChange={(e) => {
+                          const newSlots = [...programForm.timeSlots];
+                          newSlots[index].startTime = e.target.value;
+                          setProgramForm({ ...programForm, timeSlots: newSlots });
+                        }}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>End Time</label>
+                      <input
+                        type="time"
+                        value={slot.endTime}
+                        onChange={(e) => {
+                          const newSlots = [...programForm.timeSlots];
+                          newSlots[index].endTime = e.target.value;
+                          setProgramForm({ ...programForm, timeSlots: newSlots });
+                        }}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>Activity Type</label>
+                      <select
+                        value={slot.type}
+                        onChange={(e) => {
+                          const newSlots = [...programForm.timeSlots];
+                          newSlots[index].type = e.target.value;
+                          setProgramForm({ ...programForm, timeSlots: newSlots });
+                        }}
+                      >
+                        {slotTypes.map((type) => (
+                          <option key={type.value} value={type.value}>
+                            {type.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {slot.type === 'other' && (
+                      <div className="form-group">
+                        <label>Description</label>
+                        <input
+                          type="text"
+                          value={slot.description}
+                          onChange={(e) => {
+                            const newSlots = [...programForm.timeSlots];
+                            newSlots[index].description = e.target.value;
+                            setProgramForm({
+                              ...programForm,
+                              timeSlots: newSlots
+                            });
+                          }}
+                          placeholder="Describe the activity"
+                        />
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      className="remove-slot-btn"
+                      onClick={() => {
+                        const newSlots = programForm.timeSlots.filter(
+                          (s) => s.id !== slot.id
+                        );
+                        setProgramForm({ ...programForm, timeSlots: newSlots });
+                      }}
+                    >
+                      ❌
+                    </button>
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  className="add-slot-btn"
+                  onClick={() => {
+                    const lastSlot =
+                      programForm.timeSlots[programForm.timeSlots.length - 1];
+                    const newSlot = {
+                      id: nextSlotId,
+                      startTime: lastSlot ? lastSlot.endTime : '09:00',
+                      endTime: '10:00',
+                      type: 'activity',
+                      description: ''
+                    };
+                    setProgramForm({
+                      ...programForm,
+                      timeSlots: [...programForm.timeSlots, newSlot]
+                    });
+                    setNextSlotId(nextSlotId + 1);
+                  }}
+                >
+                  ➕ Add Time Slot
+                </button>
+              </div>
+            </div>
+
+            {/* Participant Selection */}
+            <div className="program-section">
+              <h3>Participant Selection</h3>
+              <div className="participant-selector">
+                <div className="participant-search">
+                  <input type="text" placeholder="Search participants..." />
+                  <span className="search-icon">🔍</span>
+                </div>
+
+                <div className="participant-grid">
+                  {/* Placeholder participant cards WITH billing inputs */}
+                  {['John Smith', 'Sarah Johnson', 'Michael Brown', 'Emma Wilson'].map(
+                    (name, i) => {
+                      const participantId = `participant-${i}`;
+                      return (
+                        <div key={i} className="participant-card">
+                          <div className="participant-label">
+                            <input type="checkbox" id={participantId} />
+
+                            <div className="participant-details">
+                              <div className="participant-name">{name}</div>
+
+                              <div className="supervision">
+                                Supervision: {i % 2 === 0 ? '1.5x' : '1.0x'}
+                              </div>
+
+                              <div className="billing-inputs">
+                                <div className="billing-field">
+                                  <label>Total Hours:</label>
+                                  <input
+                                    type="number"
+                                    step="0.25"
+                                    min="0"
+                                    max="8"
+                                    placeholder="2.0"
+                                    className="billing-hours-input"
+                                    value={billingData[participantId]?.hours || ''}
+                                    onChange={(e) =>
+                                      updateParticipantBilling(participantId, 'hours', e.target.value)
+                                    }
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Multiple billing codes */}
+                              <div className="billing-codes-section">
+                                <label className="codes-section-label">Billing Codes:</label>
+                                {(billingData[participantId]?.codes || [{ code: '', hours: '' }]).map(
+                                  (codeEntry, codeIdx) => (
+                                    <div key={codeIdx} className="code-entry">
+                                      <select
+                                        className="billing-code-select"
+                                        value={codeEntry.code}
+                                        onChange={(e) =>
+                                          updateParticipantBilling(
+                                            participantId,
+                                            'code',
+                                            e.target.value,
+                                            codeIdx
+                                          )
+                                        }
+                                      >
+                                        <option value="">Select code...</option>
+                                        {ndisCodeOptions.map((opt) => (
+                                          <option key={opt.value} value={opt.value}>
+                                            {opt.label}
+                                          </option>
+                                        ))}
+                                      </select>
+                                      <input
+                                        type="number"
+                                        step="0.25"
+                                        min="0"
+                                        max="8"
+                                        placeholder="2.5"
+                                        className="code-hours-input"
+                                        value={codeEntry.hours}
+                                        onChange={(e) =>
+                                          updateParticipantBilling(
+                                            participantId,
+                                            'codeHours',
+                                            e.target.value,
+                                            codeIdx
+                                          )
+                                        }
+                                      />
+                                      <button
+                                        type="button"
+                                        className="add-code-btn"
+                                        onClick={() => addBillingCode(participantId)}
+                                      >
+                                        ➕
+                                      </button>
+                                      {(billingData[participantId]?.codes || []).length > 1 && (
+                                        <button
+                                          type="button"
+                                          className="remove-code-btn"
+                                          onClick={() => removeBillingCode(participantId, codeIdx)}
+                                        >
+                                          ❌
+                                        </button>
+                                      )}
+                                    </div>
+                                  )
+                                )}
+                              </div>
+
+                              <div className="billing-hours">
+                                Total: {billingData[participantId]?.hours || '0'} h &nbsp;|&nbsp;
+                                Codes: {(billingData[participantId]?.codes || [{ code: '' }]).length}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Staff Assignment */}
+            <div className="program-section">
+              <h3>Staff Assignment</h3>
+              <div className="staff-assignment-options">
+                <div className="radio-group">
+                  {['manual', 'auto', 'always_same'].map((mode) => (
+                    <label key={mode} className="radio-label">
+                      <input
+                        type="radio"
+                        name="staffAssignment"
+                        value={mode}
+                        checked={programForm.staffAssignment === mode}
+                        onChange={(e) =>
+                          setProgramForm({
+                            ...programForm,
+                            staffAssignment: e.target.value
+                          })
+                        }
+                      />
+                      <span>
+                        {mode === 'manual'
+                          ? 'Manual assignment each time'
+                          : mode === 'auto'
+                          ? 'Auto-assign based on availability'
+                          : 'Always use the same staff (if available)'}
+                      </span>
+                      <p className="radio-description">
+                        {mode === 'manual'
+                          ? 'Manager assigns staff manually for each occurrence'
+                          : mode === 'auto'
+                          ? 'System automatically assigns available staff'
+                          : 'Consistency for participants with specific needs'}
+                      </p>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div className="program-section">
+              <h3>Additional Notes</h3>
+              <textarea
+                value={programForm.notes}
+                onChange={(e) =>
+                  setProgramForm({ ...programForm, notes: e.target.value })
+                }
+                placeholder="Special requirements, equipment needed, etc."
+                rows="3"
+              />
+            </div>
           </div>
-          
-          <div className="create-modal-footer">
-            <button onClick={() => setShowCreateModal(false)}>Cancel</button>
-            <button 
-              className="create-button"
-              onClick={() => {
-                // Would submit form in real implementation
-                alert('Create functionality would submit the form in a real implementation');
-                setShowCreateModal(false);
-              }}
-            >
-              Create Master Card
-            </button>
+
+          <div className="program-modal-footer">
+            <div className="footer-info">
+              <div className="time-slots-preview">
+                Will create {programForm.timeSlots.length} dashboard cards
+              </div>
+              {programForm.isRepeating && (
+                <div className="repeat-info">
+                  Repeating {programForm.repeatPattern}
+                  {programForm.repeatEnd
+                    ? ` until ${programForm.repeatEnd}`
+                    : ' indefinitely'}
+                </div>
+              )}
+            </div>
+
+            <div className="footer-actions">
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="cancel-btn"
+              >
+                Cancel
+              </button>
+              <button
+                className="create-program-btn"
+                onClick={() => {
+                  console.log('Creating program:', programForm);
+                  alert(
+                    'Revolutionary repeating program system would create the master program!'
+                  );
+                  setShowCreateModal(false);
+                }}
+              >
+                Create Program
+              </button>
+            </div>
           </div>
         </Modal>
       )}
