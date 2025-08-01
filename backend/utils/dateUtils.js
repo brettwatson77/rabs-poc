@@ -27,5 +27,14 @@ const formatDateForApi = (date) => {
 };
 
 module.exports = {
-  formatDateForApi
+  formatDateForApi,
+  /**
+   * Alias of formatDateForApi. The backend often refers to `formatDateForDb`
+   * when inserting or querying dates. Both functions produce the exact same
+   * YYYY-MM-DD string, so we simply expose the existing implementation under
+   * a different name for convenience and backward-compatibility.
+   *
+   * @type {(date: Date) => string}
+   */
+  formatDateForDb: formatDateForApi
 };

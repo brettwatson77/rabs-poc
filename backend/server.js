@@ -28,6 +28,8 @@ const recalculationRouter = require('./routes/recalculation'); // <-- NEW
 const staffAssignmentsRouter = require('./routes/staffAssignments'); // <-- NEW
 // Dynamic resource allocation (auto-staffing, vehicle & route engine) router
 const dynamicResourcesRouter = require('./routes/dynamicResources'); // <-- NEW
+// Loom system (dynamic scheduling & resource allocation) router
+const loomRouter           = require('./routes/loom'); // <-- NEW
 
 // Initialize Express app
 const app = express();
@@ -106,6 +108,8 @@ app.use('/api/v1/staff-assignments', staffAssignmentsRouter); // <-- NEW
 app.use('/api/v1/recalculate',  recalculationRouter);
 // Dynamic resources (rebalance, route optimisation, etc.)
 app.use('/api/v1/dynamic-resources', dynamicResourcesRouter); // <-- NEW
+// Loom endpoints (window management, instances, allocations …)
+app.use('/api/v1/loom',         loomRouter); // <-- NEW
 
 // Set up the server to listen on the specified port
 const PORT = process.env.PORT || 3009;

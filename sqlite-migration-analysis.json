@@ -1,0 +1,361 @@
+{
+  "scannedFiles": 42,
+  "filesWithSQLite": [
+    {
+      "path": "/home/brettwatson/dev/rabs-poc/backend/services/cancellationService.js",
+      "filename": "cancellationService.js",
+      "patterns": {
+        "dbRun": 10,
+        "dbGet": 1,
+        "dbAll": 0,
+        "dbEach": 0,
+        "dbClose": 0,
+        "transactions": {
+          "begin": 1,
+          "commit": 1,
+          "rollback": 1
+        },
+        "questionMarks": 0,
+        "hasWrapperImport": true,
+        "usesWrapper": true,
+        "usesSqliteRequire": false
+      }
+    },
+    {
+      "path": "/home/brettwatson/dev/rabs-poc/backend/services/changelogService.js",
+      "filename": "changelogService.js",
+      "patterns": {
+        "dbRun": 0,
+        "dbGet": 0,
+        "dbAll": 1,
+        "dbEach": 0,
+        "dbClose": 1,
+        "transactions": {
+          "begin": 0,
+          "commit": 0,
+          "rollback": 0
+        },
+        "questionMarks": 0,
+        "hasWrapperImport": true,
+        "usesWrapper": true,
+        "usesSqliteRequire": false
+      }
+    },
+    {
+      "path": "/home/brettwatson/dev/rabs-poc/backend/services/dashboardFinanceService.js",
+      "filename": "dashboardFinanceService.js",
+      "patterns": {
+        "dbRun": 0,
+        "dbGet": 5,
+        "dbAll": 1,
+        "dbEach": 0,
+        "dbClose": 0,
+        "transactions": {
+          "begin": 0,
+          "commit": 0,
+          "rollback": 0
+        },
+        "questionMarks": 0,
+        "hasWrapperImport": true,
+        "usesWrapper": true,
+        "usesSqliteRequire": false
+      }
+    },
+    {
+      "path": "/home/brettwatson/dev/rabs-poc/backend/services/dynamicResourceService.js",
+      "filename": "dynamicResourceService.js",
+      "patterns": {
+        "dbRun": 25,
+        "dbGet": 3,
+        "dbAll": 8,
+        "dbEach": 0,
+        "dbClose": 10,
+        "transactions": {
+          "begin": 5,
+          "commit": 5,
+          "rollback": 5
+        },
+        "questionMarks": 8,
+        "hasWrapperImport": true,
+        "usesWrapper": true,
+        "usesSqliteRequire": false
+      }
+    },
+    {
+      "path": "/home/brettwatson/dev/rabs-poc/backend/services/financeService.js",
+      "filename": "financeService.js",
+      "patterns": {
+        "dbRun": 2,
+        "dbGet": 0,
+        "dbAll": 3,
+        "dbEach": 0,
+        "dbClose": 2,
+        "transactions": {
+          "begin": 0,
+          "commit": 0,
+          "rollback": 0
+        },
+        "questionMarks": 0,
+        "hasWrapperImport": true,
+        "usesWrapper": true,
+        "usesSqliteRequire": false
+      }
+    },
+    {
+      "path": "/home/brettwatson/dev/rabs-poc/backend/services/plannerService.js",
+      "filename": "plannerService.js",
+      "patterns": {
+        "dbRun": 6,
+        "dbGet": 0,
+        "dbAll": 4,
+        "dbEach": 0,
+        "dbClose": 5,
+        "transactions": {
+          "begin": 1,
+          "commit": 1,
+          "rollback": 1
+        },
+        "questionMarks": 0,
+        "hasWrapperImport": true,
+        "usesWrapper": true,
+        "usesSqliteRequire": false
+      }
+    },
+    {
+      "path": "/home/brettwatson/dev/rabs-poc/backend/services/programService.js",
+      "filename": "programService.js",
+      "patterns": {
+        "dbRun": 3,
+        "dbGet": 1,
+        "dbAll": 1,
+        "dbEach": 0,
+        "dbClose": 5,
+        "transactions": {
+          "begin": 0,
+          "commit": 0,
+          "rollback": 0
+        },
+        "questionMarks": 3,
+        "hasWrapperImport": true,
+        "usesWrapper": true,
+        "usesSqliteRequire": false
+      }
+    },
+    {
+      "path": "/home/brettwatson/dev/rabs-poc/backend/services/rateService.js",
+      "filename": "rateService.js",
+      "patterns": {
+        "dbRun": 3,
+        "dbGet": 1,
+        "dbAll": 1,
+        "dbEach": 0,
+        "dbClose": 5,
+        "transactions": {
+          "begin": 0,
+          "commit": 0,
+          "rollback": 0
+        },
+        "questionMarks": 3,
+        "hasWrapperImport": true,
+        "usesWrapper": true,
+        "usesSqliteRequire": false
+      }
+    },
+    {
+      "path": "/home/brettwatson/dev/rabs-poc/backend/services/recalculationService.js",
+      "filename": "recalculationService.js",
+      "patterns": {
+        "dbRun": 6,
+        "dbGet": 0,
+        "dbAll": 1,
+        "dbEach": 0,
+        "dbClose": 0,
+        "transactions": {
+          "begin": 1,
+          "commit": 2,
+          "rollback": 1
+        },
+        "questionMarks": 0,
+        "hasWrapperImport": true,
+        "usesWrapper": true,
+        "usesSqliteRequire": false
+      }
+    },
+    {
+      "path": "/home/brettwatson/dev/rabs-poc/backend/services/rosterService.js",
+      "filename": "rosterService.js",
+      "patterns": {
+        "dbRun": 0,
+        "dbGet": 0,
+        "dbAll": 6,
+        "dbEach": 0,
+        "dbClose": 1,
+        "transactions": {
+          "begin": 0,
+          "commit": 0,
+          "rollback": 0
+        },
+        "questionMarks": 0,
+        "hasWrapperImport": true,
+        "usesWrapper": true,
+        "usesSqliteRequire": false
+      }
+    },
+    {
+      "path": "/home/brettwatson/dev/rabs-poc/backend/services/routeOptimizationService.js",
+      "filename": "routeOptimizationService.js",
+      "patterns": {
+        "dbRun": 6,
+        "dbGet": 1,
+        "dbAll": 1,
+        "dbEach": 0,
+        "dbClose": 4,
+        "transactions": {
+          "begin": 1,
+          "commit": 1,
+          "rollback": 1
+        },
+        "questionMarks": 1,
+        "hasWrapperImport": true,
+        "usesWrapper": true,
+        "usesSqliteRequire": false
+      }
+    },
+    {
+      "path": "/home/brettwatson/dev/rabs-poc/backend/services/scheduleService.js",
+      "filename": "scheduleService.js",
+      "patterns": {
+        "dbRun": 0,
+        "dbGet": 0,
+        "dbAll": 6,
+        "dbEach": 0,
+        "dbClose": 1,
+        "transactions": {
+          "begin": 0,
+          "commit": 0,
+          "rollback": 0
+        },
+        "questionMarks": 0,
+        "hasWrapperImport": true,
+        "usesWrapper": true,
+        "usesSqliteRequire": false
+      }
+    },
+    {
+      "path": "/home/brettwatson/dev/rabs-poc/backend/services/timesheetService.js",
+      "filename": "timesheetService.js",
+      "patterns": {
+        "dbRun": 0,
+        "dbGet": 1,
+        "dbAll": 1,
+        "dbEach": 0,
+        "dbClose": 0,
+        "transactions": {
+          "begin": 0,
+          "commit": 0,
+          "rollback": 0
+        },
+        "questionMarks": 1,
+        "hasWrapperImport": true,
+        "usesWrapper": true,
+        "usesSqliteRequire": false
+      }
+    },
+    {
+      "path": "/home/brettwatson/dev/rabs-poc/backend/services/vehicleService.js",
+      "filename": "vehicleService.js",
+      "patterns": {
+        "dbRun": 0,
+        "dbGet": 0,
+        "dbAll": 1,
+        "dbEach": 0,
+        "dbClose": 1,
+        "transactions": {
+          "begin": 0,
+          "commit": 0,
+          "rollback": 0
+        },
+        "questionMarks": 0,
+        "hasWrapperImport": true,
+        "usesWrapper": true,
+        "usesSqliteRequire": false
+      }
+    },
+    {
+      "path": "/home/brettwatson/dev/rabs-poc/backend/services/venueService.js",
+      "filename": "venueService.js",
+      "patterns": {
+        "dbRun": 0,
+        "dbGet": 0,
+        "dbAll": 1,
+        "dbEach": 0,
+        "dbClose": 1,
+        "transactions": {
+          "begin": 0,
+          "commit": 0,
+          "rollback": 0
+        },
+        "questionMarks": 0,
+        "hasWrapperImport": true,
+        "usesWrapper": true,
+        "usesSqliteRequire": false
+      }
+    },
+    {
+      "path": "/home/brettwatson/dev/rabs-poc/backend/controllers/dynamicResourceController.js",
+      "filename": "dynamicResourceController.js",
+      "patterns": {
+        "dbRun": 5,
+        "dbGet": 3,
+        "dbAll": 7,
+        "dbEach": 0,
+        "dbClose": 5,
+        "transactions": {
+          "begin": 1,
+          "commit": 1,
+          "rollback": 1
+        },
+        "questionMarks": 1,
+        "hasWrapperImport": true,
+        "usesWrapper": true,
+        "usesSqliteRequire": false
+      }
+    },
+    {
+      "path": "/home/brettwatson/dev/rabs-poc/backend/controllers/staffAssignmentController.js",
+      "filename": "staffAssignmentController.js",
+      "patterns": {
+        "dbRun": 14,
+        "dbGet": 6,
+        "dbAll": 4,
+        "dbEach": 0,
+        "dbClose": 6,
+        "transactions": {
+          "begin": 2,
+          "commit": 2,
+          "rollback": 2
+        },
+        "questionMarks": 3,
+        "hasWrapperImport": true,
+        "usesWrapper": true,
+        "usesSqliteRequire": false
+      }
+    }
+  ],
+  "patternCounts": {
+    "dbRun": 80,
+    "dbGet": 22,
+    "dbAll": 47,
+    "dbEach": 0,
+    "dbClose": 47,
+    "transactions": {
+      "begin": 12,
+      "commit": 13,
+      "rollback": 12
+    },
+    "questionMarks": 20
+  },
+  "seedJsUsesSQLite": true,
+  "packageJsonHasSQLite": true,
+  "errors": []
+}

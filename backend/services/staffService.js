@@ -1,46 +1,13 @@
 // backend/services/staffService.js
-const { Pool } = require('pg');
-const { getDbConnection } = require('../database');
-
-// Direct PostgreSQL pool (used when wrapper fails)
-const pool = new Pool({
-  user: process.env.POSTGRES_USER || 'postgres',
-  password: process.env.POSTGRES_PASSWORD || 'postgres',
-  host: process.env.POSTGRES_HOST || 'localhost',
-  port: parseInt(process.env.POSTGRES_PORT || '5432', 10),
-  database: process.env.POSTGRES_DB || 'rabspocdb'
-});
+const { pool } = require('../database');
 
 /**
  * Get all staff members from the database
  * @returns {Promise<Array>} Array of staff objects
  */
 const getAllStaff = async () => {
-  try {
-    // Attempt via wrapper first (2 s timeout guard)
-    const wrapperPromise = (async () => {
-      let db;
-      try {
-        db = await getDbConnection();
-        return await new Promise((resolve, reject) => {
-          db.all('SELECT * FROM staff', [], (err, result) => {
-            if (err) return reject(err);
-            resolve(result);
-          });
-        });
-      } finally {
-        if (db) db.close();
-      }
-    })();
-    const timeout = new Promise((_, rej) =>
-      setTimeout(() => rej(new Error('wrapper timeout')), 2000)
-    );
-    return await Promise.race([wrapperPromise, timeout]);
-  } catch (err) {
-    // Fallback to direct pg
-    const res = await pool.query('SELECT * FROM staff');
-    return res.rows;
-  }
+  const res = await pool.query('SELECT * FROM staff');
+  return res.rows;
 };
 
 /**
@@ -109,29 +76,43 @@ const updateStaff = async (id, staffData) => {
     return null;
   }
 
-  // Build the update query dynamically based on provided fields
-  const updates = [];
+  // Build dynamic update lists with PostgreSQL-style placeholders
+  const fieldsAllowed = [
+    'first_name',
+    'last_name',
+    'address',
+    'suburb',
+    'state',
+    'postcode',
+    'contact_phone',
+    'contact_email',
+    'notes'
+  ];
+
+  const setFragments = [];
   const values = [];
+  let paramIdx = 1;
 
-  Object.keys(staffData).forEach(key => {
-    // Only update valid fields
-    if (['first_name', 'last_name', 'address', 'suburb', 'state', 
-         'postcode', 'contact_phone', 'contact_email', 'notes'].includes(key)) {
-      updates.push(`${key} = ?`);
-      values.push(staffData[key]);
+  for (const [key, value] of Object.entries(staffData)) {
+    if (fieldsAllowed.includes(key)) {
+      setFragments.push(`${key} = $${paramIdx++}`);
+      values.push(value);
     }
-  });
-
-  if (updates.length === 0) {
-    return existingStaff; // Nothing to update
   }
 
-  // Add updated_at timestamp
-  updates.push('updated_at = CURRENT_TIMESTAMP');
+  if (setFragments.length === 0) return existingStaff; // nothing to update
+
+  // updated_at timestamp
+  setFragments.push(`updated_at = CURRENT_TIMESTAMP`);
+
+  // add staff id for WHERE clause
   values.push(id);
 
-  const setClause = updates.join(', ');
-  const query = `UPDATE staff SET ${setClause} WHERE id = $${values.length + 1} RETURNING *`;
+  const query = `
+    UPDATE staff
+    SET ${setFragments.join(', ')}
+    WHERE id = $${paramIdx}
+    RETURNING *`;
 
   try {
     const result = await pool.query(query, values);

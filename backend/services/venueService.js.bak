@@ -1,44 +1,74 @@
 // backend/services/venueService.js
+const { Pool } = require('pg');
 const { getDbConnection } = require('../database');
+
+// Create a direct PostgreSQL pool for fallback
+const pool = new Pool({
+  user: process.env.POSTGRES_USER || 'postgres',
+  password: process.env.POSTGRES_PASSWORD || 'postgres',
+  host: process.env.POSTGRES_HOST || 'localhost',
+  port: parseInt(process.env.POSTGRES_PORT || '5432', 10),
+  database: process.env.POSTGRES_DB || 'rabspocdb'
+});
 
 /**
  * Get all venues from the database
  * @returns {Promise<Array>} Array of venue objects
  */
 const getAllVenues = async () => {
-  let db;
+  // Try the wrapper first with timeout protection
   try {
-    db = await getDbConnection();
-    const rows = await new Promise((resolve, reject) => {
-      db.all('SELECT * FROM venues', [], (err, result) => {
-        if (err) return reject(err);
-        resolve(result);
-      });
+    console.log('Attempting to get venues using database wrapper...');
+    
+    // Create a timeout promise
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Database wrapper timed out')), 2000);
     });
-    return rows;
-  } finally {
-    if (db) db.close();
+    
+    // Create the wrapper query promise
+    const wrapperPromise = (async () => {
+      let db;
+      try {
+        db = await getDbConnection();
+        return await new Promise((resolve, reject) => {
+          db.all('SELECT * FROM venues', [], (err, result) => {
+            if (err) return reject(err);
+            resolve(result);
+          });
+        });
+      } finally {
+        if (db) db.close();
+      }
+    })();
+    
+    // Race the promises
+    return await Promise.race([wrapperPromise, timeoutPromise]);
+  } catch (error) {
+    console.error('Wrapper failed, falling back to direct PostgreSQL:', error.message);
+    
+    // Fall back to direct PostgreSQL
+    try {
+      const result = await pool.query('SELECT * FROM venues');
+      return result.rows;
+    } catch (pgError) {
+      console.error('Direct PostgreSQL also failed:', pgError.message);
+      throw pgError;
+    }
   }
 };
 
 /**
  * Get a single venue by ID
- * @param {number} id - Venue ID
+ * @param {string} id - Venue ID
  * @returns {Promise<Object>} Venue object
  */
 const getVenueById = async (id) => {
-  let db;
   try {
-    db = await getDbConnection();
-    const row = await new Promise((resolve, reject) => {
-      db.get('SELECT * FROM venues WHERE id = ?', [id], (err, result) => {
-        if (err) return reject(err);
-        resolve(result);
-      });
-    });
-    return row;
-  } finally {
-    if (db) db.close();
+    const result = await pool.query('SELECT * FROM venues WHERE id = $1', [id]);
+    return result.rows[0] || null;
+  } catch (error) {
+    console.error(`Error fetching venue with ID ${id}:`, error);
+    throw error;
   }
 };
 
@@ -48,110 +78,53 @@ const getVenueById = async (id) => {
  * @returns {Promise<Object>} Created venue object
  */
 const createVenue = async (venueData) => {
-  // Validate required fields
-  if (!venueData.name || !venueData.address || !venueData.suburb || !venueData.postcode) {
-    throw new Error('Missing required venue data: name, address, suburb, and postcode are required');
-  }
-
-  const {
-    name,
-    address,
-    suburb,
-    state = 'NSW',
-    postcode,
-    is_main_centre = 0,
-    notes = null,
-    latitude = null,
-    longitude = null
-  } = venueData;
-
-  let db;
+  const { name, address, capacity, description, latitude, longitude } = venueData;
+  
   try {
-    db = await getDbConnection();
-    const lastID = await new Promise((resolve, reject) => {
-      db.run(
-        `INSERT INTO venues 
-         (name, address, suburb, state, postcode, is_main_centre, notes, latitude, longitude)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [name, address, suburb, state, postcode, is_main_centre, notes, latitude, longitude],
-        function (err) {
-          if (err) return reject(err);
-          resolve(this.lastID);
-        }
-      );
-    });
-    // Fetch and return the newly created venue
-    return await getVenueById(lastID);
-  } finally {
-    if (db) db.close();
+    const result = await pool.query(
+      'INSERT INTO venues (name, address, capacity, description, latitude, longitude) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [name, address, capacity, description, latitude, longitude]
+    );
+    return result.rows[0];
+  } catch (error) {
+    console.error('Error creating venue:', error);
+    throw error;
   }
 };
 
 /**
- * Update an existing venue
- * @param {number} id - Venue ID
+ * Update a venue
+ * @param {string} id - Venue ID
  * @param {Object} venueData - Updated venue data
  * @returns {Promise<Object>} Updated venue object
  */
 const updateVenue = async (id, venueData) => {
-  // Ensure venue exists
-  const existingVenue = await getVenueById(id);
-  if (!existingVenue) return null;
-
-  // Build update query
-  const updates = [];
-  const values = [];
-
-  Object.keys(venueData).forEach(key => {
-    if (['name', 'address', 'suburb', 'state', 'postcode', 'is_main_centre', 'notes', 'latitude', 'longitude'].includes(key)) {
-      updates.push(`${key} = ?`);
-      values.push(venueData[key]);
-    }
-  });
-
-  if (updates.length === 0) return existingVenue;
-
-  updates.push('updated_at = CURRENT_TIMESTAMP');
-  values.push(id);
-
-  const query = `UPDATE venues SET ${updates.join(', ')} WHERE id = ?`;
-
-  let db;
+  const { name, address, capacity, description, latitude, longitude } = venueData;
+  
   try {
-    db = await getDbConnection();
-    const changes = await new Promise((resolve, reject) => {
-      db.run(query, values, function (err) {
-        if (err) return reject(err);
-        resolve(this.changes);
-      });
-    });
-
-    if (changes === 0) return null;
-
-    return await getVenueById(id);
-  } finally {
-    if (db) db.close();
+    const result = await pool.query(
+      'UPDATE venues SET name = $1, address = $2, capacity = $3, description = $4, latitude = $5, longitude = $6 WHERE id = $7 RETURNING *',
+      [name, address, capacity, description, latitude, longitude, id]
+    );
+    return result.rows[0];
+  } catch (error) {
+    console.error(`Error updating venue with ID ${id}:`, error);
+    throw error;
   }
 };
 
 /**
  * Delete a venue
- * @param {number} id - Venue ID
- * @returns {Promise<boolean>} True if deleted, false if not found
+ * @param {string} id - Venue ID
+ * @returns {Promise<boolean>} True if deleted successfully
  */
 const deleteVenue = async (id) => {
-  let db;
   try {
-    db = await getDbConnection();
-    const deleted = await new Promise((resolve, reject) => {
-      db.run('DELETE FROM venues WHERE id = ?', [id], function (err) {
-        if (err) return reject(err);
-        resolve(this.changes > 0);
-      });
-    });
-    return deleted;
-  } finally {
-    if (db) db.close();
+    const result = await pool.query('DELETE FROM venues WHERE id = $1 RETURNING id', [id]);
+    return result.rowCount > 0;
+  } catch (error) {
+    console.error(`Error deleting venue with ID ${id}:`, error);
+    throw error;
   }
 };
 

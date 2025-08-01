@@ -19,6 +19,7 @@ import Roster from './pages/Roster';
 import Vehicles from './pages/Vehicles';
 import Venues from './pages/Venues';
 import Dashboard from './pages/Dashboard';
+import LoomSettings from './pages/LoomSettings';
 
 // UI
 import Navbar from './components/Navbar';
@@ -49,6 +50,8 @@ function App() {
             <Route path="/vehicles" element={<Vehicles />} />
             <Route path="/venues" element={<Venues />} />
             <Route path="/finance" element={<Finance />} />
+            {/* Loom dynamic scheduling engine settings */}
+            <Route path="/loom-settings" element={<LoomSettings />} />
           </Routes>
         </main>
       </Router>

@@ -67,6 +67,10 @@ const Navbar = () => {
         <li>
           <Link to="/finance" style={linkStyles}>Finance</Link>
         </li>
+        {/* Loom (dynamic scheduling engine) */}
+        <li>
+          <Link to="/loom-settings" style={linkStyles}>Loom Settings</Link>
+        </li>
       </ul>
     </nav>
   );

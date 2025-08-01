@@ -1,0 +1,366 @@
+/* frontend/src/styles/LoomSettings.css */
+
+/* Main container layout */
+.loom-settings-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Settings panel */
+.settings-panel {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
+  transition: box-shadow 0.3s ease;
+}
+
+.settings-panel:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.settings-panel h2 {
+  color: #2c3e50;
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid #eaeaea;
+  padding-bottom: 0.75rem;
+}
+
+/* Window size controls */
+.window-size-control {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.window-size-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.window-size-selector label {
+  font-weight: 500;
+  color: #555;
+}
+
+.window-size-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.window-size-button {
+  background-color: #f5f7fa;
+  border: 2px solid #e1e5eb;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #5a6474;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.window-size-button:hover {
+  background-color: #edf2f7;
+  border-color: #cbd5e0;
+}
+
+.window-size-button.selected {
+  background-color: #3498db;
+  border-color: #2980b9;
+  color: white;
+}
+
+/* Action buttons */
+.action-buttons {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.primary-button, .secondary-button {
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  font-size: 0.95rem;
+}
+
+.primary-button {
+  background-color: #3498db;
+  color: white;
+}
+
+.primary-button:hover:not(:disabled) {
+  background-color: #2980b9;
+  transform: translateY(-1px);
+}
+
+.secondary-button {
+  background-color: #f5f7fa;
+  border: 1px solid #e1e5eb;
+  color: #5a6474;
+}
+
+.secondary-button:hover:not(:disabled) {
+  background-color: #edf2f7;
+  border-color: #cbd5e0;
+  transform: translateY(-1px);
+}
+
+.primary-button:disabled, .secondary-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Instances panel */
+.instances-panel {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
+  transition: box-shadow 0.3s ease;
+}
+
+.instances-panel:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.instances-panel h2 {
+  color: #2c3e50;
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid #eaeaea;
+  padding-bottom: 0.75rem;
+}
+
+.instances-panel p {
+  color: #666;
+  margin-bottom: 1.5rem;
+}
+
+/* Loading state */
+.loading-spinner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100px;
+  color: #666;
+  font-style: italic;
+}
+
+/* No instances message */
+.no-instances {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 2rem;
+  text-align: center;
+  color: #666;
+  background-color: #f9fafb;
+  border-radius: 6px;
+  border: 1px dashed #ddd;
+}
+
+/* Instances list */
+.instances-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #eaeaea;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.instance-header {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr 1fr 0.8fr 0.8fr 0.8fr 1fr 1.2fr;
+  background-color: #f5f7fa;
+  font-weight: 600;
+  color: #2c3e50;
+  padding: 0.75rem 1rem;
+  border-bottom: 2px solid #eaeaea;
+}
+
+.instance-row {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr 1fr 0.8fr 0.8fr 0.8fr 1fr 1.2fr;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #eaeaea;
+  align-items: center;
+  transition: background-color 0.2s ease;
+}
+
+.instance-row:hover {
+  background-color: #f9fafb;
+}
+
+.instance-row:last-child {
+  border-bottom: none;
+}
+
+/* Status colors */
+.status-pending {
+  background-color: #f8fafc;
+}
+
+.status-normal {
+  background-color: #f0f9ff;
+}
+
+.status-finalised {
+  background-color: #f0fff4;
+}
+
+.status-warning {
+  background-color: #fffbeb;
+}
+
+.status-danger {
+  background-color: #fef2f2;
+}
+
+/* Action buttons in instances list */
+.instance-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.action-button {
+  padding: 0.4rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.action-button.view {
+  background-color: #e2e8f0;
+  color: #4a5568;
+}
+
+.action-button.view:hover {
+  background-color: #cbd5e0;
+}
+
+.action-button.reoptimize {
+  background-color: #ebf5ff;
+  color: #3182ce;
+}
+
+.action-button.reoptimize:hover {
+  background-color: #bee3f8;
+}
+
+/* Message styles */
+.message {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-radius: 6px;
+  margin-bottom: 1.5rem;
+  animation: slideDown 0.3s ease-out;
+}
+
+.message.success {
+  background-color: #f0fff4;
+  border-left: 4px solid #48bb78;
+  color: #2f855a;
+}
+
+.message.error {
+  background-color: #fff5f5;
+  border-left: 4px solid #f56565;
+  color: #c53030;
+}
+
+.message.info {
+  background-color: #ebf8ff;
+  border-left: 4px solid #4299e1;
+  color: #2b6cb0;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.close-button:hover {
+  opacity: 1;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Responsive design */
+@media (max-width: 1024px) {
+  .instance-header, .instance-row {
+    grid-template-columns: 1fr 1.5fr 1fr 0.8fr 0.8fr 1fr 1.2fr;
+  }
+  
+  .instance-vehicles {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .instance-header, .instance-row {
+    grid-template-columns: 1fr 1.5fr 0.8fr 1fr 1.2fr;
+    font-size: 0.9rem;
+  }
+  
+  .instance-time, .instance-vehicles, .instance-staff {
+    display: none;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .window-size-buttons {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .instance-header, .instance-row {
+    grid-template-columns: 1fr 1.5fr 1.2fr;
+    padding: 0.5rem;
+  }
+  
+  .instance-participants, .instance-status {
+    display: none;
+  }
+  
+  .window-size-button {
+    flex: 1;
+    text-align: center;
+    padding: 0.5rem 0.25rem;
+  }
+}

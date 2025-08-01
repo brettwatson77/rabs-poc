@@ -12,16 +12,16 @@ import '../styles/ParticipantPlanner.css';
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
-// Support needs tags with colors
+// Support needs tags with colors - updated to match database field names
 const SUPPORT_TAGS = {
-  'Wheelchair': { color: '#e74c3c', icon: '♿' },
-  'Visual': { color: '#3498db', icon: '👁️' },
-  'Hearing': { color: '#9b59b6', icon: '👂' },
-  'Cognitive': { color: '#f1c40f', icon: '🧠' },
-  'Behavioral': { color: '#e67e22', icon: '🔔' },
-  'Medical': { color: '#2ecc71', icon: '💊' },
-  'Dietary': { color: '#1abc9c', icon: '🍽️' },
-  'Communication': { color: '#34495e', icon: '💬' }
+  'Wheelchair': { color: '#e74c3c', icon: '♿', field: 'has_wheelchair_access' },
+  'Visual': { color: '#3498db', icon: '👁️', field: 'has_visual_impairment' },
+  'Hearing': { color: '#9b59b6', icon: '👂', field: 'has_hearing_impairment' },
+  'Cognitive': { color: '#f1c40f', icon: '🧠', field: 'has_cognitive_support' },
+  'Behavioral': { color: '#e67e22', icon: '🔔', field: 'has_behavioral_support' },
+  'Medical': { color: '#2ecc71', icon: '💊', field: 'has_medical_requirements' },
+  'Dietary': { color: '#1abc9c', icon: '🍽️', field: 'has_dietary_requirements' },
+  'Communication': { color: '#34495e', icon: '💬', field: 'has_communication_needs' }
 };
 
 const ParticipantPlanner = () => {
@@ -44,14 +44,24 @@ const ParticipantPlanner = () => {
   const [showContactModal, setShowContactModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   
-  // Form state
+  // Form state - updated to include boolean flags
   const [supervisionValue, setSupervisionValue] = useState(1.0);
   const [supportNeeds, setSupportNeeds] = useState({
+    // Text fields for detailed information
     mobility: '',
     dietary: '',
     medical: '',
-    behavior: false,
-    notes: ''
+    notes: '',
+    
+    // Boolean flags for filtering
+    has_wheelchair_access: false,
+    has_dietary_requirements: false,
+    has_medical_requirements: false,
+    has_behavioral_support: false,
+    has_visual_impairment: false,
+    has_hearing_impairment: false,
+    has_cognitive_support: false,
+    has_communication_needs: false
   });
   const [pendingEnrollments, setPendingEnrollments] = useState({});
   const [effectiveDate, setEffectiveDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -155,13 +165,23 @@ const ParticipantPlanner = () => {
         setSupervisionValue(1.0);
       }
       
-      // Set support needs from participant data
+      // Set support needs from participant data - updated to include boolean flags
       setSupportNeeds({
+        // Text fields
         mobility: response.data.mobility_requirements || '',
         dietary: response.data.dietary_requirements || '',
         medical: response.data.medical_requirements || '',
-        behavior: response.data.behavior_support_plan || false,
-        notes: response.data.notes || ''
+        notes: response.data.notes || '',
+        
+        // Boolean flags
+        has_wheelchair_access: response.data.has_wheelchair_access || false,
+        has_dietary_requirements: response.data.has_dietary_requirements || false,
+        has_medical_requirements: response.data.has_medical_requirements || false,
+        has_behavioral_support: response.data.has_behavioral_support || false,
+        has_visual_impairment: response.data.has_visual_impairment || false,
+        has_hearing_impairment: response.data.has_hearing_impairment || false,
+        has_cognitive_support: response.data.has_cognitive_support || false,
+        has_communication_needs: response.data.has_communication_needs || false
       });
     } catch (err) {
       console.error('Error fetching participant details:', err);
@@ -322,17 +342,27 @@ const ParticipantPlanner = () => {
     }
   };
 
-  // Update support needs
+  // Update support needs - updated to include boolean flags
   const updateSupportNeeds = async () => {
     if (!selectedParticipant) return;
     
     try {
       await axios.patch(`/api/v1/participants/${selectedParticipant.id}`, {
+        // Text fields for detailed information
         mobility_requirements: supportNeeds.mobility,
         dietary_requirements: supportNeeds.dietary,
         medical_requirements: supportNeeds.medical,
-        behavior_support_plan: supportNeeds.behavior,
-        notes: supportNeeds.notes
+        notes: supportNeeds.notes,
+        
+        // Boolean flags for filtering
+        has_wheelchair_access: supportNeeds.has_wheelchair_access,
+        has_dietary_requirements: supportNeeds.has_dietary_requirements,
+        has_medical_requirements: supportNeeds.has_medical_requirements,
+        has_behavioral_support: supportNeeds.has_behavioral_support,
+        has_visual_impairment: supportNeeds.has_visual_impairment,
+        has_hearing_impairment: supportNeeds.has_hearing_impairment,
+        has_cognitive_support: supportNeeds.has_cognitive_support,
+        has_communication_needs: supportNeeds.has_communication_needs
       });
       
       setSuccessMessage('Support needs updated successfully');
@@ -341,6 +371,9 @@ const ParticipantPlanner = () => {
       setTimeout(() => {
         setSuccessMessage('');
       }, 3000);
+      
+      // Refresh participant list to update filters
+      fetchParticipants();
     } catch (err) {
       console.error('Error updating support needs:', err);
       setError(prev => ({ 
@@ -407,7 +440,7 @@ const ParticipantPlanner = () => {
     }
   };
 
-  // Filter participants based on search query and tags
+  // Filter participants based on search query and tags - updated to use boolean flags
   // Ensure we always operate on an array even if `participants` is undefined or not yet loaded
   const filteredParticipants = (participants || []).filter(participant => {
     const fullName = `${participant.first_name} ${participant.last_name}`.toLowerCase();
@@ -419,18 +452,12 @@ const ParticipantPlanner = () => {
     // Check if participant has any of the selected tags
     // Ensure safety if `filterTags` is ever undefined or not an array
     const hasTag = (filterTags || []).some(tag => {
-      switch(tag) {
-        case 'Wheelchair':
-          return participant.mobility_requirements?.toLowerCase().includes('wheelchair');
-        case 'Behavioral':
-          return participant.behavior_support_plan;
-        case 'Dietary':
-          return participant.dietary_requirements && participant.dietary_requirements.length > 0;
-        case 'Medical':
-          return participant.medical_requirements && participant.medical_requirements.length > 0;
-        default:
-          return false;
-      }
+      // Get the database field name from the SUPPORT_TAGS object
+      const field = SUPPORT_TAGS[tag]?.field;
+      if (!field) return false;
+      
+      // Check the boolean flag directly
+      return participant[field] === true;
     });
     
     return matchesSearch && hasTag;
@@ -456,29 +483,38 @@ const ParticipantPlanner = () => {
   // Render participant selection section
   const renderParticipantSelection = () => {
     return (
-      <div className="participant-selection">
-        <div className="filter-tags">
-          {Object.keys(SUPPORT_TAGS).map(tag => (
-            <div 
-              key={tag}
-              className={`filter-tag ${filterTags.includes(tag) ? 'active' : ''}`}
-              style={{ backgroundColor: filterTags.includes(tag) ? SUPPORT_TAGS[tag].color : 'transparent' }}
-              onClick={() => {
-                if (filterTags.includes(tag)) {
-                  setFilterTags(filterTags.filter(t => t !== tag));
-                } else {
-                  setFilterTags([...filterTags, tag]);
-                }
-              }}
-            >
-              <span className="tag-icon">{SUPPORT_TAGS[tag].icon}</span>
-              <span className="tag-name">{tag}</span>
-            </div>
-          ))}
+      <div className="selection-container">
+        {/* ------------ Left Filters Panel ------------ */}
+        <div className="filters-panel">
+          <div className="filter-tags">
+            {Object.keys(SUPPORT_TAGS).map(tag => (
+              <div
+                key={tag}
+                className={`filter-tag ${filterTags.includes(tag) ? 'active' : ''}`}
+                style={{
+                  backgroundColor: filterTags.includes(tag)
+                    ? SUPPORT_TAGS[tag].color
+                    : 'transparent'
+                }}
+                onClick={() => {
+                  if (filterTags.includes(tag)) {
+                    setFilterTags(filterTags.filter(t => t !== tag));
+                  } else {
+                    setFilterTags([...filterTags, tag]);
+                  }
+                }}
+              >
+                <span className="tag-icon">{SUPPORT_TAGS[tag].icon}</span>
+                <span className="tag-name">{tag}</span>
+              </div>
+            ))}
+          </div>
         </div>
-        
-        {/* ==== Compact Tiles Grid for up to 200 participants ==== */}
-        <div className="participants-grid-compact">
+
+        {/* ------------ Right Participants Panel ------------ */}
+        <div className="participants-panel">
+          {/* ==== Compact Tiles Grid for up to 200 participants ==== */}
+          <div className="participants-grid-compact">
           {loading.participants ? (
             <div className="loading-container">
               <div className="spinner"></div>
@@ -509,37 +545,46 @@ const ParticipantPlanner = () => {
                   </span>
                 </div>
 
-                {/* Compact indicators */}
+                {/* Compact indicators - updated to use boolean flags */}
                 <div className="tile-indicators">
-                  {participant.mobility_requirements
-                    ?.toLowerCase()
-                    .includes('wheelchair') && (
-                      <span
-                        className="indicator wheelchair"
-                        title="Wheelchair"
-                      >
-                        ♿
-                      </span>
-                    )}
-                  {participant.behavior_support_plan && (
-                    <span
-                      className="indicator behavioral"
-                      title="Behavioral Support"
-                    >
+                  {participant.has_wheelchair_access && (
+                    <span className="indicator wheelchair" title="Wheelchair">
+                      ♿
+                    </span>
+                  )}
+                  {participant.has_behavioral_support && (
+                    <span className="indicator behavioral" title="Behavioral Support">
                       🔔
                     </span>
                   )}
-                  {participant.dietary_requirements && (
-                    <span
-                      className="indicator dietary"
-                      title="Dietary Requirements"
-                    >
+                  {participant.has_dietary_requirements && (
+                    <span className="indicator dietary" title="Dietary Requirements">
                       🍽️
                     </span>
                   )}
-                  {participant.medical_requirements && (
+                  {participant.has_medical_requirements && (
                     <span className="indicator medical" title="Medical">
                       💊
+                    </span>
+                  )}
+                  {participant.has_visual_impairment && (
+                    <span className="indicator visual" title="Visual Impairment">
+                      👁️
+                    </span>
+                  )}
+                  {participant.has_hearing_impairment && (
+                    <span className="indicator hearing" title="Hearing Impairment">
+                      👂
+                    </span>
+                  )}
+                  {participant.has_cognitive_support && (
+                    <span className="indicator cognitive" title="Cognitive Support">
+                      🧠
+                    </span>
+                  )}
+                  {participant.has_communication_needs && (
+                    <span className="indicator communication" title="Communication Needs">
+                      💬
                     </span>
                   )}
                 </div>
@@ -552,12 +597,13 @@ const ParticipantPlanner = () => {
               <p>No participants found matching your search criteria.</p>
             </div>
           )}
+          </div>
         </div>
       </div>
     );
   };
 
-  // Render participant profile tab
+  // Render participant profile tab - updated to include boolean flag checkboxes
   const renderProfileTab = () => {
     if (!selectedParticipant || loading.details) {
       return (
@@ -622,6 +668,94 @@ const ParticipantPlanner = () => {
         <div className="profile-card support-needs-card">
           <h3>Support Needs</h3>
           <div className="support-needs-form">
+            {/* Boolean flag checkboxes */}
+            <div className="support-flags-section">
+              <h4>Support Flags</h4>
+              <div className="support-flags-grid">
+                <div className="form-group checkbox-group">
+                  <input 
+                    type="checkbox" 
+                    id="wheelchair-access" 
+                    checked={supportNeeds.has_wheelchair_access} 
+                    onChange={(e) => setSupportNeeds({...supportNeeds, has_wheelchair_access: e.target.checked})}
+                  />
+                  <label htmlFor="wheelchair-access">Wheelchair Access {SUPPORT_TAGS['Wheelchair'].icon}</label>
+                </div>
+                
+                <div className="form-group checkbox-group">
+                  <input 
+                    type="checkbox" 
+                    id="dietary-requirements" 
+                    checked={supportNeeds.has_dietary_requirements} 
+                    onChange={(e) => setSupportNeeds({...supportNeeds, has_dietary_requirements: e.target.checked})}
+                  />
+                  <label htmlFor="dietary-requirements">Dietary Requirements {SUPPORT_TAGS['Dietary'].icon}</label>
+                </div>
+                
+                <div className="form-group checkbox-group">
+                  <input 
+                    type="checkbox" 
+                    id="medical-requirements" 
+                    checked={supportNeeds.has_medical_requirements} 
+                    onChange={(e) => setSupportNeeds({...supportNeeds, has_medical_requirements: e.target.checked})}
+                  />
+                  <label htmlFor="medical-requirements">Medical Requirements {SUPPORT_TAGS['Medical'].icon}</label>
+                </div>
+                
+                <div className="form-group checkbox-group">
+                  <input 
+                    type="checkbox" 
+                    id="behavior-support" 
+                    checked={supportNeeds.has_behavioral_support} 
+                    onChange={(e) => setSupportNeeds({...supportNeeds, has_behavioral_support: e.target.checked})}
+                  />
+                  <label htmlFor="behavior-support">Behavioral Support {SUPPORT_TAGS['Behavioral'].icon}</label>
+                </div>
+                
+                <div className="form-group checkbox-group">
+                  <input 
+                    type="checkbox" 
+                    id="visual-impairment" 
+                    checked={supportNeeds.has_visual_impairment} 
+                    onChange={(e) => setSupportNeeds({...supportNeeds, has_visual_impairment: e.target.checked})}
+                  />
+                  <label htmlFor="visual-impairment">Visual Impairment {SUPPORT_TAGS['Visual'].icon}</label>
+                </div>
+                
+                <div className="form-group checkbox-group">
+                  <input 
+                    type="checkbox" 
+                    id="hearing-impairment" 
+                    checked={supportNeeds.has_hearing_impairment} 
+                    onChange={(e) => setSupportNeeds({...supportNeeds, has_hearing_impairment: e.target.checked})}
+                  />
+                  <label htmlFor="hearing-impairment">Hearing Impairment {SUPPORT_TAGS['Hearing'].icon}</label>
+                </div>
+                
+                <div className="form-group checkbox-group">
+                  <input 
+                    type="checkbox" 
+                    id="cognitive-support" 
+                    checked={supportNeeds.has_cognitive_support} 
+                    onChange={(e) => setSupportNeeds({...supportNeeds, has_cognitive_support: e.target.checked})}
+                  />
+                  <label htmlFor="cognitive-support">Cognitive Support {SUPPORT_TAGS['Cognitive'].icon}</label>
+                </div>
+                
+                <div className="form-group checkbox-group">
+                  <input 
+                    type="checkbox" 
+                    id="communication-needs" 
+                    checked={supportNeeds.has_communication_needs} 
+                    onChange={(e) => setSupportNeeds({...supportNeeds, has_communication_needs: e.target.checked})}
+                  />
+                  <label htmlFor="communication-needs">Communication Needs {SUPPORT_TAGS['Communication'].icon}</label>
+                </div>
+              </div>
+            </div>
+            
+            {/* Text fields for detailed information */}
+            <h4>Detailed Requirements</h4>
             <div className="form-group">
               <label>Mobility Requirements:</label>
               <input 
@@ -650,16 +784,6 @@ const ParticipantPlanner = () => {
                 onChange={(e) => setSupportNeeds({...supportNeeds, medical: e.target.value})}
                 placeholder="E.g., Medication, Equipment, etc."
               />
-            </div>
-            
-            <div className="form-group checkbox-group">
-              <input 
-                type="checkbox" 
-                id="behavior-support" 
-                checked={supportNeeds.behavior} 
-                onChange={(e) => setSupportNeeds({...supportNeeds, behavior: e.target.checked})}
-              />
-              <label htmlFor="behavior-support">Behavior Support Plan</label>
             </div>
             
             <div className="form-group">
