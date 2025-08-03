@@ -10,12 +10,20 @@ import '../styles/MasterSchedule.css';
  * Revolutionary Master Schedule page
  * Timeline-based schedule management with financial intelligence,
  * supervision multiplier planning, and SCHADS cost analysis
+ * 
+ * Now Loom-aware: Reads from perpetual calendar system instead of static cards
  */
 const MasterSchedule = () => {
   const { simulatedDate, setSimulatedDate } = useAppContext();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [scheduleData, setScheduleData] = useState([]);
+  
+  // Loom system state
+  const [loomWindow, setLoomWindow] = useState({ start: null, end: null });
+  const [nextRollTime, setNextRollTime] = useState(null);
+  const [showFutureDatePicker, setShowFutureDatePicker] = useState(false);
+  const [futureDate, setFutureDate] = useState(null);
   
   // Financial metrics
   const [financialMetrics, setFinancialMetrics] = useState({
@@ -74,7 +82,7 @@ const MasterSchedule = () => {
     billingCodes: [],                   // array of code ids
 
     // Staffing
-    staffAssignment: 'manual'           // manual | auto | always_same
+    staffAssignment: 'auto'             // auto | assign_now
   });
 
   const [nextSlotId, setNextSlotId] = useState(2);
@@ -198,6 +206,26 @@ const MasterSchedule = () => {
   const [showCardModal, setShowCardModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showFinancialModal, setShowFinancialModal] = useState(false);
+
+  /* ------------------------------------------------------------------
+   * Participants list for the Create-Program modal
+   * ------------------------------------------------------------------ */
+  const [participantsList, setParticipantsList] = useState([]);
+
+  // Fetch all participants once when component mounts
+  useEffect(() => {
+    const fetchParticipants = async () => {
+      try {
+        const res = await axios.get('/api/v1/participants');
+        if (res.data && res.data.success) {
+          setParticipantsList(res.data.data || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch participants list', err);
+      }
+    };
+    fetchParticipants();
+  }, []);
   const [selectedCard, setSelectedCard] = useState(null);
   const [selectedDay, setSelectedDay] = useState(null);
   
@@ -227,7 +255,29 @@ const MasterSchedule = () => {
     setWeekDays(days);
   }, [simulatedDate, viewMode]);
   
-  // Fetch schedule data
+  // Fetch loom window information
+  const fetchLoomWindow = async () => {
+    try {
+      const response = await axios.get('/api/v1/loom/window');
+      
+      if (response.data && response.data.success) {
+        setLoomWindow({
+          start: new Date(response.data.data.start),
+          end: new Date(response.data.data.end)
+        });
+        
+        // Next roll is typically at 00:05 Sydney time the next day
+        const nextRoll = new Date();
+        nextRoll.setDate(nextRoll.getDate() + 1);
+        nextRoll.setHours(0, 5, 0, 0);
+        setNextRollTime(nextRoll);
+      }
+    } catch (err) {
+      console.error('Error fetching loom window:', err);
+    }
+  };
+  
+  // Fetch schedule data from loom instances instead of cards
   const fetchScheduleData = async () => {
     if (!currentWeekStart) return;
     
@@ -236,15 +286,68 @@ const MasterSchedule = () => {
       const endDate = new Date(currentWeekStart);
       endDate.setDate(currentWeekStart.getDate() + (viewMode === 'week' ? 6 : 13));
       
-      const response = await axios.get('/api/v1/cards/master', {
+      // Use loom instances API instead of cards API
+      const response = await axios.get('/api/v1/loom/instances', {
         params: {
-          start: formatDateForApi(currentWeekStart),
-          end: formatDateForApi(endDate)
+          startDate: formatDateForApi(currentWeekStart),
+          endDate: formatDateForApi(endDate)
         }
       });
       
       if (response.data && response.data.success) {
-        setScheduleData(response.data.data);
+        // Guard: if API returned no instances yet, show empty schedule
+        if (!Array.isArray(response.data.data) || response.data.data.length === 0) {
+          setScheduleData([]);
+          setLoading(false);
+          return;
+        }
+
+        // Transform loom instance data to match the existing card format, 
+        // ensuring optional arrays are always defined.
+        const transformedData = response.data.data.map(instance => {
+          const participants = instance.participants || [];
+          const staff        = instance.staff || [];
+
+          return ({
+          id: instance.id,
+          title: instance.program_name,
+          date: instance.date,
+          startTime: instance.start_time,
+          endTime: instance.end_time,
+          type: 'MASTER',
+          participants: participants.map(p => ({
+            id: p.participant_id,
+            first_name: p.first_name,
+            last_name: p.last_name,
+            supervision_multiplier: p.supervision_multiplier || 1.0,
+            pickup_required: p.pickup_required,
+            dropoff_required: p.dropoff_required
+          })),
+          staff: staff.map(s => ({
+            id: s.staff_id,
+            first_name: s.first_name,
+            last_name: s.last_name,
+            role: s.role,
+            schadsLevel: s.schads_level,
+            hourlyRate: s.hourly_rate
+          })),
+          financials: {
+            revenue: instance.financials?.revenue || 0,
+            staffCosts: instance.financials?.staff_costs || 0,
+            adminCosts: instance.financials?.admin_costs || 0,
+            profitLoss: instance.financials?.profit_loss || 0,
+            profitMargin: instance.financials?.profit_margin || 0
+          },
+          // Add loom-specific properties
+          hasIntents: instance.has_intents,
+          hasExceptions: instance.has_exceptions,
+          isAutoGenerated: instance.is_auto_generated,
+          programId: instance.program_id,
+          instanceId: instance.id
+          });
+        });
+        
+        setScheduleData(transformedData);
       } else {
         throw new Error('Failed to fetch schedule data');
       }
@@ -283,6 +386,7 @@ const MasterSchedule = () => {
   // Load data when week changes
   useEffect(() => {
     if (currentWeekStart) {
+      fetchLoomWindow();
       fetchScheduleData();
       fetchFinancialMetrics();
       // Metrics endpoints not yet implemented
@@ -312,67 +416,110 @@ const MasterSchedule = () => {
   const handleDayClick = (day) => {
     setSelectedDay(day);
     setShowCreateModal(true);
+    
+    // Check if day is outside loom window
+    if (loomWindow.end && day > loomWindow.end) {
+      setFutureDate(day);
+      setShowFutureDatePicker(true);
+    }
   };
   
-  // Handle create new master card
+  // Handle create new master card - now creates an intent
   const handleCreateMasterCard = async (formData) => {
     try {
-      const response = await axios.post('/api/v1/schedule/master-card', formData);
+      // Create an intent instead of directly creating a card
+      const intentData = {
+        intent_type: 'CREATE_PROGRAM',
+        program_id: formData.programId,
+        start_date: formData.startDate,
+        end_date: formData.repeatEnd || null,
+        days_of_week: formData.daysOfWeek || [],
+        start_time: formData.startTime,
+        end_time: formData.endTime,
+        venue_id: formData.venueId,
+        notes: formData.notes,
+        participants: formData.participants
+      };
+      
+      const response = await axios.post('/api/v1/intentions/intents', intentData);
       
       if (response.data && response.data.success) {
         setShowCreateModal(false);
         fetchScheduleData(); // Refresh data
       } else {
-        throw new Error('Failed to create master card');
+        throw new Error('Failed to create program intent');
       }
     } catch (err) {
-      console.error('Error creating master card:', err);
-      alert('Failed to create master card. Please try again.');
+      console.error('Error creating program intent:', err);
+      alert('Failed to create program intent. Please try again.');
     }
   };
   
-  // Handle edit master card
+  // Handle edit master card - now creates an intent
   const handleEditMasterCard = async (cardId, formData) => {
     try {
-      const response = await axios.put(`/api/v1/schedule/master-card/${cardId}`, formData);
+      // Create an intent instead of directly editing
+      const intentData = {
+        intent_type: 'MODIFY_PROGRAM',
+        program_id: formData.programId || selectedCard.programId,
+        start_date: futureDate ? formatDateForApi(futureDate) : formatDateForApi(new Date()),
+        end_date: formData.repeatEnd || null,
+        start_time: formData.startTime,
+        end_time: formData.endTime,
+        venue_id: formData.venueId,
+        notes: formData.notes,
+        participants: formData.participants
+      };
+      
+      const response = await axios.post('/api/v1/intentions/intents', intentData);
       
       if (response.data && response.data.success) {
         setShowCardModal(false);
+        setShowFutureDatePicker(false);
+        setFutureDate(null);
         fetchScheduleData(); // Refresh data
       } else {
-        throw new Error('Failed to update master card');
+        throw new Error('Failed to create modification intent');
       }
     } catch (err) {
-      console.error('Error updating master card:', err);
-      alert('Failed to update master card. Please try again.');
+      console.error('Error creating modification intent:', err);
+      alert('Failed to create modification intent. Please try again.');
     }
   };
   
-  // Handle delete master card
+  // Handle delete master card - now creates a cancellation exception
   const handleDeleteMasterCard = async (cardId) => {
-    if (!window.confirm('Are you sure you want to delete this master card?')) {
+    if (!window.confirm('Are you sure you want to cancel this program?')) {
       return;
     }
     
     try {
-      const response = await axios.delete(`/api/v1/schedule/master-card/${cardId}`);
+      // Create a cancellation exception instead of deleting
+      const exceptionData = {
+        exception_type: 'PROGRAM_CANCELLATION',
+        program_id: selectedCard.programId,
+        exception_date: selectedCard.date,
+        reason: 'User cancelled via Master Schedule',
+      };
+      
+      const response = await axios.post('/api/v1/intentions/exceptions', exceptionData);
       
       if (response.data && response.data.success) {
         setShowCardModal(false);
         fetchScheduleData(); // Refresh data
       } else {
-        throw new Error('Failed to delete master card');
+        throw new Error('Failed to create cancellation exception');
       }
     } catch (err) {
-      console.error('Error deleting master card:', err);
-      alert('Failed to delete master card. Please try again.');
+      console.error('Error creating cancellation exception:', err);
+      alert('Failed to cancel program. Please try again.');
     }
   };
   
   // Handle optimize resources
   const handleOptimizeResources = async (cardId) => {
     try {
-      const response = await axios.post(`/api/v1/schedule/optimize/${cardId}`);
+      const response = await axios.post(`/api/v1/loom/optimize/${selectedCard.instanceId}`);
       
       if (response.data && response.data.success) {
         alert('Resources optimized successfully!');
@@ -383,6 +530,22 @@ const MasterSchedule = () => {
     } catch (err) {
       console.error('Error optimizing resources:', err);
       alert('Failed to optimize resources. Please try again.');
+    }
+  };
+
+  // Manual Loom Roll (Day-1 testing helper)
+  const handleManualRoll = async () => {
+    try {
+      const response = await axios.post('/api/v1/loom/roll');
+      if (response.data && response.data.success) {
+        alert('Loom rolled successfully.');
+        fetchScheduleData();
+      } else {
+        throw new Error('Roll failed');
+      }
+    } catch (err) {
+      console.error('Error rolling loom:', err);
+      alert('Failed to roll loom. Check server logs.');
     }
   };
   
@@ -441,6 +604,38 @@ const MasterSchedule = () => {
     
     return `${startStr} - ${endStr}`;
   };
+
+  // Format next roll time
+  const formatNextRollTime = () => {
+    if (!nextRollTime) return 'Unknown';
+    
+    return nextRollTime.toLocaleTimeString('en-AU', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    }) + ' ' + nextRollTime.toLocaleDateString('en-AU', {
+      day: 'numeric',
+      month: 'short'
+    });
+  };
+  
+  // Format loom window range
+  const formatLoomWindowRange = () => {
+    if (!loomWindow.start || !loomWindow.end) return 'Loading...';
+    
+    const startStr = loomWindow.start.toLocaleDateString('en-AU', {
+      day: 'numeric',
+      month: 'short'
+    });
+    
+    const endStr = loomWindow.end.toLocaleDateString('en-AU', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+    
+    return `${startStr} - ${endStr}`;
+  };
   
   return (
     <div className="master-schedule-container">
@@ -489,6 +684,8 @@ const MasterSchedule = () => {
           </button>
         </div>
       </div>
+      
+      {/*  --- Loom window info moved to sticky footer (see bottom) --- */}
       
       {/* Period Navigation */}
       <div className="period-navigation">
@@ -584,12 +781,17 @@ const MasterSchedule = () => {
                   getCardsForDay(day).map((card) => (
                     <div 
                       key={card.id} 
-                      className="schedule-card-container"
+                      className={`schedule-card-container ${card.hasIntents ? 'has-intents' : ''} ${card.hasExceptions ? 'has-exceptions' : ''}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleCardClick(card);
                       }}
                     >
+                      {/* Add loom status indicators */}
+                      {card.hasIntents && <div className="intent-indicator" title="Has operator intents">●</div>}
+                      {card.hasExceptions && <div className="exception-indicator" title="Has exceptions">●</div>}
+                      {card.isAutoGenerated && <div className="auto-generated-indicator" title="Auto-generated">A</div>}
+                      
                       <MasterCard 
                         card={card} 
                         onClick={(cardData) => handleCardClick(cardData)}
@@ -656,6 +858,15 @@ const MasterSchedule = () => {
           <div className="legend-color roster-color"></div>
           <span>Roster</span>
         </div>
+        {/* Add loom status indicators to legend */}
+        <div className="legend-item">
+          <div className="legend-indicator intent-indicator">●</div>
+          <span>Has Intents</span>
+        </div>
+        <div className="legend-item">
+          <div className="legend-indicator exception-indicator">●</div>
+          <span>Has Exceptions</span>
+        </div>
       </div>
       
       {/* Master Card Modal */}
@@ -666,6 +877,12 @@ const MasterSchedule = () => {
             <p className="card-detail-time">
               {selectedCard.startTime} - {selectedCard.endTime}
             </p>
+            {/* Add loom status badges */}
+            <div className="loom-status-badges">
+              {selectedCard.hasIntents && <span className="intent-badge">Modified</span>}
+              {selectedCard.hasExceptions && <span className="exception-badge">Has Exceptions</span>}
+              {selectedCard.isAutoGenerated && <span className="auto-badge">Auto-generated</span>}
+            </div>
           </div>
           
           <div className="card-detail-body">
@@ -755,6 +972,27 @@ const MasterSchedule = () => {
                 </div>
               </div>
             )}
+            
+            {/* Future Date Picker for changes beyond current window */}
+            {showFutureDatePicker && (
+              <div className="card-detail-section future-date-section">
+                <h3>Apply Changes From Date</h3>
+                <p className="future-date-info">
+                  This date is beyond the current loom window. Select when these changes should take effect:
+                </p>
+                <div className="future-date-picker">
+                  <input 
+                    type="date" 
+                    value={futureDate ? formatDateForApi(futureDate) : ''}
+                    onChange={(e) => setFutureDate(new Date(e.target.value))}
+                    min={formatDateForApi(new Date())}
+                  />
+                  <p className="future-date-note">
+                    Changes will apply "from this date forward" until you make another change.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
           
           <div className="card-detail-footer">
@@ -771,8 +1009,14 @@ const MasterSchedule = () => {
                 <button 
                   className="edit-button"
                   onClick={() => {
+                    // Set future date picker if needed
+                    if (loomWindow.end && new Date(selectedCard.date) > loomWindow.end) {
+                      setFutureDate(new Date(selectedCard.date));
+                      setShowFutureDatePicker(true);
+                    }
+                    
                     // Would open edit form in real implementation
-                    alert('Edit functionality would open a form in a real implementation');
+                    alert('Edit would create an intent "from this date forward" in a real implementation');
                   }}
                 >
                   Edit Event
@@ -781,7 +1025,7 @@ const MasterSchedule = () => {
                   className="delete-button"
                   onClick={() => handleDeleteMasterCard(selectedCard.id)}
                 >
-                  Delete
+                  Cancel Program
                 </button>
               </>
             )}
@@ -802,6 +1046,12 @@ const MasterSchedule = () => {
                 year: 'numeric'
               })}
             </p>
+            {/* Add future date notice */}
+            {showFutureDatePicker && (
+              <div className="future-date-notice">
+                This date is beyond the current loom window. Your changes will be saved as future intents.
+              </div>
+            )}
           </div>
 
           <div className="program-modal-body">
@@ -828,11 +1078,14 @@ const MasterSchedule = () => {
                       setProgramForm({ ...programForm, type: e.target.value })
                     }
                   >
-                    <option value="center_based">Centre-based Program</option>
-                    <option value="community">Community Access</option>
-                    <option value="bowling">Bowling Program</option>
-                    <option value="adventure">Adventure Program</option>
-                    <option value="transport">Transport Service</option>
+                    <option value="center_based">Center Based</option>
+                    <option value="social">Social</option>
+                    <option value="evening_social">Evening Social</option>
+                    <option value="birp_plus">BIRP+</option>
+                    <option value="sil">SIL</option>
+                    <option value="sta">STA</option>
+                    <option value="cp">CP</option>
+                    <option value="one_to_one">1:1</option>
                   </select>
                 </div>
               </div>
@@ -842,7 +1095,7 @@ const MasterSchedule = () => {
             <div className="program-section">
               <h3>Repeating Schedule</h3>
               <div className="repeating-controls">
-                {/* Simplified checkbox – just says “Repeat” */}
+                {/* Simplified checkbox – just says "Repeat" */}
                 <label className="checkbox-label">
                   <input
                     type="checkbox"
@@ -1022,20 +1275,23 @@ const MasterSchedule = () => {
                 </div>
 
                 <div className="participant-grid">
-                  {/* Placeholder participant cards WITH billing inputs */}
-                  {['John Smith', 'Sarah Johnson', 'Michael Brown', 'Emma Wilson'].map(
-                    (name, i) => {
-                      const participantId = `participant-${i}`;
+                  {participantsList.map((participant) => {
+                      const participantId = participant.id;
                       return (
-                        <div key={i} className="participant-card">
+                        <div key={participantId} className="participant-card">
                           <div className="participant-label">
                             <input type="checkbox" id={participantId} />
 
                             <div className="participant-details">
-                              <div className="participant-name">{name}</div>
+                              <div className="participant-name">
+                                {participant.first_name} {participant.last_name}
+                              </div>
 
                               <div className="supervision">
-                                Supervision: {i % 2 === 0 ? '1.5x' : '1.0x'}
+                                Supervision:&nbsp;
+                                {participant.supervision_multiplier
+                                  ? `${participant.supervision_multiplier}x`
+                                  : '1.0x'}
                               </div>
 
                               <div className="billing-inputs">
@@ -1138,7 +1394,7 @@ const MasterSchedule = () => {
               <h3>Staff Assignment</h3>
               <div className="staff-assignment-options">
                 <div className="radio-group">
-                  {['manual', 'auto', 'always_same'].map((mode) => (
+                  {['auto', 'assign_now'].map((mode) => (
                     <label key={mode} className="radio-label">
                       <input
                         type="radio"
@@ -1153,18 +1409,14 @@ const MasterSchedule = () => {
                         }
                       />
                       <span>
-                        {mode === 'manual'
-                          ? 'Manual assignment each time'
-                          : mode === 'auto'
+                        {mode === 'auto'
                           ? 'Auto-assign based on availability'
-                          : 'Always use the same staff (if available)'}
+                          : 'Assign now and make permanent'}
                       </span>
                       <p className="radio-description">
-                        {mode === 'manual'
-                          ? 'Manager assigns staff manually for each occurrence'
-                          : mode === 'auto'
-                          ? 'System automatically assigns available staff'
-                          : 'Consistency for participants with specific needs'}
+                        {mode === 'auto'
+                          ? 'System will allocate available staff each occurrence.'
+                          : 'Lock in the chosen staff for every repeat.'}
                       </p>
                     </label>
                   ))}
@@ -1172,18 +1424,48 @@ const MasterSchedule = () => {
               </div>
             </div>
 
-            {/* Notes */}
+            {/* Additional Assist Staff – placeholder for future logic */}
             <div className="program-section">
-              <h3>Additional Notes</h3>
+              <h3>Additional Assist Staff (placeholder)</h3>
+              <p className="section-description">
+                Configure extra assist staff once participant count rules are calculated.
+                (Coming soon)
+              </p>
+            </div>
+
+            {/* Program Notes */}
+            <div className="program-section">
+              <h3>Program Notes</h3>
               <textarea
+                rows="3"
                 value={programForm.notes}
+                placeholder="Special requirements, equipment needed, etc."
                 onChange={(e) =>
                   setProgramForm({ ...programForm, notes: e.target.value })
                 }
-                placeholder="Special requirements, equipment needed, etc."
-                rows="3"
               />
             </div>
+            
+            {/* Future Date Picker for changes beyond current window */}
+            {showFutureDatePicker && (
+              <div className="program-section future-date-section">
+                <h3>Apply Changes From Date</h3>
+                <p className="future-date-info">
+                  This date is beyond the current loom window. Select when these changes should take effect:
+                </p>
+                <div className="future-date-picker">
+                  <input 
+                    type="date" 
+                    value={futureDate ? formatDateForApi(futureDate) : formatDateForApi(selectedDay)}
+                    onChange={(e) => setFutureDate(new Date(e.target.value))}
+                    min={formatDateForApi(new Date())}
+                  />
+                  <p className="future-date-note">
+                    Program will be created "from this date forward" until any end date specified.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="program-modal-footer">
@@ -1211,11 +1493,24 @@ const MasterSchedule = () => {
               <button
                 className="create-program-btn"
                 onClick={() => {
-                  console.log('Creating program:', programForm);
-                  alert(
-                    'Revolutionary repeating program system would create the master program!'
-                  );
-                  setShowCreateModal(false);
+                  // Create program intent instead of directly creating a program
+                  const intentData = {
+                    programId: null, // New program
+                    name: programForm.name,
+                    type: programForm.type,
+                    startDate: futureDate ? formatDateForApi(futureDate) : formatDateForApi(selectedDay),
+                    repeatPattern: programForm.isRepeating ? programForm.repeatPattern : 'none',
+                    repeatEnd: programForm.repeatEnd,
+                    startTime: programForm.timeSlots[0].startTime,
+                    endTime: programForm.timeSlots[programForm.timeSlots.length - 1].endTime,
+                    timeSlots: programForm.timeSlots,
+                    participants: [], // Would be populated from selected participants
+                    notes: programForm.notes,
+                    staffAssignment: programForm.staffAssignment
+                  };
+                  
+                  console.log('Creating program intent:', intentData);
+                  handleCreateMasterCard(intentData);
                 }}
               >
                 Create Program
@@ -1335,6 +1630,18 @@ const MasterSchedule = () => {
           </div>
         </Modal>
       )}
+
+      {/* ---------- Sticky Footer with Live Loom Info ---------- */}
+      <footer className="loom-footer">
+        <div className="footer-content">
+          <div className="footer-item">
+            <strong>Loom Window:</strong>&nbsp;{formatLoomWindowRange()}
+          </div>
+          <div className="footer-item">
+            <strong>Next Auto-Roll:</strong>&nbsp;{formatNextRollTime()}
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };

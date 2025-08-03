@@ -136,9 +136,29 @@ const deleteStaff = async (req, res) => {
   }
 };
 
+// Get all staff with SCHADS level information
+const getStaffWithSchads = async (req, res) => {
+  try {
+    const staff = await staffService.getStaffWithSchads();
+    res.status(200).json({
+      success: true,
+      count: staff.length,
+      data: staff
+    });
+  } catch (error) {
+    console.error('Error fetching staff with SCHADS:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching staff with SCHADS information',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 module.exports = {
   getAllStaff,
   getStaffById,
+  getStaffWithSchads,
   createStaff,
   updateStaff,
   deleteStaff

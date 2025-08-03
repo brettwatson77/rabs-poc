@@ -23,6 +23,8 @@ const financeRouter      = require('./routes/finance');
 const ratesRouter        = require('./routes/rates');
 const systemRouter       = require('./routes/system');
 const changelogRouter    = require('./routes/changelog');
+// Vehicle & staff availability (maintenance / leave) router  <-- NEW
+const availabilityRouter = require('./routes/availability'); // <-- NEW
 const cancellationsRouter = require('./routes/cancellations');
 const recalculationRouter = require('./routes/recalculation'); // <-- NEW
 const staffAssignmentsRouter = require('./routes/staffAssignments'); // <-- NEW
@@ -30,6 +32,10 @@ const staffAssignmentsRouter = require('./routes/staffAssignments'); // <-- NEW
 const dynamicResourcesRouter = require('./routes/dynamicResources'); // <-- NEW
 // Loom system (dynamic scheduling & resource allocation) router
 const loomRouter           = require('./routes/loom'); // <-- NEW
+// Loom roller service (daily cron + manual roll endpoint)
+const { initCronJobs, triggerManualRoll } = require('./services/loomRoller'); // <-- NEW
+// Operator intents & temporal exceptions router
+const intentionsRouter     = require('./routes/intentions'); // <-- NEW
 
 // Initialize Express app
 const app = express();
@@ -102,6 +108,8 @@ app.use('/api/v1/finance',      financeRouter);
 app.use('/api/v1/rates',        ratesRouter);
 app.use('/api/v1/system',       systemRouter);
 app.use('/api/v1/changelog',    changelogRouter);
+// Vehicle & staff maintenance / unavailability routes  <-- NEW
+app.use('/api/v1/availability', availabilityRouter); // <-- NEW
 app.use('/api/v1/cancellations', cancellationsRouter);
 app.use('/api/v1/staff-assignments', staffAssignmentsRouter); // <-- NEW
 // Mount the recalculation routes (e.g., POST /api/v1/recalculate/process)
@@ -110,12 +118,34 @@ app.use('/api/v1/recalculate',  recalculationRouter);
 app.use('/api/v1/dynamic-resources', dynamicResourcesRouter); // <-- NEW
 // Loom endpoints (window management, instances, allocations …)
 app.use('/api/v1/loom',         loomRouter); // <-- NEW
+// Operator intents & temporal exceptions
+app.use('/api/v1/intentions',   intentionsRouter); // <-- NEW
+
+// ---------------------------------------------------------------------------
+// Manual Loom Roll Trigger (Admin-only – simple check placeholder)
+// e.g. POST /api/v1/loom/roll  { "authToken": "..." }
+// In production, replace with proper auth middleware
+app.post('/api/v1/loom/roll', async (req, res) => {
+  try {
+    const result = await triggerManualRoll();
+    if (result.success) {
+      res.json({ message: 'Manual loom roll completed', ...result });
+    } else {
+      res.status(500).json({ message: 'Manual loom roll failed', ...result });
+    }
+  } catch (err) {
+    console.error('Manual loom roll error:', err);
+    res.status(500).json({ message: 'Unexpected error', error: err.message });
+  }
+});
 
 // Set up the server to listen on the specified port
 const PORT = process.env.PORT || 3009;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
   console.log(`API available at http://localhost:${PORT}/api/v1`);
+  // Initialise loom cron jobs once server is up
+  initCronJobs();
 });
 
 // Export the app for testing

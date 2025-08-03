@@ -7,6 +7,31 @@
 -- Start transaction
 BEGIN;
 
+-- Drop existing indexes that might be leftover from previous migrations
+DROP INDEX IF EXISTS idx_loom_instances_date;
+DROP INDEX IF EXISTS idx_loom_instances_status;
+DROP INDEX IF EXISTS idx_loom_instances_program;
+DROP INDEX IF EXISTS idx_loom_participant_allocations_instance;
+DROP INDEX IF EXISTS idx_loom_participant_allocations_participant;
+DROP INDEX IF EXISTS idx_loom_participant_allocations_status;
+DROP INDEX IF EXISTS idx_loom_staff_shifts_instance;
+DROP INDEX IF EXISTS idx_loom_staff_shifts_staff;
+DROP INDEX IF EXISTS idx_loom_staff_shifts_status;
+DROP INDEX IF EXISTS idx_loom_staff_shifts_timerange;
+DROP INDEX IF EXISTS idx_loom_vehicle_runs_instance;
+DROP INDEX IF EXISTS idx_loom_vehicle_runs_vehicle;
+DROP INDEX IF EXISTS idx_loom_vehicle_runs_driver;
+DROP INDEX IF EXISTS idx_loom_vehicle_runs_timerange;
+DROP INDEX IF EXISTS idx_operator_intents_date_range;
+DROP INDEX IF EXISTS idx_operator_intents_program;
+DROP INDEX IF EXISTS idx_operator_intents_participant;
+DROP INDEX IF EXISTS idx_operator_intents_type;
+DROP INDEX IF EXISTS idx_temporal_exceptions_date;
+DROP INDEX IF EXISTS idx_temporal_exceptions_program;
+DROP INDEX IF EXISTS idx_temporal_exceptions_participant;
+DROP INDEX IF EXISTS idx_temporal_exceptions_type;
+DROP INDEX IF EXISTS idx_temporal_exceptions_instance;
+
 -- Drop existing tables if they exist (in reverse dependency order)
 DROP TABLE IF EXISTS tgl_temporal_exceptions CASCADE;
 DROP TABLE IF EXISTS tgl_operator_intents CASCADE;
@@ -403,69 +428,69 @@ CREATE TABLE tgl_temporal_exceptions (
 -- Create indexes for performance
 
 -- Participants indexes
-CREATE INDEX idx_participants_name ON participants(last_name, first_name);
-CREATE INDEX idx_participants_ndis ON participants(ndis_number);
-CREATE INDEX idx_participants_location ON participants(location_lat, location_lng);
+CREATE INDEX IF NOT EXISTS idx_participants_name ON participants(last_name, first_name);
+CREATE INDEX IF NOT EXISTS idx_participants_ndis ON participants(ndis_number);
+CREATE INDEX IF NOT EXISTS idx_participants_location ON participants(location_lat, location_lng);
 
 -- Staff indexes
-CREATE INDEX idx_staff_name ON staff(last_name, first_name);
-CREATE INDEX idx_staff_location ON staff(location_lat, location_lng);
+CREATE INDEX IF NOT EXISTS idx_staff_name ON staff(last_name, first_name);
+CREATE INDEX IF NOT EXISTS idx_staff_location ON staff(location_lat, location_lng);
 
 -- Vehicles indexes
-CREATE INDEX idx_vehicles_registration ON vehicles(registration);
-CREATE INDEX idx_vehicles_location ON vehicles(location_lat, location_lng);
+CREATE INDEX IF NOT EXISTS idx_vehicles_registration ON vehicles(registration);
+CREATE INDEX IF NOT EXISTS idx_vehicles_location ON vehicles(location_lat, location_lng);
 
 -- Venues indexes
-CREATE INDEX idx_venues_name ON venues(name);
-CREATE INDEX idx_venues_location ON venues(location_lat, location_lng);
+CREATE INDEX IF NOT EXISTS idx_venues_name ON venues(name);
+CREATE INDEX IF NOT EXISTS idx_venues_location ON venues(location_lat, location_lng);
 
 -- Programs indexes
-CREATE INDEX idx_programs_day_time ON programs(day_of_week, start_time);
-CREATE INDEX idx_programs_venue ON programs(venue_id);
+CREATE INDEX IF NOT EXISTS idx_programs_day_time ON programs(day_of_week, start_time);
+CREATE INDEX IF NOT EXISTS idx_programs_venue ON programs(venue_id);
 
 -- Program participants indexes
-CREATE INDEX idx_program_participants_program ON program_participants(program_id);
-CREATE INDEX idx_program_participants_participant ON program_participants(participant_id);
-CREATE INDEX idx_program_participants_dates ON program_participants(start_date, end_date);
+CREATE INDEX IF NOT EXISTS idx_program_participants_program ON program_participants(program_id);
+CREATE INDEX IF NOT EXISTS idx_program_participants_participant ON program_participants(participant_id);
+CREATE INDEX IF NOT EXISTS idx_program_participants_dates ON program_participants(start_date, end_date);
 
 -- Schedule indexes
-CREATE INDEX idx_schedule_program ON schedule(program_id);
-CREATE INDEX idx_schedule_date ON schedule(scheduled_date);
+CREATE INDEX IF NOT EXISTS idx_schedule_program ON schedule(program_id);
+CREATE INDEX IF NOT EXISTS idx_schedule_date ON schedule(scheduled_date);
 
 -- Loom instances indexes
-CREATE INDEX idx_loom_instances_program ON tgl_loom_instances(program_id);
-CREATE INDEX idx_loom_instances_date ON tgl_loom_instances(instance_date);
-CREATE INDEX idx_loom_instances_status ON tgl_loom_instances(status);
+CREATE INDEX IF NOT EXISTS idx_loom_instances_program ON tgl_loom_instances(program_id);
+CREATE INDEX IF NOT EXISTS idx_loom_instances_date ON tgl_loom_instances(instance_date);
+CREATE INDEX IF NOT EXISTS idx_loom_instances_status ON tgl_loom_instances(status);
 
 -- Loom participant allocations indexes
-CREATE INDEX idx_loom_participant_allocations_instance ON tgl_loom_participant_allocations(loom_instance_id);
-CREATE INDEX idx_loom_participant_allocations_participant ON tgl_loom_participant_allocations(participant_id);
-CREATE INDEX idx_loom_participant_allocations_status ON tgl_loom_participant_allocations(allocation_status);
+CREATE INDEX IF NOT EXISTS idx_loom_participant_allocations_instance ON tgl_loom_participant_allocations(loom_instance_id);
+CREATE INDEX IF NOT EXISTS idx_loom_participant_allocations_participant ON tgl_loom_participant_allocations(participant_id);
+CREATE INDEX IF NOT EXISTS idx_loom_participant_allocations_status ON tgl_loom_participant_allocations(allocation_status);
 
 -- Loom staff shifts indexes
-CREATE INDEX idx_loom_staff_shifts_instance ON tgl_loom_staff_shifts(loom_instance_id);
-CREATE INDEX idx_loom_staff_shifts_staff ON tgl_loom_staff_shifts(staff_id);
-CREATE INDEX idx_loom_staff_shifts_status ON tgl_loom_staff_shifts(status);
-CREATE INDEX idx_loom_staff_shifts_timerange ON tgl_loom_staff_shifts(start_time, end_time);
+CREATE INDEX IF NOT EXISTS idx_loom_staff_shifts_instance ON tgl_loom_staff_shifts(loom_instance_id);
+CREATE INDEX IF NOT EXISTS idx_loom_staff_shifts_staff ON tgl_loom_staff_shifts(staff_id);
+CREATE INDEX IF NOT EXISTS idx_loom_staff_shifts_status ON tgl_loom_staff_shifts(status);
+CREATE INDEX IF NOT EXISTS idx_loom_staff_shifts_timerange ON tgl_loom_staff_shifts(start_time, end_time);
 
 -- Loom vehicle runs indexes
-CREATE INDEX idx_loom_vehicle_runs_instance ON tgl_loom_vehicle_runs(loom_instance_id);
-CREATE INDEX idx_loom_vehicle_runs_vehicle ON tgl_loom_vehicle_runs(vehicle_id);
-CREATE INDEX idx_loom_vehicle_runs_driver ON tgl_loom_vehicle_runs(driver_id);
-CREATE INDEX idx_loom_vehicle_runs_timerange ON tgl_loom_vehicle_runs(start_time, end_time);
+CREATE INDEX IF NOT EXISTS idx_loom_vehicle_runs_instance ON tgl_loom_vehicle_runs(loom_instance_id);
+CREATE INDEX IF NOT EXISTS idx_loom_vehicle_runs_vehicle ON tgl_loom_vehicle_runs(vehicle_id);
+CREATE INDEX IF NOT EXISTS idx_loom_vehicle_runs_driver ON tgl_loom_vehicle_runs(driver_id);
+CREATE INDEX IF NOT EXISTS idx_loom_vehicle_runs_timerange ON tgl_loom_vehicle_runs(start_time, end_time);
 
 -- Operator intents indexes
-CREATE INDEX idx_operator_intents_date_range ON tgl_operator_intents(start_date, end_date);
-CREATE INDEX idx_operator_intents_program ON tgl_operator_intents(program_id) WHERE program_id IS NOT NULL;
-CREATE INDEX idx_operator_intents_participant ON tgl_operator_intents(participant_id) WHERE participant_id IS NOT NULL;
-CREATE INDEX idx_operator_intents_type ON tgl_operator_intents(intent_type);
+CREATE INDEX IF NOT EXISTS idx_operator_intents_date_range ON tgl_operator_intents(start_date, end_date);
+CREATE INDEX IF NOT EXISTS idx_operator_intents_program ON tgl_operator_intents(program_id) WHERE program_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_operator_intents_participant ON tgl_operator_intents(participant_id) WHERE participant_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_operator_intents_type ON tgl_operator_intents(intent_type);
 
 -- Temporal exceptions indexes
-CREATE INDEX idx_temporal_exceptions_date ON tgl_temporal_exceptions(exception_date);
-CREATE INDEX idx_temporal_exceptions_program ON tgl_temporal_exceptions(program_id) WHERE program_id IS NOT NULL;
-CREATE INDEX idx_temporal_exceptions_participant ON tgl_temporal_exceptions(participant_id) WHERE participant_id IS NOT NULL;
-CREATE INDEX idx_temporal_exceptions_type ON tgl_temporal_exceptions(exception_type);
-CREATE INDEX idx_temporal_exceptions_instance ON tgl_temporal_exceptions(loom_instance_id) WHERE loom_instance_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_temporal_exceptions_date ON tgl_temporal_exceptions(exception_date);
+CREATE INDEX IF NOT EXISTS idx_temporal_exceptions_program ON tgl_temporal_exceptions(program_id) WHERE program_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_temporal_exceptions_participant ON tgl_temporal_exceptions(participant_id) WHERE participant_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_temporal_exceptions_type ON tgl_temporal_exceptions(exception_type);
+CREATE INDEX IF NOT EXISTS idx_temporal_exceptions_instance ON tgl_temporal_exceptions(loom_instance_id) WHERE loom_instance_id IS NOT NULL;
 
 -- Create triggers for updated_at timestamps
 CREATE TRIGGER update_participants_modtime
@@ -532,17 +557,24 @@ VALUES
   ('loom_auto_roll_time', '00:05', 'Time of day for the auto-roll (Sydney time)'),
   ('loom_verification_time', '09:00', 'Time to verify successful roll and retry if needed');
 
--- Insert some sample billing codes for NDIS
+-- Insert real NDIS billing codes from RABS templates
 INSERT INTO billing_codes (code, description, rate, active)
 VALUES
-  ('01_011_0107_1_1', 'Assistance With Self-Care Activities - Standard - Weekday Daytime', 59.81, true),
-  ('01_011_0107_1_1_T', 'Assistance With Self-Care Activities - Temporary Transformation Payment - Weekday Daytime', 62.17, true),
-  ('01_015_0107_1_1', 'Assistance With Self-Care Activities - Standard - Evening', 65.82, true),
-  ('04_104_0125_6_1', 'Community Nursing Care For Complex Care Needs', 105.14, true),
-  ('04_300_0104_1_1', 'Assistance With Social And Community Participation - Level 1', 59.81, true),
-  ('04_301_0104_1_1', 'Assistance With Social And Community Participation - Level 2', 65.09, true),
-  ('04_302_0104_1_1', 'Assistance With Social And Community Participation - Level 3', 68.14, true),
-  ('04_599_0104_6_1', 'Provider travel - non-labour costs', 1.00, true);
+  -- Weekend/Saturday Adventure programs
+  ('07_002_0106_8_3', 'Weekend Adventure Programs', 96.04, true),
+  
+  -- Face-to-Face activities
+  ('04_103_0136_6_1', 'Face-to-Face Activities - Standard', 24.81, true),
+  
+  -- Non Face-to-Face admin with different rates
+  ('04_102_0136_6_1_CB', 'Non Face to Face Admin - Centre Based (6hrs)', 22.52, true),
+  ('04_102_0136_6_1_SW', 'Non Face to Face Admin - Spin and Win (4hrs)', 12.12, true),
+  ('04_102_0136_6_1_FE', 'Non Face to Face Admin - Friday Evening (5hrs)', 11.71, true),
+  ('04_102_0136_6_1_CB4', 'Non Face to Face Admin - Centre Based (4hrs)', 10.73, true),
+  ('04_102_0136_6_1_CB6', 'Non Face to Face Admin - Centre Based (6hrs)', 10.06, true),
+  
+  -- Centre Capital - facility costs
+  ('04_599_0136_6_1', 'Centre Capital - Facility Costs for Centre Based Programs', 2.53, true);
 
 -- Commit transaction
 COMMIT;

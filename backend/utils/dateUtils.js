@@ -26,6 +26,58 @@ const formatDateForApi = (date) => {
   return `${year}-${month}-${day}`;
 };
 
+/**
+ * Parse a database date string back to a JavaScript Date object
+ * @param {string} dateStr - Date string in YYYY-MM-DD format
+ * @returns {Date|null} JavaScript Date object or null if invalid
+ */
+const parseDbDate = (dateStr) => {
+  if (!dateStr || typeof dateStr !== 'string') return null;
+  const [year, month, day] = dateStr.split('-').map(Number);
+  if (
+    !Number.isInteger(year) ||
+    !Number.isInteger(month) ||
+    !Number.isInteger(day)
+  ) {
+    return null;
+  }
+  return new Date(year, month - 1, day); // month is 0-indexed
+};
+
+/**
+ * Get today's date in Sydney timezone as YYYY-MM-DD string
+ * @returns {string} Today's date in Sydney timezone
+ */
+const getTodaySydney = () => {
+  const now = new Date();
+  // Use Intl API to convert to Australia/Sydney timezone
+  const sydneyDate = new Date(
+    now.toLocaleString('en-AU', { timeZone: 'Australia/Sydney' })
+  );
+  return formatDateForApi(sydneyDate);
+};
+
+/**
+ * Validate if a string is a valid date in YYYY-MM-DD format
+ * @param {string} dateStr - Date string to validate
+ * @returns {boolean} True if valid date format and real date
+ */
+const isValidDate = (dateStr) => {
+  if (!dateStr || typeof dateStr !== 'string') return false;
+
+  // Quick format check
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(dateStr)) return false;
+
+  // Validate actual date
+  const date = new Date(dateStr);
+  return (
+    date instanceof Date &&
+    !isNaN(date.getTime()) &&
+    date.toISOString().startsWith(dateStr)
+  );
+};
+
 module.exports = {
   formatDateForApi,
   /**
@@ -36,5 +88,9 @@ module.exports = {
    *
    * @type {(date: Date) => string}
    */
-  formatDateForDb: formatDateForApi
+  formatDateForDb: formatDateForApi,
+  // Newly added helpers
+  parseDbDate,
+  getTodaySydney,
+  isValidDate
 };

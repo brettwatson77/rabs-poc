@@ -24,6 +24,16 @@ const SUPPORT_TAGS = {
   'Communication': { color: '#34495e', icon: '💬', field: 'has_communication_needs' }
 };
 
+// Change type badges with colors
+const CHANGE_TYPE_BADGES = {
+  'PROGRAM_JOIN': { label: 'Joined', color: '#27ae60' },
+  'PROGRAM_LEAVE': { label: 'Left', color: '#e74c3c' },
+  'PROGRAM_CANCEL': { label: 'Cancelled', color: '#f39c12' },
+  'PARTICIPANT_ADD': { label: 'Added', color: '#3498db' },
+  'PARTICIPANT_REMOVE': { label: 'Removed', color: '#9b59b6' },
+  'BILLING_CODE_CHANGE': { label: 'Billing Changed', color: '#2c3e50' }
+};
+
 const ParticipantPlanner = () => {
   const { simulatedDate } = useAppContext();
   
@@ -35,6 +45,7 @@ const ParticipantPlanner = () => {
   const [availablePrograms, setAvailablePrograms] = useState([]);
   const [programRecommendations, setProgramRecommendations] = useState([]);
   const [supervisionHistory, setSupervisionHistory] = useState([]);
+  const [changeHistory, setChangeHistory] = useState([]); // Added for change history
   
   // UI state
   const [activeTab, setActiveTab] = useState('profile');
@@ -72,14 +83,16 @@ const ParticipantPlanner = () => {
     details: false,
     enrollments: false,
     recommendations: false,
-    financials: false
+    financials: false,
+    history: false // Added for change history
   });
   const [error, setError] = useState({
     participants: null,
     details: null,
     enrollments: null,
     recommendations: null,
-    financials: null
+    financials: null,
+    history: null // Added for change history
   });
 
   // Financial impact data
@@ -116,6 +129,7 @@ const ParticipantPlanner = () => {
       fetchEnrollments();
       fetchSupervisionHistory();
       fetchProgramRecommendations();
+      fetchChangeHistory(); // Added to fetch change history
     }
   }, [selectedParticipant]);
 
@@ -264,6 +278,81 @@ const ParticipantPlanner = () => {
     } catch (err) {
       console.error('Error fetching program recommendations:', err);
       setLoading(prev => ({ ...prev, recommendations: false }));
+    }
+  };
+
+  // Fetch participant change history
+  const fetchChangeHistory = async () => {
+    if (!selectedParticipant) return;
+    
+    setLoading(prev => ({ ...prev, history: true }));
+    setError(prev => ({ ...prev, history: null }));
+    
+    try {
+      const response = await axios.get(`/api/v1/changes/participant/${selectedParticipant.id}/changes`);
+      
+      if (response.data && response.data.success) {
+        setChangeHistory(response.data.changes || []);
+      } else {
+        throw new Error('Failed to fetch change history');
+      }
+    } catch (err) {
+      console.error('Error fetching change history:', err);
+      setError(prev => ({ 
+        ...prev, 
+        history: 'Failed to load change history. Please try again.' 
+      }));
+      
+      // For development/demo purposes, generate sample data if API fails
+      const mockHistory = [
+        {
+          id: '1',
+          date: '2025-07-26',
+          type: 'PROGRAM_JOIN',
+          message: 'Sarah joined Centre Based Wednesdays',
+          details: 'Starting from 2025-07-26',
+          changedBy: 'Admin User',
+          reason: 'Participant request',
+          billingImpact: true,
+          billingStatus: 'NA'
+        },
+        {
+          id: '2',
+          date: '2025-07-15',
+          type: 'PROGRAM_CANCEL',
+          message: 'Sarah cancelled Spin and Win Tuesday',
+          details: 'For 2025-07-15 (Short notice: 12 hours)',
+          changedBy: 'Admin User',
+          reason: 'Participant sick',
+          billingImpact: true,
+          billingStatus: 'BILLED'
+        },
+        {
+          id: '3',
+          date: '2025-06-30',
+          type: 'PROGRAM_LEAVE',
+          message: 'Sarah left Saturday Adventure',
+          details: 'Effective from 2025-06-30',
+          changedBy: 'John Smith',
+          reason: 'No longer interested',
+          billingImpact: true,
+          billingStatus: 'NOT_BILLED'
+        },
+        {
+          id: '4',
+          date: '2025-06-15',
+          type: 'BILLING_CODE_CHANGE',
+          message: 'Billing codes changed for Sarah',
+          details: 'In Centre Based program on 2025-06-15',
+          changedBy: 'Finance Team',
+          reason: 'Updated NDIS plan',
+          billingImpact: true,
+          billingStatus: 'PENDING'
+        }
+      ];
+      setChangeHistory(mockHistory);
+    } finally {
+      setLoading(prev => ({ ...prev, history: false }));
     }
   };
 
@@ -1174,6 +1263,102 @@ const ParticipantPlanner = () => {
     );
   };
 
+  // Render history tab
+  const renderHistoryTab = () => {
+    if (!selectedParticipant) {
+      return (
+        <div className="no-selection">
+          <p>Please select a participant to view change history.</p>
+        </div>
+      );
+    }
+    
+    if (loading.history) {
+      return (
+        <div className="loading-container">
+          <div className="spinner"></div>
+          <p>Loading change history...</p>
+        </div>
+      );
+    }
+    
+    if (error.history) {
+      return (
+        <div className="error-container">
+          <p>{error.history}</p>
+          <button onClick={fetchChangeHistory}>Retry</button>
+        </div>
+      );
+    }
+    
+    return (
+      <div className="history-container">
+        <h3>Change History</h3>
+        <p className="history-description">
+          Complete history of all changes related to this participant.
+        </p>
+        
+        {changeHistory.length === 0 ? (
+          <div className="no-history">
+            <p>No change history available for this participant.</p>
+          </div>
+        ) : (
+          <div className="history-timeline">
+            {changeHistory.map((change, index) => (
+              <div key={change.id} className="timeline-item">
+                <div className="timeline-connector">
+                  <div className="timeline-dot"></div>
+                  {index < changeHistory.length - 1 && <div className="timeline-line"></div>}
+                </div>
+                
+                <div className="timeline-content">
+                  <div className="timeline-header">
+                    <div className="timeline-date">
+                      {new Date(change.date).toLocaleDateString()}
+                    </div>
+                    
+                    {change.type && CHANGE_TYPE_BADGES[change.type] && (
+                      <div 
+                        className="change-badge"
+                        style={{
+                          backgroundColor: CHANGE_TYPE_BADGES[change.type].color
+                        }}
+                      >
+                        {CHANGE_TYPE_BADGES[change.type].label}
+                      </div>
+                    )}
+                    
+                    {change.billingImpact && (
+                      <div className={`billing-badge ${change.billingStatus.toLowerCase()}`}>
+                        {change.billingStatus === 'BILLED' ? 'BILLED' : 
+                         change.billingStatus === 'NOT_BILLED' ? 'NOT BILLED' : 
+                         change.billingStatus === 'PENDING' ? 'PENDING' : ''}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="timeline-body">
+                    <p className="change-message">{change.message}</p>
+                    <p className="change-details">{change.details}</p>
+                    
+                    <div className="change-meta">
+                      <span className="change-reason">
+                        <strong>Reason:</strong> {change.reason}
+                      </span>
+                      <span className="change-by">
+                        <strong>Changed by:</strong> {change.changedBy}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // Render contact modal
   const renderContactModal = () => {
     if (!showContactModal) return null;
@@ -1342,6 +1527,14 @@ const ParticipantPlanner = () => {
             >
               Reports
             </button>
+            <button
+              className={`tab-button ${
+                activeTab === 'history' ? 'active' : ''
+              }`}
+              onClick={() => setActiveTab('history')}
+            >
+              History
+            </button>
           </div>
 
           {/* Tab Content */}
@@ -1350,6 +1543,7 @@ const ParticipantPlanner = () => {
             {activeTab === 'supervision' && renderSupervisionTab()}
             {activeTab === 'programs' && renderProgramsTab()}
             {activeTab === 'reports' && renderReportsTab()}
+            {activeTab === 'history' && renderHistoryTab()}
           </div>
         </div>
       )}

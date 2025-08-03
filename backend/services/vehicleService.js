@@ -1,59 +1,23 @@
 // backend/services/vehicleService.js
-const { Pool } = require('pg');
-const { getDbConnection } = require('../database');
+/**
+ * Vehicle data access layer (PostgreSQL only).
+ * Legacy SQLite wrapper logic has been removed—this service now
+ * uses the central pooled connection exported from `backend/database.js`.
+ */
 
-// Create a direct PostgreSQL pool for fallback
-const pool = new Pool({
-  user: process.env.POSTGRES_USER || 'postgres',
-  password: process.env.POSTGRES_PASSWORD || 'postgres',
-  host: process.env.POSTGRES_HOST || 'localhost',
-  port: parseInt(process.env.POSTGRES_PORT || '5432', 10),
-  database: process.env.POSTGRES_DB || 'rabspocdb'
-});
+const { pool } = require('../database');
 
 /**
  * Get all vehicles from the database
  * @returns {Promise<Array>} Array of vehicle objects
  */
 const getAllVehicles = async () => {
-  // Try the wrapper first with timeout protection
   try {
-    console.log('Attempting to get vehicles using database wrapper...');
-    
-    // Create a timeout promise
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Database wrapper timed out')), 2000);
-    });
-    
-    // Create the wrapper query promise
-    const wrapperPromise = (async () => {
-      let db;
-      try {
-        db = await getDbConnection();
-        return await new Promise((resolve, reject) => {
-          db.all('SELECT * FROM vehicles', [], (err, result) => {
-            if (err) return reject(err);
-            resolve(result);
-          });
-        });
-      } finally {
-        if (db) db.close();
-      }
-    })();
-    
-    // Race the promises
-    return await Promise.race([wrapperPromise, timeoutPromise]);
+    const { rows } = await pool.query('SELECT * FROM vehicles ORDER BY name');
+    return rows;
   } catch (error) {
-    console.error('Wrapper failed, falling back to direct PostgreSQL:', error.message);
-    
-    // Fall back to direct PostgreSQL
-    try {
-      const result = await pool.query('SELECT * FROM vehicles');
-      return result.rows;
-    } catch (pgError) {
-      console.error('Direct PostgreSQL also failed:', pgError.message);
-      throw pgError;
-    }
+    console.error('Error retrieving vehicles:', error);
+    throw error;
   }
 };
 
@@ -78,31 +42,45 @@ const getVehicleById = async (id) => {
  * @returns {Promise<Object>} Created vehicle object
  */
 const createVehicle = async (vehicleData) => {
-  // Validate required fields
-  if (!vehicleData.id || !vehicleData.seats) {
-    throw new Error('Missing required vehicle data: id and seats are required');
-  }
-
   const {
-    id,
-    description = null,
-    seats,
-    registration = null,
+    name,
+    registration,
+    capacity,
+    wheelchair_capacity = 0,
+    make = null,
+    model = null,
+    year = null,
+    active = true,
     notes = null,
-    vehicle_type = null,
-    wheelchair_access = false,
     status = 'active',
-    rego_expiry = null,
-    insurance_expiry = null
+    location_lat = null,
+    location_lng = null
   } = vehicleData;
+  
+  if (!name || capacity === undefined) {
+    throw new Error('Missing required vehicle data: name and capacity are required');
+  }
 
   try {
     const result = await pool.query(
       `INSERT INTO vehicles 
-       (id, description, seats, registration, notes, vehicle_type, wheelchair_access, status, rego_expiry, insurance_expiry)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       (name, registration, capacity, wheelchair_capacity, make, model, year, active, notes, status, location_lat, location_lng)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING *`,
-      [id, description, seats, registration, notes, vehicle_type, wheelchair_access, status, rego_expiry, insurance_expiry]
+      [
+        name,
+        registration,
+        capacity,
+        wheelchair_capacity,
+        make,
+        model,
+        year,
+        active,
+        notes,
+        status,
+        location_lat,
+        location_lng
+      ]
     );
     
     return result.rows[0];
@@ -125,15 +103,18 @@ const updateVehicle = async (id, vehicleData) => {
   
   // Extract fields to update
   const {
-    description,
-    seats,
+    name,
     registration,
+    capacity,
+    wheelchair_capacity,
+    make,
+    model,
+    year,
+    active,
     notes,
-    vehicle_type,
-    wheelchair_access,
     status,
-    rego_expiry,
-    insurance_expiry
+    location_lat,
+    location_lng
   } = vehicleData;
   
   try {
@@ -143,14 +124,9 @@ const updateVehicle = async (id, vehicleData) => {
     let paramIndex = 1;
     
     // Only include fields that are provided
-    if (description !== undefined) {
-      fields.push(`description = $${paramIndex++}`);
-      values.push(description);
-    }
-    
-    if (seats !== undefined) {
-      fields.push(`seats = $${paramIndex++}`);
-      values.push(seats);
+    if (name !== undefined) {
+      fields.push(`name = $${paramIndex++}`);
+      values.push(name);
     }
     
     if (registration !== undefined) {
@@ -158,19 +134,39 @@ const updateVehicle = async (id, vehicleData) => {
       values.push(registration);
     }
     
+    if (capacity !== undefined) {
+      fields.push(`capacity = $${paramIndex++}`);
+      values.push(capacity);
+    }
+    
     if (notes !== undefined) {
       fields.push(`notes = $${paramIndex++}`);
       values.push(notes);
     }
     
-    if (vehicle_type !== undefined) {
-      fields.push(`vehicle_type = $${paramIndex++}`);
-      values.push(vehicle_type);
+    if (wheelchair_capacity !== undefined) {
+      fields.push(`wheelchair_capacity = $${paramIndex++}`);
+      values.push(wheelchair_capacity);
     }
     
-    if (wheelchair_access !== undefined) {
-      fields.push(`wheelchair_access = $${paramIndex++}`);
-      values.push(wheelchair_access);
+    if (make !== undefined) {
+      fields.push(`make = $${paramIndex++}`);
+      values.push(make);
+    }
+
+    if (model !== undefined) {
+      fields.push(`model = $${paramIndex++}`);
+      values.push(model);
+    }
+
+    if (year !== undefined) {
+      fields.push(`year = $${paramIndex++}`);
+      values.push(year);
+    }
+
+    if (active !== undefined) {
+      fields.push(`active = $${paramIndex++}`);
+      values.push(active);
     }
     
     if (status !== undefined) {
@@ -178,14 +174,14 @@ const updateVehicle = async (id, vehicleData) => {
       values.push(status);
     }
     
-    if (rego_expiry !== undefined) {
-      fields.push(`rego_expiry = $${paramIndex++}`);
-      values.push(rego_expiry);
+    if (location_lat !== undefined) {
+      fields.push(`location_lat = $${paramIndex++}`);
+      values.push(location_lat);
     }
-    
-    if (insurance_expiry !== undefined) {
-      fields.push(`insurance_expiry = $${paramIndex++}`);
-      values.push(insurance_expiry);
+
+    if (location_lng !== undefined) {
+      fields.push(`location_lng = $${paramIndex++}`);
+      values.push(location_lng);
     }
     
     // Add updated_at timestamp

@@ -399,6 +399,29 @@ const getWindowSize = async (req, res) => {
   }
 };
 
+/**
+ * Get current loom window (start and end dates)
+ * @route GET /api/v1/loom/window
+ */
+const getWindow = async (req, res) => {
+  try {
+    const result = await loomEngine.getLoomWindow();
+    
+    if (!result.success) {
+      return res.status(500).json(result);
+    }
+    
+    return res.status(200).json(result);
+  } catch (error) {
+    logger.error('Error getting loom window:', error);
+    return res.status(500).json({
+      success: false,
+      message: `Error getting loom window: ${error.message}`,
+      error: error.toString()
+    });
+  }
+};
+
 module.exports = {
   generateWindow,
   resizeWindow,
@@ -410,5 +433,45 @@ module.exports = {
   cancelParticipant,
   reportStaffSickness,
   reoptimizeInstance,
-  getWindowSize
+  getWindowSize,
+  getWindow,
+  rollNow
 };
+
+/**
+ * Trigger an immediate loom roll
+ * @route POST /api/v1/loom/roll
+ */
+async function rollNow (req, res) {
+  try {
+    logger.info('Manual loom roll triggered via API');
+
+    // Delegate to service (must exist).  If not yet implemented, throw.
+    if (typeof loomEngine.rollNow !== 'function') {
+      throw new Error('loomEngine.rollNow() not implemented');
+    }
+
+    const result = await loomEngine.rollNow();
+
+    if (!result || result.success === false) {
+      return res.status(500).json({
+        success: false,
+        message: result?.message || 'Failed to roll loom',
+        error: result?.error || null
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Loom rolled successfully',
+      data: result.data || {}
+    });
+  } catch (error) {
+    logger.error('Error performing manual loom roll:', error);
+    return res.status(500).json({
+      success: false,
+      message: `Error performing manual roll: ${error.message}`,
+      error: error.toString()
+    });
+  }
+}

@@ -30,19 +30,16 @@ const Participants = () => {
         suburb: '',
         postcode: '',
         ndis_number: '',
-        plan_management_type: 'agency', // agency, plan, self
-        contact_phone: '',
-        contact_email: '',
+        plan_management_type: 'agency_managed', // agency_managed, plan_managed, self_managed, self_funded
+        phone: '',
+        email: '',
         emergency_contact_name: '',
         emergency_contact_phone: '',
         supervision_multiplier: 1.0,
-        support_needs: {
-            mobility: false,
-            communication: false,
-            medical: false,
-            behavioral: false,
-            personal_care: false
-        },
+        mobility_requirements: '',
+        dietary_requirements: '',
+        medical_requirements: '',
+        behavior_support_plan: false,
         notes: ''
     };
 
@@ -111,14 +108,14 @@ const Participants = () => {
     };
 
     const handleEditClick = (participant) => {
-        // Convert database representation to form representation using safe parsing
-        const supportNeeds = parseJsonField(participant.support_needs);
-            
         setFormData({ 
             ...participant, 
             plan_management_type: participant.plan_management_type || 'agency',
             supervision_multiplier: participant.supervision_multiplier || 1.0,
-            support_needs: supportNeeds
+            mobility_requirements: participant.mobility_requirements || '',
+            dietary_requirements: participant.dietary_requirements || '',
+            medical_requirements: participant.medical_requirements || '',
+            behavior_support_plan: participant.behavior_support_plan || false
         });
         setIsFormVisible(true);
     };
@@ -137,22 +134,10 @@ const Participants = () => {
 
     const handleFormChange = (e) => {
         const { name, value, type, checked } = e.target;
-        
-        if (name.startsWith('support_needs.')) {
-            const needKey = name.split('.')[1];
-            setFormData(prev => ({
-                ...prev,
-                support_needs: {
-                    ...prev.support_needs,
-                    [needKey]: checked
-                }
-            }));
-        } else {
-            setFormData(prev => ({
-                ...prev,
-                [name]: type === 'checkbox' ? checked : value
-            }));
-        }
+        setFormData(prev => ({
+            ...prev,
+            [name]: type === 'checkbox' ? checked : value
+        }));
     };
 
     const handleSupervisionChange = (value) => {
@@ -167,17 +152,13 @@ const Participants = () => {
         setError(null);
         try {
             // Prepare data for API
-            const dataPayload = { 
-                ...formData,
-                support_needs: JSON.stringify(formData.support_needs)
-            };
-
+            const sanitised = { ...formData };
             if (formData.id) {
                 // Update existing participant
-                await updateParticipant(formData.id, dataPayload);
+                await updateParticipant(formData.id, sanitised);
             } else {
                 // Create new participant
-                await createParticipant(dataPayload);
+                await createParticipant(sanitised);
             }
             fetchParticipants(); // Refresh the list
             setIsFormVisible(false);
@@ -197,9 +178,9 @@ const Participants = () => {
     // Get management type display
     const getManagementTypeDisplay = (type) => {
         switch(type) {
-            case 'plan': return 'Plan-Managed';
-            case 'self': return 'Self-Managed';
-            case 'ndia': return 'NDIA-Managed';
+            case 'plan_managed': return 'Plan-Managed';
+            case 'self_managed': return 'Self-Managed';
+            case 'self_funded': return 'Self-Funded';
             default: return 'Agency-Managed';
         }
     };
@@ -207,9 +188,9 @@ const Participants = () => {
     // Get management type color
     const getManagementTypeColor = (type) => {
         switch(type) {
-            case 'plan': return '#2196f3'; // Blue
-            case 'self': return '#4caf50'; // Green
-            case 'ndia': return '#ff9800'; // Orange
+            case 'plan_managed': return '#2196f3'; // Blue
+            case 'self_managed': return '#4caf50'; // Green
+            case 'self_funded': return '#ff9800'; // Orange
             default: return '#9e9e9e'; // Grey
         }
     };
@@ -232,7 +213,7 @@ const Participants = () => {
             if (!fullName.includes(term) && 
                 !(p.ndis_number && p.ndis_number.toLowerCase().includes(term)) &&
                 !(p.suburb && p.suburb.toLowerCase().includes(term)) &&
-                !(p.contact_phone && p.contact_phone.includes(term))) {
+                !(p.phone && p.phone.includes(term))) {
                 return false;
             }
         }
@@ -309,10 +290,10 @@ const Participants = () => {
                                 className="filter-select"
                             >
                                 <option value="all">All Management Types</option>
-                                <option value="agency">Agency-Managed</option>
-                                <option value="plan">Plan-Managed</option>
-                                <option value="self">Self-Managed</option>
-                                <option value="ndia">NDIA-Managed</option>
+                                <option value="agency_managed">Agency-Managed</option>
+                                <option value="plan_managed">Plan-Managed</option>
+                                <option value="self_managed">Self-Managed</option>
+                                <option value="self_funded">Self-Funded</option>
                             </select>
                             
                             <select 
@@ -442,14 +423,14 @@ const Participants = () => {
                                             
                                             {/* Contact Information */}
                                             <div className="contact-section">
-                                                {p.contact_phone && (
+                                                {p.phone && (
                                                     <div className="contact-item">
-                                                        <strong>Phone:</strong> {p.contact_phone}
+                                                        <strong>Phone:</strong> {p.phone}
                                                     </div>
                                                 )}
-                                                {p.contact_email && (
+                                                {p.email && (
                                                     <div className="contact-item">
-                                                        <strong>Email:</strong> {p.contact_email}
+                                                        <strong>Email:</strong> {p.email}
                                                     </div>
                                                 )}
                                                 {p.emergency_contact_name && (
@@ -536,10 +517,10 @@ const Participants = () => {
                                     value={formData.plan_management_type} 
                                     onChange={handleFormChange}
                                 >
-                                    <option value="agency">Agency-Managed</option>
-                                    <option value="plan">Plan-Managed</option>
-                                    <option value="self">Self-Managed</option>
-                                    <option value="ndia">NDIA-Managed</option>
+                                    <option value="agency_managed">Agency-Managed</option>
+                                    <option value="plan_managed">Plan-Managed</option>
+                                    <option value="self_managed">Self-Managed</option>
+                                    <option value="self_funded">Self-Funded</option>
                                 </select>
                             </div>
                             <div className="form-field">
@@ -556,11 +537,21 @@ const Participants = () => {
                             </div>
                             <div className="form-field">
                                 <label>Contact Phone</label>
-                                <input type="tel" name="contact_phone" value={formData.contact_phone || ''} onChange={handleFormChange} />
+                                <input
+                                    type="tel"
+                                    name="phone"
+                                    value={formData.phone || ''}
+                                    onChange={handleFormChange}
+                                />
                             </div>
                             <div className="form-field">
                                 <label>Contact Email</label>
-                                <input type="email" name="contact_email" value={formData.contact_email || ''} onChange={handleFormChange} />
+                                <input
+                                    type="email"
+                                    name="email"
+                                    value={formData.email || ''}
+                                    onChange={handleFormChange}
+                                />
                             </div>
                             <div className="form-field">
                                 <label>Emergency Contact Name</label>
@@ -602,56 +593,44 @@ const Participants = () => {
                                 </div>
                             </div>
                             
-                            {/* Support Needs */}
+                            {/* --- Requirements / Support Plan -------------------------------- */}
                             <div className="form-field full-width">
-                                <label>Support Needs</label>
-                                <div className="support-needs-checkboxes">
-                                    <label className="support-need-checkbox">
-                                        <input
-                                            type="checkbox"
-                                            name="support_needs.mobility"
-                                            checked={formData.support_needs.mobility}
-                                            onChange={handleFormChange}
-                                        />
-                                        Mobility Support
-                                    </label>
-                                    <label className="support-need-checkbox">
-                                        <input
-                                            type="checkbox"
-                                            name="support_needs.communication"
-                                            checked={formData.support_needs.communication}
-                                            onChange={handleFormChange}
-                                        />
-                                        Communication Support
-                                    </label>
-                                    <label className="support-need-checkbox">
-                                        <input
-                                            type="checkbox"
-                                            name="support_needs.medical"
-                                            checked={formData.support_needs.medical}
-                                            onChange={handleFormChange}
-                                        />
-                                        Medical Support
-                                    </label>
-                                    <label className="support-need-checkbox">
-                                        <input
-                                            type="checkbox"
-                                            name="support_needs.behavioral"
-                                            checked={formData.support_needs.behavioral}
-                                            onChange={handleFormChange}
-                                        />
-                                        Behavioral Support
-                                    </label>
-                                    <label className="support-need-checkbox">
-                                        <input
-                                            type="checkbox"
-                                            name="support_needs.personal_care"
-                                            checked={formData.support_needs.personal_care}
-                                            onChange={handleFormChange}
-                                        />
-                                        Personal Care Support
-                                    </label>
-                                </div>
+                                <label>Mobility Requirements</label>
+                                <textarea
+                                    name="mobility_requirements"
+                                    value={formData.mobility_requirements}
+                                    onChange={handleFormChange}
+                                ></textarea>
+                            </div>
+
+                            <div className="form-field full-width">
+                                <label>Dietary Requirements</label>
+                                <textarea
+                                    name="dietary_requirements"
+                                    value={formData.dietary_requirements}
+                                    onChange={handleFormChange}
+                                ></textarea>
+                            </div>
+
+                            <div className="form-field full-width">
+                                <label>Medical Requirements</label>
+                                <textarea
+                                    name="medical_requirements"
+                                    value={formData.medical_requirements}
+                                    onChange={handleFormChange}
+                                ></textarea>
+                            </div>
+
+                            <div className="form-field">
+                                <label className="checkbox-label">
+                                    <input
+                                        type="checkbox"
+                                        name="behavior_support_plan"
+                                        checked={formData.behavior_support_plan}
+                                        onChange={handleFormChange}
+                                    />
+                                    Behaviour Support Plan in place
+                                </label>
                             </div>
                             
                             <div className="form-field full-width">

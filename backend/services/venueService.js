@@ -1,59 +1,23 @@
 // backend/services/venueService.js
-const { Pool } = require('pg');
-const { getDbConnection } = require('../database');
+/**
+ * Venue data-access layer (PostgreSQL only).
+ * Legacy SQLite wrapper has been removed – all calls go through the
+ * central pooled connection exported in `backend/database.js`.
+ */
 
-// Create a direct PostgreSQL pool for fallback
-const pool = new Pool({
-  user: process.env.POSTGRES_USER || 'postgres',
-  password: process.env.POSTGRES_PASSWORD || 'postgres',
-  host: process.env.POSTGRES_HOST || 'localhost',
-  port: parseInt(process.env.POSTGRES_PORT || '5432', 10),
-  database: process.env.POSTGRES_DB || 'rabspocdb'
-});
+const { pool } = require('../database');
 
 /**
  * Get all venues from the database
  * @returns {Promise<Array>} Array of venue objects
  */
 const getAllVenues = async () => {
-  // Try the wrapper first with timeout protection
   try {
-    console.log('Attempting to get venues using database wrapper...');
-    
-    // Create a timeout promise
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Database wrapper timed out')), 2000);
-    });
-    
-    // Create the wrapper query promise
-    const wrapperPromise = (async () => {
-      let db;
-      try {
-        db = await getDbConnection();
-        return await new Promise((resolve, reject) => {
-          db.all('SELECT * FROM venues', [], (err, result) => {
-            if (err) return reject(err);
-            resolve(result);
-          });
-        });
-      } finally {
-        if (db) db.close();
-      }
-    })();
-    
-    // Race the promises
-    return await Promise.race([wrapperPromise, timeoutPromise]);
+    const { rows } = await pool.query('SELECT * FROM venues ORDER BY name');
+    return rows;
   } catch (error) {
-    console.error('Wrapper failed, falling back to direct PostgreSQL:', error.message);
-    
-    // Fall back to direct PostgreSQL
-    try {
-      const result = await pool.query('SELECT * FROM venues');
-      return result.rows;
-    } catch (pgError) {
-      console.error('Direct PostgreSQL also failed:', pgError.message);
-      throw pgError;
-    }
+    console.error('Error retrieving venues:', error);
+    throw error;
   }
 };
 
@@ -78,12 +42,38 @@ const getVenueById = async (id) => {
  * @returns {Promise<Object>} Created venue object
  */
 const createVenue = async (venueData) => {
-  const { name, address, capacity, description, latitude, longitude } = venueData;
+  // Map incoming payload to actual columns.  Provide sensible defaults so
+  // callers aren’t forced to supply every optional field.
+  const {
+    name,
+    address,
+    suburb = null,
+    state = 'NSW',
+    postcode = null,
+    capacity = null,
+    // Accept legacy `description`, otherwise use explicit `facilities`
+    facilities = venueData.description || null,
+    location_lat = venueData.latitude || null,
+    location_lng = venueData.longitude || null
+  } = venueData;
   
   try {
     const result = await pool.query(
-      'INSERT INTO venues (name, address, capacity, description, latitude, longitude) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [name, address, capacity, description, latitude, longitude]
+      `INSERT INTO venues 
+        (name, address, suburb, state, postcode, capacity, facilities, location_lat, location_lng)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING *`,
+      [
+        name,
+        address,
+        suburb,
+        state,
+        postcode,
+        capacity,
+        facilities,
+        location_lat,
+        location_lng
+      ]
     );
     return result.rows[0];
   } catch (error) {
@@ -99,12 +89,47 @@ const createVenue = async (venueData) => {
  * @returns {Promise<Object>} Updated venue object
  */
 const updateVenue = async (id, venueData) => {
-  const { name, address, capacity, description, latitude, longitude } = venueData;
+  // Align payload with actual PostgreSQL column names.
+  // Accept legacy keys (description / latitude / longitude) for backward-compatibility.
+  const {
+    name,
+    address,
+    suburb        = null,
+    state         = null,
+    postcode      = null,
+    capacity      = null,
+    facilities    = venueData.description ?? null,
+    location_lat  = venueData.latitude  ?? null,
+    location_lng  = venueData.longitude ?? null
+  } = venueData;
   
   try {
     const result = await pool.query(
-      'UPDATE venues SET name = $1, address = $2, capacity = $3, description = $4, latitude = $5, longitude = $6 WHERE id = $7 RETURNING *',
-      [name, address, capacity, description, latitude, longitude, id]
+      `UPDATE venues 
+         SET name          = $1,
+             address       = $2,
+             suburb        = $3,
+             state         = $4,
+             postcode      = $5,
+             capacity      = $6,
+             facilities    = $7,
+             location_lat  = $8,
+             location_lng  = $9,
+             updated_at    = CURRENT_TIMESTAMP
+       WHERE id = $10
+       RETURNING *`,
+      [
+        name,
+        address,
+        suburb,
+        state,
+        postcode,
+        capacity,
+        facilities,
+        location_lat,
+        location_lng,
+        id
+      ]
     );
     return result.rows[0];
   } catch (error) {

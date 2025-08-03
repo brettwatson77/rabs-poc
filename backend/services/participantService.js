@@ -57,34 +57,27 @@ const createParticipant = async (participantData) => {
     state = 'NSW',
     postcode,
     ndis_number = null,
-    is_plan_managed = 0,
-    contact_phone = null,
-    contact_email = null,
+    // accept either modern or legacy names
+    phone = participantData.phone ?? participantData.contact_phone ?? null,
+    email = participantData.email ?? participantData.contact_email ?? null,
+    is_plan_managed = participantData.is_plan_managed ?? false,
     notes = null,
-    plan_management_type = 'agency_managed',
-    support_needs = '[]',
-    supervision_multiplier = 1.0
-    /* ---- NEW BOOLEAN FLAG FIELDS (default false) ---- */
-    ,
-    has_wheelchair_access = false,
-    has_dietary_requirements = false,
-    has_medical_requirements = false,
-    has_behavioral_support = false,
-    has_visual_impairment = false,
-    has_hearing_impairment = false,
-    has_cognitive_support = false,
-    has_communication_needs = false
+    supervision_multiplier = 1.0,
+    mobility_requirements = null,
+    dietary_requirements = null,
+    medical_requirements = null,
+    behavior_support_plan = false
   } = participantData;
 
   try {
     const result = await pool.query(
       `INSERT INTO participants 
-       (first_name, last_name, address, suburb, state, postcode, ndis_number, is_plan_managed, 
-        contact_phone, contact_email, notes, plan_management_type, support_needs, supervision_multiplier,
-        has_wheelchair_access, has_dietary_requirements, has_medical_requirements, has_behavioral_support,
-        has_visual_impairment, has_hearing_impairment, has_cognitive_support, has_communication_needs)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
-               $15, $16, $17, $18, $19, $20, $21, $22)
+       (first_name, last_name, address, suburb, state, postcode, ndis_number,
+        contact_phone, contact_email, notes, is_plan_managed, supervision_multiplier,
+        mobility_requirements, dietary_requirements, medical_requirements, behavior_support_plan)
+       VALUES ($1, $2, $3, $4, $5, $6, $7,
+               $8, $9, $10, $11, $12,
+               $13, $14, $15, $16)
        RETURNING *`,
       [
         first_name,
@@ -94,22 +87,15 @@ const createParticipant = async (participantData) => {
         state,
         postcode,
         ndis_number,
-        is_plan_managed,
-        contact_phone,
-        contact_email,
+        phone,
+        email,
         notes,
-        plan_management_type,
-        support_needs,
+        is_plan_managed,
         supervision_multiplier,
-        /* ---- boolean flag values ---- */
-        has_wheelchair_access,
-        has_dietary_requirements,
-        has_medical_requirements,
-        has_behavioral_support,
-        has_visual_impairment,
-        has_hearing_impairment,
-        has_cognitive_support,
-        has_communication_needs
+        mobility_requirements,
+        dietary_requirements,
+        medical_requirements,
+        behavior_support_plan
       ]
     );
     
@@ -140,22 +126,16 @@ const updateParticipant = async (id, participantData) => {
     state,
     postcode,
     ndis_number,
-    is_plan_managed,
-    contact_phone,
-    contact_email,
+    phone,
+    email,
     notes,
-    plan_management_type,
-    support_needs,
+    is_plan_managed,
     supervision_multiplier
     ,
-    has_wheelchair_access,
-    has_dietary_requirements,
-    has_medical_requirements,
-    has_behavioral_support,
-    has_visual_impairment,
-    has_hearing_impairment,
-    has_cognitive_support,
-    has_communication_needs
+    mobility_requirements,
+    dietary_requirements,
+    medical_requirements,
+    behavior_support_plan
   } = participantData;
   
   try {
@@ -200,19 +180,14 @@ const updateParticipant = async (id, participantData) => {
       values.push(ndis_number);
     }
     
-    if (is_plan_managed !== undefined) {
-      fields.push(`is_plan_managed = $${paramIndex++}`);
-      values.push(is_plan_managed);
-    }
-    
-    if (contact_phone !== undefined) {
+    if (phone !== undefined) {
       fields.push(`contact_phone = $${paramIndex++}`);
-      values.push(contact_phone);
+      values.push(phone);
     }
     
-    if (contact_email !== undefined) {
+    if (email !== undefined) {
       fields.push(`contact_email = $${paramIndex++}`);
-      values.push(contact_email);
+      values.push(email);
     }
     
     if (notes !== undefined) {
@@ -220,14 +195,9 @@ const updateParticipant = async (id, participantData) => {
       values.push(notes);
     }
     
-    if (plan_management_type !== undefined) {
-      fields.push(`plan_management_type = $${paramIndex++}`);
-      values.push(plan_management_type);
-    }
-    
-    if (support_needs !== undefined) {
-      fields.push(`support_needs = $${paramIndex++}`);
-      values.push(support_needs);
+    if (is_plan_managed !== undefined) {
+      fields.push(`is_plan_managed = $${paramIndex++}`);
+      values.push(is_plan_managed);
     }
     
     if (supervision_multiplier !== undefined) {
@@ -235,38 +205,21 @@ const updateParticipant = async (id, participantData) => {
       values.push(supervision_multiplier);
     }
     
-    /* ---- boolean flag fields ---- */
-    if (has_wheelchair_access !== undefined) {
-      fields.push(`has_wheelchair_access = $${paramIndex++}`);
-      values.push(has_wheelchair_access);
+    if (mobility_requirements !== undefined) {
+      fields.push(`mobility_requirements = $${paramIndex++}`);
+      values.push(mobility_requirements);
     }
-    if (has_dietary_requirements !== undefined) {
-      fields.push(`has_dietary_requirements = $${paramIndex++}`);
-      values.push(has_dietary_requirements);
+    if (dietary_requirements !== undefined) {
+      fields.push(`dietary_requirements = $${paramIndex++}`);
+      values.push(dietary_requirements);
     }
-    if (has_medical_requirements !== undefined) {
-      fields.push(`has_medical_requirements = $${paramIndex++}`);
-      values.push(has_medical_requirements);
+    if (medical_requirements !== undefined) {
+      fields.push(`medical_requirements = $${paramIndex++}`);
+      values.push(medical_requirements);
     }
-    if (has_behavioral_support !== undefined) {
-      fields.push(`has_behavioral_support = $${paramIndex++}`);
-      values.push(has_behavioral_support);
-    }
-    if (has_visual_impairment !== undefined) {
-      fields.push(`has_visual_impairment = $${paramIndex++}`);
-      values.push(has_visual_impairment);
-    }
-    if (has_hearing_impairment !== undefined) {
-      fields.push(`has_hearing_impairment = $${paramIndex++}`);
-      values.push(has_hearing_impairment);
-    }
-    if (has_cognitive_support !== undefined) {
-      fields.push(`has_cognitive_support = $${paramIndex++}`);
-      values.push(has_cognitive_support);
-    }
-    if (has_communication_needs !== undefined) {
-      fields.push(`has_communication_needs = $${paramIndex++}`);
-      values.push(has_communication_needs);
+    if (behavior_support_plan !== undefined) {
+      fields.push(`behavior_support_plan = $${paramIndex++}`);
+      values.push(behavior_support_plan);
     }
     
     // Add updated_at timestamp

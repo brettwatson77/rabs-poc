@@ -71,6 +71,10 @@ const Navbar = () => {
         <li>
           <Link to="/loom-settings" style={linkStyles}>Loom Settings</Link>
         </li>
+        {/* Advanced Loom control dashboard */}
+        <li>
+          <Link to="/loom-controls" style={linkStyles}>Loom Controls</Link>
+        </li>
       </ul>
     </nav>
   );

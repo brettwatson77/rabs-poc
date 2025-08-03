@@ -1495,6 +1495,41 @@ const getLoomInstanceDetails = async (instanceId) => {
   }
 };
 
+/**
+ * Get current loom window dates (start and end)
+ * @returns {Promise<Object>} Window object with start and end dates
+ */
+const getLoomWindow = async () => {
+  try {
+    // Current window size in weeks
+    const windowSize = await getLoomWindowSize();
+
+    // Today (start of day, Sydney timezone already handled elsewhere)
+    const startDate = new Date();
+    startDate.setHours(0, 0, 0, 0);
+
+    // End date = start + windowSize weeks
+    const endDate = new Date(startDate);
+    endDate.setDate(startDate.getDate() + windowSize * 7);
+
+    return {
+      success: true,
+      data: {
+        start: formatDateForDb(startDate),
+        end: formatDateForDb(endDate),
+        windowWeeks: windowSize
+      }
+    };
+  } catch (error) {
+    logger.error('Error getting loom window:', error);
+    return {
+      success: false,
+      message: `Error getting loom window: ${error.message}`,
+      error
+    };
+  }
+};
+
 module.exports = {
   getLoomWindowSize,
   setLoomWindowSize,
@@ -1508,4 +1543,35 @@ module.exports = {
   reoptimizeInstance,
   getLoomInstances,
   getLoomInstanceDetails
+
+  ,
+  getLoomWindow,
+  /**
+   * Roll / regenerate the loom window immediately.
+   * Convenience helper for manual testing (API endpoint /loom/roll).
+   * It simply re-calls generateLoomWindow with the current window size.
+   */
+  rollNow
 };
+
+/**
+ * Trigger an immediate roll of the loom window.
+ * Re-uses the existing generateLoomWindow logic with the
+ * currently configured window size.  Useful for Day-1 testing.
+ *
+ * @returns {Promise<Object>} result of generateLoomWindow
+ */
+async function rollNow () {
+  try {
+    const currentSize = await getLoomWindowSize();
+    // Re-generate window using the stored size
+    return await generateLoomWindow(currentSize);
+  } catch (error) {
+    logger.error('Error performing manual roll of loom window:', error);
+    return {
+      success: false,
+      message: `Error performing manual roll: ${error.message}`,
+      error
+    };
+  }
+}
