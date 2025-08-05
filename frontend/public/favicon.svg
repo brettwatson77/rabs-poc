@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Background with glassmorphism effect -->
+  <defs>
+    <linearGradient id="bg-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1a1f2c" />
+      <stop offset="100%" stop-color="#121620" />
+    </linearGradient>
+    <linearGradient id="accent-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4d9fff" />
+      <stop offset="100%" stop-color="#9f7aea" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+  
+  <!-- Base shape with rounded corners -->
+  <rect x="5" y="5" width="90" height="90" rx="20" fill="url(#bg-gradient)" />
+  
+  <!-- Grid pattern suggesting calendar/roster -->
+  <path d="M20 25 H80 M20 50 H80 M20 75 H80 M25 20 V80 M50 20 V80 M75 20 V80" 
+        stroke="rgba(255,255,255,0.1)" stroke-width="1" />
+  
+  <!-- Stylized "R" letter -->
+  <path d="M35 25 H55 C65 25 65 40 55 40 H35 V75 M35 40 H55 L65 75" 
+        fill="none" stroke="url(#accent-gradient)" stroke-width="8" 
+        stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)" />
+  
+  <!-- Version indicator -->
+  <circle cx="75" cy="25" r="8" fill="rgba(255,255,255,0.2)" />
+  <text x="75" y="28" font-family="Arial, sans-serif" font-size="10" 
+        font-weight="bold" text-anchor="middle" fill="#fff">3</text>
+</svg>

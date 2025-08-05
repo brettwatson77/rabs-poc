@@ -22,7 +22,7 @@ const CONFIG = {
   masterSpecPath: './MASTER_SPEC.md',
   currentDatabasePath: './CURRENT_DATABASE.md',
   currentApiPath: './CURRENT_API.md',
-  databaseSnapshotScript: './database-snapshot.sql',
+  databaseSnapshotScript: './goonmakethatdbpretty.sh',
   backendDir: './backend',
   frontendDir: './frontend',
   routesDir: './backend/routes',
@@ -100,14 +100,30 @@ function updateDatabaseSnapshot() {
       return false;
     }
     
-    // Get database connection info from .env file
+    // Make sure the script is executable
+    try {
+      execSync(`chmod +x ${CONFIG.databaseSnapshotScript}`);
+    } catch (error) {
+      console.warn(chalk.yellow(`⚠️ Could not make script executable: ${error.message}`));
+    }
+    
+    // Get database connection info from .env file (might be used by the script)
     const dbUser = process.env.DB_USER || 'postgres';
     const dbName = process.env.DB_NAME || 'rabspocdb';
     
-    // Run the database snapshot script
-    console.log(chalk.blue(`Running: psql -U ${dbUser} -d ${dbName} -f ${CONFIG.databaseSnapshotScript} > ${CONFIG.currentDatabasePath}`));
-    execSync(`psql -U ${dbUser} -d ${dbName} -f ${CONFIG.databaseSnapshotScript} > ${CONFIG.currentDatabasePath}`, {
-      stdio: 'inherit' // Show output in console
+    // Set environment variables for the script
+    const env = {
+      ...process.env,
+      DB_USER: dbUser,
+      DB_NAME: dbName,
+      OUTPUT_FILE: CONFIG.currentDatabasePath
+    };
+    
+    // Run the bash script directly
+    console.log(chalk.blue(`Running: ${CONFIG.databaseSnapshotScript} > ${CONFIG.currentDatabasePath}`));
+    execSync(`${CONFIG.databaseSnapshotScript}`, {
+      stdio: 'inherit', // Show output in console
+      env: env // Pass environment variables
     });
     
     console.log(chalk.green(`✅ Database snapshot updated at ${CONFIG.currentDatabasePath}`));
@@ -789,13 +805,11 @@ function checkDatabaseCompliance(spec, dbSchema) {
         name: table.name,
         issue: 'not snake_case'
       });
-    }
-    
-    // Check column names and types
     for (const column of table.columns) {
       // Check column name (should be snake_case)
       if (!/^[a-z][a-z0-9_]*$/.test(column.name)) {
         findings.push({
+    } // <-- Close snake_case check for table name
           type: 'error',
           message: `❌ Column name '${column.name}' in table '${table.name}' doesn't follow snake_case convention`,
           details: `Column names should be lowercase with underscores`
@@ -1148,7 +1162,6 @@ async function generateAiRecommendations() {
       apiKey: CONFIG.openAiApiKey,
     });
     const openai = new OpenAIApi(configuration);
-    
     // Create a prompt based on the report
     let prompt = `Analyze this compliance report and provide specific recommendations to fix the issues:\n\n`;
     prompt += `Missing API Endpoints: ${report.apiCompliance.missingEndpoints.map(e => `${e.method} ${e.path}`).join(', ')}\n`;

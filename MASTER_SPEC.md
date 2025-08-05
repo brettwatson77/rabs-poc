@@ -3,6 +3,43 @@ _Single-source-of-truth contract for the clean rebuild_
 
 ---
 
+## RABS System Overview
+
+RABS (Roster & Billing System) is **an end-to-end scheduling platform purpose-built for Australian NDIS disability-support providers**. It is **not** a generic calendar; every rule below exists because the National Disability Insurance Scheme (NDIS) or related industrial awards demand it.
+
+### 1. The Loom Engine
+• A **Program Template** (e.g. “Monday Centre-Based”) lives on the Wall.  
+• The **loom** continually looks _N_ weeks ahead (the **loom window**, configurable) and **generates instances** inside that horizon.  
+• When the window expands or templates/participants change, the loom _re-threads_ only the affected days – efficient and auditable.
+
+### 2. Real-World Constraints
+• **Staff Ratios** – default supervision is **1 : 4**; other ratios (1 : 3, 1 : 2, 1 : 1) must be supported.  
+• **SCHADS Award** – staff pay must respect level, penalty rates, overtime.  
+• **Vehicles** – capacity & fuel type; maintenance blackout dates.  
+• **Venues** – capacity & amenity constraints.  
+
+### 3. NDIS Billing Gymnastics
+• **Billing Codes** split a 1 : 1 rate across group ratios (4 : 1, 3 : 1, 2 : 1).  
+• **Supervision Multipliers** – higher ratios trigger loadings on public holidays or high-intensity support.  
+• **Audit Trail** – every attendance status, cancellation reason and billing line must be traceable.
+
+### 4. Workshed Operational Model (Story Version)
+Think of a portable site-office:  
+• **Wall** – giant whiteboard of program templates.  
+• **Calendar** – pinned K-pop calendar guarding date-specific absences, swaps & cancellations.  
+• **Filing Cabinet** – drawers for participants, staff, vehicles, venues, finance sheets.  
+The loom engine starts at the Wall, consults the Calendar for per-date overrides, then pulls authoritative facts from the Filing Cabinet to generate schedules, rosters and invoices.
+
+### 5. Why This Is Different
+1. **NDIS Compliance** – ratio splits, cancellation rules, SCHADS, kilometre caps.  
+2. **Forward-Planning** – loom window regeneration outclasses simple “recurring events”.  
+3. **Auditability** – immutable audit log of every change.  
+4. **Billing Gymnastics** – automatic CSV/PRODA exports with correct code splits.  
+
+> **Bottom line:** Generic calendars can’t handle these constraints; RABS exists to make NDIS operations _actually_ fit for purpose.
+
+---
+
 ## 1. Workshed Mental Model
 
 | Component | Purpose | Editable Via |
