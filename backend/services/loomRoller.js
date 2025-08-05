@@ -913,3 +913,106 @@ module.exports = {
   assignResources,
   purgeOldInstances
 };
+
+/**
+ * Create actual program records from CREATE_PROGRAM intent.
+ * This allows the UI to reflect changes immediately instead of
+ * waiting for the nightly loom roll.
+ *
+ * @param {Object} client      Database client inside existing transaction
+ * @param {String} intentId    ID of the CREATE_PROGRAM intent
+ * @param {Object} intentData  Raw request body used to create the intent
+ * @returns {String}           Newly-created program ID
+ */
+async function createProgramFromIntent(client, intentId, intentData) {
+  // Fetch fresh intent (incl. metadata & billing codes arrays)
+  const { rows } = await client.query(
+    'SELECT * FROM tgl_operator_intents WHERE id = $1',
+    [intentId]
+  );
+
+  if (!rows.length) {
+    throw new Error(`Intent ${intentId} not found for immediate program creation`);
+  }
+
+  const intent = rows[0];
+  const metadata = intent.metadata || {};
+  const participantPayload =
+    intent.billing_codes ? JSON.parse(intent.billing_codes) : [];
+
+  /* ------------------------------------------------------------------
+   * 1. Insert program shell
+   * ------------------------------------------------------------------ */
+  const programInsert = await client.query(
+    `INSERT INTO programs (
+       name, program_type, start_date, end_date,
+       start_time, end_time, venue_id, is_active,
+       repeat_pattern, days_of_week, notes
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+     RETURNING id`,
+    [
+      metadata.name || 'New Program',
+      metadata.type || 'community_access',
+      intent.start_date,
+      intent.end_date,
+      metadata.start_time || intentData.start_time,
+      metadata.end_time || intentData.end_time,
+      intent.venue_id,
+      true,
+      metadata.repeatPattern || 'weekly',
+      JSON.stringify(metadata.days_of_week || intentData.days_of_week || []),
+      metadata.notes || intentData.notes || null
+    ]
+  );
+
+  const programId = programInsert.rows[0].id;
+
+  /* ------------------------------------------------------------------
+   * 2. Enrol participants & their billing codes
+   * ------------------------------------------------------------------ */
+  for (const p of participantPayload) {
+    // Basic enrolment
+    await client.query(
+      `INSERT INTO program_participants (
+         program_id, participant_id, enrollment_date, is_active
+       ) VALUES ($1,$2,$3,$4)`,
+      [programId, p.id, intent.start_date, true]
+    );
+
+    // Billing codes
+    if (p.billing?.codes?.length) {
+      for (const code of p.billing.codes) {
+        await client.query(
+          `INSERT INTO participant_billing_codes (
+             program_id, participant_id, billing_code, hours,
+             start_date, end_date, is_active
+           ) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+          [
+            programId,
+            p.id,
+            code.code,
+            parseFloat(code.hours) || 0,
+            intent.start_date,
+            intent.end_date,
+            true
+          ]
+        );
+      }
+    }
+  }
+
+  // Link intent → program for traceability
+  await client.query(
+    'UPDATE tgl_operator_intents SET program_id = $1 WHERE id = $2',
+    [programId, intentId]
+  );
+
+  logger.info(
+    `Program ${programId} created immediately from intent ${intentId} (${participantPayload.length} participants)`
+  );
+
+  return programId;
+}
+
+// Append new helper to exports
+module.exports.createProgramFromIntent = createProgramFromIntent;

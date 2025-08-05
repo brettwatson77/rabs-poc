@@ -631,3 +631,18 @@
     0% { background-position: 200% 0; }
     100% { background-position: -200% 0; }
 }
+
+/* Participant Card Footer (NDIS Serial Number)
+   ========================================================================== */
+.participant-card-footer {
+    padding: 0.45rem 0.75rem;
+    background: #fafafa;
+    border-top: 1px solid #f0f0f0;
+    text-align: right;
+}
+
+.participant-serial {
+    font-size: 0.7rem;
+    color: #9e9e9e;
+    letter-spacing: 0.5px;
+}

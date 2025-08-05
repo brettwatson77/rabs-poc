@@ -1,0 +1,476 @@
+            table_name            |        column_name        |          data_type          | is_nullable |             column_default             
+----------------------------------+---------------------------+-----------------------------+-------------+----------------------------------------
+ billing_codes                    | id                        | uuid                        | NO          | gen_random_uuid()
+ billing_codes                    | code                      | character varying           | NO          | 
+ billing_codes                    | description               | text                        | NO          | 
+ billing_codes                    | rate                      | numeric                     | NO          | 
+ billing_codes                    | active                    | boolean                     | NO          | true
+ billing_codes                    | created_at                | timestamp with time zone    | NO          | now()
+ billing_codes                    | updated_at                | timestamp with time zone    | NO          | now()
+ change_log                       | id                        | uuid                        | NO          | uuid_generate_v4()
+ change_log                       | change_date               | timestamp with time zone    | NO          | now()
+ change_log                       | change_type               | text                        | NO          | 
+ change_log                       | description               | text                        | NO          | 
+ change_log                       | participant_id            | uuid                        | YES         | 
+ change_log                       | billing_impact            | boolean                     | NO          | false
+ change_log                       | billing_status            | text                        | NO          | 'NA'::text
+ event_card_map                   | id                        | uuid                        | NO          | uuid_generate_v4()
+ event_card_map                   | loom_instance_id          | uuid                        | NO          | 
+ event_card_map                   | card_type                 | text                        | NO          | 
+ event_card_map                   | card_order                | integer                     | NO          | 
+ event_card_map                   | display_title             | text                        | NO          | 
+ event_card_map                   | display_subtitle          | text                        | YES         | 
+ event_card_map                   | display_time_start        | timestamp with time zone    | NO          | 
+ event_card_map                   | display_time_end          | timestamp with time zone    | NO          | 
+ event_card_map                   | card_color                | text                        | YES         | 
+ event_card_map                   | card_icon                 | text                        | YES         | 
+ event_card_map                   | created_at                | timestamp with time zone    | YES         | CURRENT_TIMESTAMP
+ history_pinned_artifacts         | id                        | uuid                        | NO          | uuid_generate_v4()
+ history_pinned_artifacts         | history_shift_id          | uuid                        | NO          | 
+ history_pinned_artifacts         | artifact_type             | text                        | NO          | 
+ history_pinned_artifacts         | title                     | text                        | NO          | 
+ history_pinned_artifacts         | content                   | text                        | YES         | 
+ history_pinned_artifacts         | severity                  | text                        | YES         | 
+ history_pinned_artifacts         | created_by                | text                        | NO          | 
+ history_pinned_artifacts         | created_at                | timestamp with time zone    | YES         | CURRENT_TIMESTAMP
+ history_pinned_artifacts         | embedding                 | USER-DEFINED                | YES         | 
+ history_ribbon_participants      | id                        | uuid                        | NO          | uuid_generate_v4()
+ history_ribbon_participants      | history_shift_id          | uuid                        | NO          | 
+ history_ribbon_participants      | participant_id            | uuid                        | NO          | 
+ history_ribbon_participants      | participant_name          | text                        | NO          | 
+ history_ribbon_participants      | attendance_status         | text                        | NO          | 
+ history_ribbon_participants      | pickup_provided           | boolean                     | YES         | 
+ history_ribbon_participants      | dropoff_provided          | boolean                     | YES         | 
+ history_ribbon_participants      | notes                     | text                        | YES         | 
+ history_ribbon_shifts            | id                        | uuid                        | NO          | uuid_generate_v4()
+ history_ribbon_shifts            | original_loom_id          | uuid                        | NO          | 
+ history_ribbon_shifts            | program_name              | text                        | NO          | 
+ history_ribbon_shifts            | program_description       | text                        | YES         | 
+ history_ribbon_shifts            | instance_date             | date                        | NO          | 
+ history_ribbon_shifts            | start_time                | time without time zone      | NO          | 
+ history_ribbon_shifts            | end_time                  | time without time zone      | NO          | 
+ history_ribbon_shifts            | venue_name                | text                        | NO          | 
+ history_ribbon_shifts            | venue_address             | text                        | YES         | 
+ history_ribbon_shifts            | participant_count         | integer                     | NO          | 
+ history_ribbon_shifts            | staff_count               | integer                     | NO          | 
+ history_ribbon_shifts            | vehicle_count             | integer                     | NO          | 
+ history_ribbon_shifts            | completion_status         | text                        | NO          | 
+ history_ribbon_shifts            | woven_at                  | timestamp with time zone    | YES         | CURRENT_TIMESTAMP
+ history_ribbon_shifts            | archived                  | boolean                     | YES         | false
+ history_ribbon_staff             | id                        | uuid                        | NO          | uuid_generate_v4()
+ history_ribbon_staff             | history_shift_id          | uuid                        | NO          | 
+ history_ribbon_staff             | staff_id                  | uuid                        | NO          | 
+ history_ribbon_staff             | staff_name                | text                        | NO          | 
+ history_ribbon_staff             | role                      | text                        | NO          | 
+ history_ribbon_staff             | hours_worked              | numeric                     | NO          | 
+ history_ribbon_staff             | notes                     | text                        | YES         | 
+ history_ribbon_tags              | id                        | uuid                        | NO          | uuid_generate_v4()
+ history_ribbon_tags              | history_shift_id          | uuid                        | NO          | 
+ history_ribbon_tags              | tag_key                   | text                        | NO          | 
+ history_ribbon_tags              | tag_value                 | text                        | NO          | 
+ history_ribbon_tags              | embedding                 | USER-DEFINED                | YES         | 
+ history_ribbon_tags              | created_at                | timestamp with time zone    | YES         | CURRENT_TIMESTAMP
+ loom_instances                   | id                        | uuid                        | NO          | uuid_generate_v4()
+ loom_instances                   | source_rule_id            | uuid                        | NO          | 
+ loom_instances                   | instance_date             | date                        | NO          | 
+ loom_instances                   | start_time                | time without time zone      | NO          | 
+ loom_instances                   | end_time                  | time without time zone      | NO          | 
+ loom_instances                   | venue_id                  | uuid                        | YES         | 
+ loom_instances                   | transport_required        | boolean                     | YES         | true
+ loom_instances                   | staffing_ratio            | text                        | YES         | '1:4'::text
+ loom_instances                   | is_overridden             | boolean                     | YES         | false
+ loom_instances                   | override_source           | text                        | YES         | 
+ loom_instances                   | override_reason           | text                        | YES         | 
+ loom_instances                   | quality_audit_flag        | boolean                     | YES         | false
+ loom_instances                   | projection_hash           | text                        | YES         | 
+ loom_instances                   | projected_at              | timestamp with time zone    | YES         | CURRENT_TIMESTAMP
+ loom_instances                   | updated_at                | timestamp with time zone    | YES         | CURRENT_TIMESTAMP
+ loom_participant_attendance      | id                        | uuid                        | NO          | uuid_generate_v4()
+ loom_participant_attendance      | loom_instance_id          | uuid                        | NO          | 
+ loom_participant_attendance      | participant_id            | uuid                        | NO          | 
+ loom_participant_attendance      | source_rule_id            | uuid                        | YES         | 
+ loom_participant_attendance      | status                    | text                        | NO          | 'confirmed'::text
+ loom_participant_attendance      | is_overridden             | boolean                     | YES         | false
+ loom_participant_attendance      | override_source           | text                        | YES         | 
+ loom_participant_attendance      | override_reason           | text                        | YES         | 
+ loom_participant_attendance      | pickup_required           | boolean                     | YES         | true
+ loom_participant_attendance      | dropoff_required          | boolean                     | YES         | true
+ loom_participant_attendance      | notes                     | text                        | YES         | 
+ loom_participant_attendance      | created_at                | timestamp with time zone    | YES         | CURRENT_TIMESTAMP
+ loom_participant_attendance      | updated_at                | timestamp with time zone    | YES         | CURRENT_TIMESTAMP
+ loom_staff_assignments           | id                        | uuid                        | NO          | uuid_generate_v4()
+ loom_staff_assignments           | loom_instance_id          | uuid                        | NO          | 
+ loom_staff_assignments           | staff_id                  | uuid                        | NO          | 
+ loom_staff_assignments           | source_rule_id            | uuid                        | YES         | 
+ loom_staff_assignments           | role                      | text                        | NO          | 'support'::text
+ loom_staff_assignments           | is_overridden             | boolean                     | YES         | false
+ loom_staff_assignments           | override_source           | text                        | YES         | 
+ loom_staff_assignments           | override_reason           | text                        | YES         | 
+ loom_staff_assignments           | notes                     | text                        | YES         | 
+ loom_staff_assignments           | created_at                | timestamp with time zone    | YES         | CURRENT_TIMESTAMP
+ loom_staff_assignments           | updated_at                | timestamp with time zone    | YES         | CURRENT_TIMESTAMP
+ loom_vehicle_assignments         | id                        | uuid                        | NO          | uuid_generate_v4()
+ loom_vehicle_assignments         | loom_instance_id          | uuid                        | NO          | 
+ loom_vehicle_assignments         | vehicle_id                | uuid                        | NO          | 
+ loom_vehicle_assignments         | driver_staff_id           | uuid                        | YES         | 
+ loom_vehicle_assignments         | is_overridden             | boolean                     | YES         | false
+ loom_vehicle_assignments         | override_source           | text                        | YES         | 
+ loom_vehicle_assignments         | override_reason           | text                        | YES         | 
+ loom_vehicle_assignments         | notes                     | text                        | YES         | 
+ loom_vehicle_assignments         | created_at                | timestamp with time zone    | YES         | CURRENT_TIMESTAMP
+ loom_vehicle_assignments         | updated_at                | timestamp with time zone    | YES         | CURRENT_TIMESTAMP
+ master_schedule_items            | id                        | uuid                        | NO          | uuid_generate_v4()
+ master_schedule_items            | program_name              | text                        | NO          | 
+ master_schedule_items            | date                      | date                        | NO          | 
+ master_schedule_items            | start_time                | time without time zone      | NO          | 
+ master_schedule_items            | end_time                  | time without time zone      | NO          | 
+ master_schedule_items            | venue_id                  | uuid                        | YES         | 
+ master_schedule_items            | participant_count         | integer                     | YES         | 0
+ master_schedule_items            | supervision_multiplier    | numeric                     | YES         | 1.0
+ master_schedule_items            | status                    | text                        | YES         | 'scheduled'::text
+ master_schedule_items            | created_at                | timestamp with time zone    | YES         | CURRENT_TIMESTAMP
+ migrations                       | id                        | integer                     | NO          | nextval('migrations_id_seq'::regclass)
+ migrations                       | name                      | text                        | NO          | 
+ migrations                       | applied_at                | timestamp without time zone | YES         | CURRENT_TIMESTAMP
+ participants                     | id                        | uuid                        | NO          | gen_random_uuid()
+ participants                     | first_name                | character varying           | NO          | 
+ participants                     | last_name                 | character varying           | NO          | 
+ participants                     | date_of_birth             | date                        | YES         | 
+ participants                     | ndis_number               | character varying           | YES         | 
+ participants                     | address                   | text                        | YES         | 
+ participants                     | suburb                    | character varying           | YES         | 
+ participants                     | state                     | character varying           | YES         | 
+ participants                     | postcode                  | character varying           | YES         | 
+ participants                     | phone                     | character varying           | YES         | 
+ participants                     | email                     | character varying           | YES         | 
+ participants                     | emergency_contact_name    | character varying           | YES         | 
+ participants                     | emergency_contact_phone   | character varying           | YES         | 
+ participants                     | notes                     | text                        | YES         | 
+ participants                     | active                    | boolean                     | NO          | true
+ participants                     | created_at                | timestamp with time zone    | NO          | now()
+ participants                     | updated_at                | timestamp with time zone    | NO          | now()
+ participants                     | photo_url                 | text                        | YES         | 
+ participants                     | location_lat              | numeric                     | YES         | 
+ participants                     | location_lng              | numeric                     | YES         | 
+ participants                     | supervision_multiplier    | numeric                     | NO          | 1.0
+ participants                     | ndis_plan_start           | date                        | YES         | 
+ participants                     | ndis_plan_end             | date                        | YES         | 
+ participants                     | ndis_plan_budget          | numeric                     | YES         | 
+ participants                     | requires_wheelchair       | boolean                     | YES         | false
+ participants                     | requires_transport        | boolean                     | YES         | false
+ participants                     | gender                    | character varying           | YES         | 
+ participants                     | plan_management_type      | USER-DEFINED                | NO          | 'agency_managed'::plan_management_enum
+ participants                     | plan_manager_name         | character varying           | YES         | 
+ participants                     | plan_manager_email        | character varying           | YES         | 
+ participants                     | plan_manager_phone        | character varying           | YES         | 
+ participants                     | support_coordinator_name  | character varying           | YES         | 
+ participants                     | support_coordinator_email | character varying           | YES         | 
+ participants                     | support_coordinator_phone | character varying           | YES         | 
+ participants                     | guardian_name             | character varying           | YES         | 
+ participants                     | guardian_relationship     | character varying           | YES         | 
+ participants                     | guardian_contact          | character varying           | YES         | 
+ participants                     | has_behavior_support_plan | boolean                     | YES         | false
+ participants                     | has_medical_plan          | boolean                     | YES         | false
+ participants                     | allergies                 | text                        | YES         | 
+ participants                     | medication_needs          | text                        | YES         | 
+ participants                     | mobility_needs            | text                        | YES         | 
+ participants                     | communication_needs       | text                        | YES         | 
+ participants                     | photo_consent             | boolean                     | YES         | false
+ participants                     | transport_consent         | boolean                     | YES         | false
+ participants                     | medication_consent        | boolean                     | YES         | false
+ participants                     | has_wheelchair_access     | boolean                     | NO          | false
+ participants                     | has_dietary_requirements  | boolean                     | NO          | false
+ participants                     | has_medical_requirements  | boolean                     | NO          | false
+ participants                     | has_behavioral_support    | boolean                     | NO          | false
+ participants                     | has_visual_impairment     | boolean                     | NO          | false
+ participants                     | has_hearing_impairment    | boolean                     | NO          | false
+ participants                     | has_cognitive_support     | boolean                     | NO          | false
+ participants                     | has_communication_needs   | boolean                     | NO          | false
+ payment_diamonds                 | id                        | uuid                        | NO          | uuid_generate_v4()
+ payment_diamonds                 | history_shift_id          | uuid                        | NO          | 
+ payment_diamonds                 | participant_id            | uuid                        | NO          | 
+ payment_diamonds                 | support_item_number       | text                        | NO          | 
+ payment_diamonds                 | unit_price                | numeric                     | NO          | 
+ payment_diamonds                 | quantity                  | numeric                     | NO          | 
+ payment_diamonds                 | total_amount              | numeric                     | NO          | 
+ payment_diamonds                 | gst_code                  | text                        | NO          | 
+ payment_diamonds                 | status                    | text                        | NO          | 'completed'::text
+ payment_diamonds                 | invoice_number            | text                        | YES         | 
+ payment_diamonds                 | invoice_date              | date                        | YES         | 
+ payment_diamonds                 | payment_date              | date                        | YES         | 
+ payment_diamonds                 | retention_end_date        | date                        | YES         | 
+ payment_diamonds                 | created_at                | timestamp with time zone    | YES         | CURRENT_TIMESTAMP
+ payment_diamonds                 | updated_at                | timestamp with time zone    | YES         | CURRENT_TIMESTAMP
+ pending_enrollment_changes       | id                        | uuid                        | NO          | uuid_generate_v4()
+ pending_enrollment_changes       | participant_id            | uuid                        | NO          | 
+ pending_enrollment_changes       | program_id                | uuid                        | NO          | 
+ pending_enrollment_changes       | action                    | text                        | NO          | 
+ pending_enrollment_changes       | effective_date            | date                        | NO          | 
+ pending_enrollment_changes       | status                    | text                        | YES         | 'pending'::text
+ pending_enrollment_changes       | created_at                | timestamp with time zone    | YES         | CURRENT_TIMESTAMP
+ program_enrollments              | id                        | uuid                        | NO          | uuid_generate_v4()
+ program_enrollments              | participant_id            | uuid                        | NO          | 
+ program_enrollments              | program_id                | uuid                        | NO          | 
+ program_enrollments              | start_date                | date                        | NO          | 
+ program_enrollments              | end_date                  | date                        | YES         | 
+ program_enrollments              | created_at                | timestamp with time zone    | YES         | CURRENT_TIMESTAMP
+ program_participants             | id                        | uuid                        | NO          | gen_random_uuid()
+ program_participants             | program_id                | uuid                        | NO          | 
+ program_participants             | participant_id            | uuid                        | NO          | 
+ program_participants             | billing_code_id           | uuid                        | YES         | 
+ program_participants             | start_date                | date                        | YES         | 
+ program_participants             | end_date                  | date                        | YES         | 
+ program_participants             | created_at                | timestamp with time zone    | NO          | now()
+ program_participants             | updated_at                | timestamp with time zone    | NO          | now()
+ program_participants             | status                    | text                        | NO          | 'active'::text
+ programs                         | id                        | uuid                        | NO          | gen_random_uuid()
+ programs                         | name                      | character varying           | NO          | 
+ programs                         | description               | text                        | YES         | 
+ programs                         | day_of_week               | integer                     | YES         | 
+ programs                         | start_time                | time without time zone      | NO          | 
+ programs                         | end_time                  | time without time zone      | NO          | 
+ programs                         | venue_id                  | uuid                        | YES         | 
+ programs                         | capacity                  | integer                     | YES         | 
+ programs                         | recurring                 | boolean                     | NO          | true
+ programs                         | active                    | boolean                     | NO          | true
+ programs                         | created_at                | timestamp with time zone    | NO          | now()
+ programs                         | updated_at                | timestamp with time zone    | NO          | now()
+ programs                         | status                    | character varying           | NO          | 'active'::character varying
+ rules_participant_schedule       | id                        | uuid                        | NO          | uuid_generate_v4()
+ rules_participant_schedule       | participant_id            | uuid                        | NO          | 
+ rules_participant_schedule       | program_id                | uuid                        | NO          | 
+ rules_participant_schedule       | start_date                | date                        | NO          | 
+ rules_participant_schedule       | end_date                  | date                        | YES         | 
+ rules_participant_schedule       | pickup_required           | boolean                     | YES         | true
+ rules_participant_schedule       | dropoff_required          | boolean                     | YES         | true
+ rules_participant_schedule       | notes                     | text                        | YES         | 
+ rules_participant_schedule       | created_at                | timestamp with time zone    | YES         | CURRENT_TIMESTAMP
+ rules_participant_schedule       | updated_at                | timestamp with time zone    | YES         | CURRENT_TIMESTAMP
+ rules_program_exceptions         | id                        | uuid                        | NO          | uuid_generate_v4()
+ rules_program_exceptions         | program_id                | uuid                        | NO          | 
+ rules_program_exceptions         | exception_date            | date                        | NO          | 
+ rules_program_exceptions         | exception_type            | text                        | NO          | 
+ rules_program_exceptions         | start_time                | time without time zone      | YES         | 
+ rules_program_exceptions         | end_time                  | time without time zone      | YES         | 
+ rules_program_exceptions         | venue_id                  | uuid                        | YES         | 
+ rules_program_exceptions         | reason                    | text                        | YES         | 
+ rules_program_exceptions         | created_at                | timestamp with time zone    | YES         | CURRENT_TIMESTAMP
+ rules_program_exceptions         | updated_at                | timestamp with time zone    | YES         | CURRENT_TIMESTAMP
+ rules_programs                   | id                        | uuid                        | NO          | uuid_generate_v4()
+ rules_programs                   | name                      | text                        | NO          | 
+ rules_programs                   | description               | text                        | YES         | 
+ rules_programs                   | day_of_week               | integer                     | NO          | 
+ rules_programs                   | start_time                | time without time zone      | NO          | 
+ rules_programs                   | end_time                  | time without time zone      | NO          | 
+ rules_programs                   | venue_id                  | uuid                        | YES         | 
+ rules_programs                   | is_recurring              | boolean                     | YES         | true
+ rules_programs                   | recurrence_pattern        | text                        | YES         | 'weekly'::text
+ rules_programs                   | transport_required        | boolean                     | YES         | true
+ rules_programs                   | staffing_ratio            | text                        | YES         | '1:4'::text
+ rules_programs                   | active                    | boolean                     | YES         | true
+ rules_programs                   | created_at                | timestamp with time zone    | YES         | CURRENT_TIMESTAMP
+ rules_programs                   | updated_at                | timestamp with time zone    | YES         | CURRENT_TIMESTAMP
+ rules_staff_roster               | id                        | uuid                        | NO          | uuid_generate_v4()
+ rules_staff_roster               | staff_id                  | uuid                        | NO          | 
+ rules_staff_roster               | program_id                | uuid                        | NO          | 
+ rules_staff_roster               | role                      | text                        | NO          | 'support'::text
+ rules_staff_roster               | start_date                | date                        | NO          | 
+ rules_staff_roster               | end_date                  | date                        | YES         | 
+ rules_staff_roster               | notes                     | text                        | YES         | 
+ rules_staff_roster               | created_at                | timestamp with time zone    | YES         | CURRENT_TIMESTAMP
+ rules_staff_roster               | updated_at                | timestamp with time zone    | YES         | CURRENT_TIMESTAMP
+ schedule                         | id                        | uuid                        | NO          | gen_random_uuid()
+ schedule                         | program_id                | uuid                        | NO          | 
+ schedule                         | scheduled_date            | date                        | NO          | 
+ schedule                         | start_time                | time without time zone      | NO          | 
+ schedule                         | end_time                  | time without time zone      | NO          | 
+ schedule                         | venue_id                  | uuid                        | YES         | 
+ schedule                         | notes                     | text                        | YES         | 
+ schedule                         | created_at                | timestamp with time zone    | NO          | now()
+ schedule                         | updated_at                | timestamp with time zone    | NO          | now()
+ settings                         | key                       | text                        | NO          | 
+ settings                         | value                     | text                        | NO          | 
+ settings                         | description               | text                        | YES         | 
+ staff                            | id                        | uuid                        | NO          | gen_random_uuid()
+ staff                            | first_name                | character varying           | NO          | 
+ staff                            | last_name                 | character varying           | NO          | 
+ staff                            | position                  | character varying           | YES         | 
+ staff                            | email                     | character varying           | YES         | 
+ staff                            | phone                     | character varying           | YES         | 
+ staff                            | address                   | text                        | YES         | 
+ staff                            | suburb                    | character varying           | YES         | 
+ staff                            | state                     | character varying           | YES         | 
+ staff                            | postcode                  | character varying           | YES         | 
+ staff                            | qualifications            | text                        | YES         | 
+ staff                            | active                    | boolean                     | NO          | true
+ staff                            | created_at                | timestamp with time zone    | NO          | now()
+ staff                            | updated_at                | timestamp with time zone    | NO          | now()
+ staff                            | photo_url                 | text                        | YES         | 
+ staff                            | location_lat              | numeric                     | YES         | 
+ staff                            | location_lng              | numeric                     | YES         | 
+ staff                            | status                    | character varying           | NO          | 'active'::character varying
+ staff                            | contracted_hours          | numeric                     | YES         | 
+ staff                            | base_pay_rate             | numeric                     | YES         | 
+ staff_unavailabilities           | id                        | uuid                        | NO          | gen_random_uuid()
+ staff_unavailabilities           | staff_id                  | uuid                        | NO          | 
+ staff_unavailabilities           | start_time                | timestamp with time zone    | NO          | 
+ staff_unavailabilities           | end_time                  | timestamp with time zone    | NO          | 
+ staff_unavailabilities           | reason                    | text                        | NO          | 
+ staff_unavailabilities           | notes                     | text                        | YES         | 
+ staff_unavailabilities           | created_at                | timestamp with time zone    | NO          | now()
+ staff_unavailabilities           | updated_at                | timestamp with time zone    | NO          | now()
+ tgl_config                       | key                       | text                        | NO          | 
+ tgl_config                       | value                     | text                        | NO          | 
+ tgl_config                       | description               | text                        | YES         | 
+ tgl_config                       | updated_at                | timestamp with time zone    | YES         | CURRENT_TIMESTAMP
+ tgl_config                       | updated_by                | text                        | YES         | 
+ tgl_loom_audit_log               | id                        | uuid                        | NO          | gen_random_uuid()
+ tgl_loom_audit_log               | action_type               | character varying           | NO          | 
+ tgl_loom_audit_log               | entity_type               | character varying           | NO          | 
+ tgl_loom_audit_log               | entity_id                 | uuid                        | NO          | 
+ tgl_loom_audit_log               | user_id                   | character varying           | YES         | 
+ tgl_loom_audit_log               | previous_state            | jsonb                       | YES         | 
+ tgl_loom_audit_log               | new_state                 | jsonb                       | YES         | 
+ tgl_loom_audit_log               | created_at                | timestamp with time zone    | NO          | now()
+ tgl_loom_audit_log               | action                    | character varying           | NO          | 'system_event'::character varying
+ tgl_loom_audit_log               | category                  | character varying           | YES         | 'system'::character varying
+ tgl_loom_audit_log               | severity                  | character varying           | YES         | 'info'::character varying
+ tgl_loom_audit_log               | timestamp                 | timestamp with time zone    | YES         | CURRENT_TIMESTAMP
+ tgl_loom_audit_log               | related_entity_id         | uuid                        | YES         | 
+ tgl_loom_audit_log               | related_entity_type       | character varying           | YES         | 
+ tgl_loom_audit_log               | details                   | jsonb                       | YES         | '{}'::jsonb
+ tgl_loom_audit_log               | message                   | text                        | YES         | 
+ tgl_loom_instances               | id                        | uuid                        | NO          | gen_random_uuid()
+ tgl_loom_instances               | program_id                | uuid                        | NO          | 
+ tgl_loom_instances               | instance_date             | date                        | NO          | 
+ tgl_loom_instances               | start_time                | time without time zone      | NO          | 
+ tgl_loom_instances               | end_time                  | time without time zone      | NO          | 
+ tgl_loom_instances               | venue_id                  | uuid                        | YES         | 
+ tgl_loom_instances               | status                    | USER-DEFINED                | NO          | 'draft'::loom_instance_status
+ tgl_loom_instances               | participants_count        | integer                     | NO          | 0
+ tgl_loom_instances               | staff_count               | integer                     | NO          | 0
+ tgl_loom_instances               | manually_modified         | boolean                     | NO          | false
+ tgl_loom_instances               | notes                     | text                        | YES         | 
+ tgl_loom_instances               | created_at                | timestamp with time zone    | NO          | now()
+ tgl_loom_instances               | updated_at                | timestamp with time zone    | NO          | now()
+ tgl_loom_instances               | data_json                 | jsonb                       | YES         | '{}'::jsonb
+ tgl_loom_participant_allocations | id                        | uuid                        | NO          | gen_random_uuid()
+ tgl_loom_participant_allocations | loom_instance_id          | uuid                        | NO          | 
+ tgl_loom_participant_allocations | participant_id            | uuid                        | NO          | 
+ tgl_loom_participant_allocations | billing_code_id           | uuid                        | YES         | 
+ tgl_loom_participant_allocations | allocation_status         | USER-DEFINED                | NO          | 'planned'::allocation_status
+ tgl_loom_participant_allocations | cancellation_type         | USER-DEFINED                | YES         | 
+ tgl_loom_participant_allocations | manually_added            | boolean                     | NO          | false
+ tgl_loom_participant_allocations | notes                     | text                        | YES         | 
+ tgl_loom_participant_allocations | created_at                | timestamp with time zone    | NO          | now()
+ tgl_loom_participant_allocations | updated_at                | timestamp with time zone    | NO          | now()
+ tgl_loom_participant_allocations | billing_codes             | jsonb                       | YES         | '[]'::jsonb
+ tgl_loom_participant_allocations | hours                     | numeric                     | YES         | 0
+ tgl_loom_staff_shifts            | id                        | uuid                        | NO          | gen_random_uuid()
+ tgl_loom_staff_shifts            | loom_instance_id          | uuid                        | NO          | 
+ tgl_loom_staff_shifts            | staff_id                  | uuid                        | NO          | 
+ tgl_loom_staff_shifts            | role                      | USER-DEFINED                | NO          | 
+ tgl_loom_staff_shifts            | start_time                | time without time zone      | NO          | 
+ tgl_loom_staff_shifts            | end_time                  | time without time zone      | NO          | 
+ tgl_loom_staff_shifts            | status                    | USER-DEFINED                | NO          | 'planned'::staff_shift_status
+ tgl_loom_staff_shifts            | manually_assigned         | boolean                     | NO          | false
+ tgl_loom_staff_shifts            | notes                     | text                        | YES         | 
+ tgl_loom_staff_shifts            | created_at                | timestamp with time zone    | NO          | now()
+ tgl_loom_staff_shifts            | updated_at                | timestamp with time zone    | NO          | now()
+ tgl_loom_vehicle_runs            | id                        | uuid                        | NO          | gen_random_uuid()
+ tgl_loom_vehicle_runs            | loom_instance_id          | uuid                        | NO          | 
+ tgl_loom_vehicle_runs            | vehicle_id                | uuid                        | NO          | 
+ tgl_loom_vehicle_runs            | driver_id                 | uuid                        | YES         | 
+ tgl_loom_vehicle_runs            | route_data                | jsonb                       | NO          | 
+ tgl_loom_vehicle_runs            | start_time                | time without time zone      | NO          | 
+ tgl_loom_vehicle_runs            | end_time                  | time without time zone      | NO          | 
+ tgl_loom_vehicle_runs            | estimated_duration        | integer                     | NO          | 
+ tgl_loom_vehicle_runs            | estimated_distance        | integer                     | NO          | 
+ tgl_loom_vehicle_runs            | manually_configured       | boolean                     | NO          | false
+ tgl_loom_vehicle_runs            | notes                     | text                        | YES         | 
+ tgl_loom_vehicle_runs            | created_at                | timestamp with time zone    | NO          | now()
+ tgl_loom_vehicle_runs            | updated_at                | timestamp with time zone    | NO          | now()
+ tgl_operator_intents             | id                        | uuid                        | NO          | gen_random_uuid()
+ tgl_operator_intents             | intent_type               | USER-DEFINED                | NO          | 
+ tgl_operator_intents             | start_date                | date                        | NO          | 
+ tgl_operator_intents             | end_date                  | date                        | YES         | 
+ tgl_operator_intents             | program_id                | uuid                        | YES         | 
+ tgl_operator_intents             | participant_id            | uuid                        | YES         | 
+ tgl_operator_intents             | staff_id                  | uuid                        | YES         | 
+ tgl_operator_intents             | venue_id                  | uuid                        | YES         | 
+ tgl_operator_intents             | vehicle_id                | uuid                        | YES         | 
+ tgl_operator_intents             | metadata                  | jsonb                       | NO          | '{}'::jsonb
+ tgl_operator_intents             | modified_fields           | jsonb                       | YES         | 
+ tgl_operator_intents             | billing_codes             | jsonb                       | YES         | 
+ tgl_operator_intents             | created_by                | text                        | NO          | 
+ tgl_operator_intents             | created_at                | timestamp with time zone    | NO          | now()
+ tgl_operator_intents             | updated_at                | timestamp with time zone    | NO          | now()
+ tgl_settings                     | id                        | uuid                        | NO          | gen_random_uuid()
+ tgl_settings                     | key                       | text                        | NO          | 
+ tgl_settings                     | value                     | text                        | NO          | 
+ tgl_settings                     | data_type                 | text                        | NO          | 'string'::text
+ tgl_settings                     | category                  | text                        | NO          | 'general'::text
+ tgl_settings                     | description               | text                        | YES         | 
+ tgl_settings                     | created_at                | timestamp with time zone    | NO          | now()
+ tgl_settings                     | updated_at                | timestamp with time zone    | NO          | now()
+ tgl_temporal_exceptions          | id                        | uuid                        | NO          | gen_random_uuid()
+ tgl_temporal_exceptions          | exception_type            | USER-DEFINED                | NO          | 
+ tgl_temporal_exceptions          | exception_date            | date                        | NO          | 
+ tgl_temporal_exceptions          | program_id                | uuid                        | YES         | 
+ tgl_temporal_exceptions          | participant_id            | uuid                        | YES         | 
+ tgl_temporal_exceptions          | staff_id                  | uuid                        | YES         | 
+ tgl_temporal_exceptions          | venue_id                  | uuid                        | YES         | 
+ tgl_temporal_exceptions          | vehicle_id                | uuid                        | YES         | 
+ tgl_temporal_exceptions          | loom_instance_id          | uuid                        | YES         | 
+ tgl_temporal_exceptions          | metadata                  | jsonb                       | NO          | '{}'::jsonb
+ tgl_temporal_exceptions          | billing_override          | jsonb                       | YES         | 
+ tgl_temporal_exceptions          | reason                    | text                        | YES         | 
+ tgl_temporal_exceptions          | created_by                | text                        | NO          | 
+ tgl_temporal_exceptions          | created_at                | timestamp with time zone    | NO          | now()
+ tgl_temporal_exceptions          | updated_at                | timestamp with time zone    | NO          | now()
+ vehicle_blackouts                | id                        | uuid                        | NO          | gen_random_uuid()
+ vehicle_blackouts                | vehicle_id                | uuid                        | NO          | 
+ vehicle_blackouts                | start_time                | timestamp with time zone    | NO          | 
+ vehicle_blackouts                | end_time                  | timestamp with time zone    | NO          | 
+ vehicle_blackouts                | reason                    | text                        | NO          | 
+ vehicle_blackouts                | notes                     | text                        | YES         | 
+ vehicle_blackouts                | created_at                | timestamp with time zone    | NO          | now()
+ vehicle_blackouts                | updated_at                | timestamp with time zone    | NO          | now()
+ vehicles                         | id                        | uuid                        | NO          | gen_random_uuid()
+ vehicles                         | name                      | character varying           | NO          | 
+ vehicles                         | registration              | character varying           | NO          | 
+ vehicles                         | capacity                  | integer                     | NO          | 
+ vehicles                         | wheelchair_capacity       | integer                     | NO          | 0
+ vehicles                         | make                      | character varying           | YES         | 
+ vehicles                         | model                     | character varying           | YES         | 
+ vehicles                         | year                      | integer                     | YES         | 
+ vehicles                         | active                    | boolean                     | NO          | true
+ vehicles                         | notes                     | text                        | YES         | 
+ vehicles                         | created_at                | timestamp with time zone    | NO          | now()
+ vehicles                         | updated_at                | timestamp with time zone    | NO          | now()
+ vehicles                         | location_lat              | numeric                     | YES         | 
+ vehicles                         | location_lng              | numeric                     | YES         | 
+ vehicles                         | status                    | character varying           | NO          | 'active'::character varying
+ vehicles                         | vin_number                | text                        | YES         | 
+ vehicles                         | engine_number             | text                        | YES         | 
+ vehicles                         | registration_expiry       | date                        | YES         | 
+ vehicles                         | fuel_type                 | text                        | YES         | 
+ vehicles                         | location                  | text                        | YES         | 
+ vehicles                         | max_height                | numeric                     | YES         | 
+ vehicles                         | wheelchair_accessible     | boolean                     | YES         | false
+ venues                           | id                        | uuid                        | NO          | gen_random_uuid()
+ venues                           | name                      | character varying           | NO          | 
+ venues                           | address                   | text                        | NO          | 
+ venues                           | suburb                    | character varying           | YES         | 
+ venues                           | state                     | character varying           | YES         | 
+ venues                           | postcode                  | character varying           | YES         | 
+ venues                           | capacity                  | integer                     | YES         | 
+ venues                           | facilities                | text                        | YES         | 
+ venues                           | active                    | boolean                     | NO          | true
+ venues                           | created_at                | timestamp with time zone    | NO          | now()
+ venues                           | updated_at                | timestamp with time zone    | NO          | now()
+ venues                           | location_lat              | numeric                     | YES         | 
+ venues                           | location_lng              | numeric                     | YES         | 
+ venues                           | status                    | character varying           | NO          | 'active'::character varying
+(472 rows)
+

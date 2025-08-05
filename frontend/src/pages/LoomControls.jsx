@@ -161,142 +161,27 @@ const LoomControls = () => {
     setLoading({...loading, logs: true});
     
     try {
-      // For initial display, add some example logs
-      const exampleLogs = [
-        {
-          timestamp: new Date(),
-          timestamp_iso: new Date().toISOString(),
-          severity: 'ERROR',
-          category: 'RESOURCE',
-          message: 'STAFF SHORTAGE: Need 55, have 52 (shortage of 3)',
-          details: {
-            resourceType: 'STAFF',
-            required: 55,
-            available: 52,
-            shortage: 3,
-            date: new Date().toISOString().split('T')[0]
-          },
-          affected_entities: [
-            { type: 'PROGRAM', name: 'Monday Social Group', unassigned_shifts: 2 },
-            { type: 'PROGRAM', name: 'Cooking Skills', unassigned_shifts: 1 }
-          ],
-          resolution_required: true,
-          resolution_suggestions: [
-            'Contact casual staff pool immediately',
-            'Review staff availability for the day',
-            'Prioritize programs by participant needs'
-          ]
-        },
-        {
-          timestamp: new Date(Date.now() - 5 * 60000), // 5 minutes ago
-          timestamp_iso: new Date(Date.now() - 5 * 60000).toISOString(),
-          severity: 'WARN',
-          category: 'OPTIMIZATION',
-          message: 'Bus run to Blue Mountains exceeds target duration by 45 minutes (target: 60, actual: 105)',
-          details: {
-            run_id: '12345',
-            vehicle_id: 'v-123',
-            vehicle_name: 'Bus 3',
-            target_duration: 60,
-            actual_duration: 105,
-            difference: 45,
-            destination: 'Blue Mountains',
-            pickup_count: 8,
-            distance_km: 85
-          },
-          affected_entities: [
-            { type: 'PARTICIPANT', id: 'p-123', name: 'John D.' },
-            { type: 'PARTICIPANT', id: 'p-124', name: 'Sarah M.' }
-          ],
-          resolution_required: true,
-          resolution_suggestions: [
-            'Review program timing to accommodate longer travel',
-            'Consider closer pickup points for distant participants'
-          ]
-        },
-        {
-          timestamp: new Date(Date.now() - 15 * 60000), // 15 minutes ago
-          timestamp_iso: new Date(Date.now() - 15 * 60000).toISOString(),
-          severity: 'ERROR',
-          category: 'CONSTRAINT',
-          message: 'Supervision multiplier conflict: 3 participants require 4.25 supervision units',
-          details: {
-            program_id: 'prog-123',
-            program_name: 'Thursday Adventure',
-            total_participants: 3,
-            total_supervision_load: 4.25,
-            current_staff: 1,
-            required_staff: 2,
-            shortage: 1
-          },
-          affected_entities: [
-            { type: 'PARTICIPANT', id: 'p-125', name: 'Alex T.', supervision_multiplier: 1.5 },
-            { type: 'PARTICIPANT', id: 'p-126', name: 'Emma L.', supervision_multiplier: 1.5 },
-            { type: 'PARTICIPANT', id: 'p-127', name: 'Michael R.', supervision_multiplier: 1.25 }
-          ],
-          resolution_required: true,
-          resolution_suggestions: [
-            'Add additional support staff',
-            'Review participant groupings',
-            'Check supervision multiplier accuracy'
-          ]
-        },
-        {
-          timestamp: new Date(Date.now() - 30 * 60000), // 30 minutes ago
-          timestamp_iso: new Date(Date.now() - 30 * 60000).toISOString(),
-          severity: 'INFO',
-          category: 'OPERATIONAL',
-          message: 'Daily loom roll completed successfully',
-          details: {
-            date: new Date().toISOString().split('T')[0],
-            instances_created: 42,
-            participants_allocated: 156,
-            staff_assigned: 28,
-            vehicles_assigned: 12
-          },
-          affected_entities: [],
-          resolution_required: false,
-          resolution_suggestions: []
-        },
-        {
-          timestamp: new Date(Date.now() - 60 * 60000), // 1 hour ago
-          timestamp_iso: new Date(Date.now() - 60 * 60000).toISOString(),
-          severity: 'CRITICAL',
-          category: 'SYSTEM',
-          message: 'Database connection error during loom roll',
-          details: {
-            errorType: 'DATABASE',
-            error: 'Connection timeout after 30000ms',
-            operation: 'Daily roll',
-            attempts: 3
-          },
-          affected_entities: [],
-          resolution_required: true,
-          resolution_suggestions: [
-            'Check database connection',
-            'Verify table structure',
-            'Review SQL queries'
-          ]
-        }
-      ];
-      
-      setLogs(exampleLogs);
-
-      // In a real implementation, you would fetch logs from the API:
-      /*
       const response = await axios.get('/api/v1/loom/logs', {
         params: {
           limit: 100,
-          ...logFilters
+          severity: logFilters.severity,
+          category: logFilters.category,
+          resolutionRequired: logFilters.resolutionRequired
         }
       });
-      
+
       if (response.data && response.data.success) {
-        setLogs(response.data.data);
+        setLogs(response.data.data || []);
+
+        // Inform user if no logs exist yet
+        if ((response.data.data || []).length === 0) {
+          showNotification('info', 'No system logs available yet.');
+        }
       } else {
-        showNotification('error', 'Failed to fetch logs');
+        // API responded but not success – fallback to empty state
+        setLogs([]);
+        showNotification('error', response.data?.message || 'Failed to fetch logs');
       }
-      */
     } catch (error) {
       console.error('Error fetching logs:', error);
       showNotification('error', 'Error loading logs: ' + (error.response?.data?.message || error.message));
@@ -336,8 +221,33 @@ const LoomControls = () => {
   };
 
   // Clear all logs
-  const clearLogs = () => {
-    setLogs([]);
+  // Clear logs from database via API
+  const clearLogs = async () => {
+    if (
+      !window.confirm(
+        'Are you sure you want to permanently delete all logs? This cannot be undone.'
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const response = await axios.delete('/api/v1/loom/logs');
+
+      if (response.data && response.data.success) {
+        setLogs([]);
+        showNotification('success', 'All logs cleared from database');
+      } else {
+        showNotification('error', 'Failed to clear logs');
+      }
+    } catch (error) {
+      console.error('Error clearing logs:', error);
+      showNotification(
+        'error',
+        'Error clearing logs: ' +
+          (error.response?.data?.message || error.message)
+      );
+    }
   };
 
   // Update log filters

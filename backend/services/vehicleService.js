@@ -47,6 +47,15 @@ const createVehicle = async (vehicleData) => {
     registration,
     capacity,
     wheelchair_capacity = 0,
+    // --------- new enhanced fields -------------
+    fuel_type = null,
+    vin_number = null,
+    engine_number = null,
+    registration_expiry = null,
+    location = null,
+    max_height = null,
+    wheelchair_accessible = false,
+    // ------------------------------------------
     make = null,
     model = null,
     year = null,
@@ -64,8 +73,20 @@ const createVehicle = async (vehicleData) => {
   try {
     const result = await pool.query(
       `INSERT INTO vehicles 
-       (name, registration, capacity, wheelchair_capacity, make, model, year, active, notes, status, location_lat, location_lng)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+       (name, registration, capacity, wheelchair_capacity,
+        make, model, year,
+        fuel_type, vin_number, engine_number, registration_expiry,
+        location, max_height, wheelchair_accessible,
+        active, notes, status,
+        location_lat, location_lng)
+       VALUES (
+        $1, $2, $3, $4,
+        $5, $6, $7,
+        $8, $9, $10, $11,
+        $12, $13, $14,
+        $15, $16, $17,
+        $18, $19
+       )
        RETURNING *`,
       [
         name,
@@ -75,6 +96,13 @@ const createVehicle = async (vehicleData) => {
         make,
         model,
         year,
+        fuel_type,
+        vin_number,
+        engine_number,
+        registration_expiry,
+        location,
+        max_height,
+        wheelchair_accessible,
         active,
         notes,
         status,
@@ -115,6 +143,17 @@ const updateVehicle = async (id, vehicleData) => {
     status,
     location_lat,
     location_lng
+  } = vehicleData;
+
+  // --- NEW enhanced fields ---
+  const {
+    fuel_type,
+    vin_number,
+    engine_number,
+    registration_expiry,
+    location,
+    max_height,
+    wheelchair_accessible
   } = vehicleData;
   
   try {
@@ -182,6 +221,36 @@ const updateVehicle = async (id, vehicleData) => {
     if (location_lng !== undefined) {
       fields.push(`location_lng = $${paramIndex++}`);
       values.push(location_lng);
+    }
+
+    // ---------- enhanced field handling ----------
+    if (fuel_type !== undefined) {
+      fields.push(`fuel_type = $${paramIndex++}`);
+      values.push(fuel_type);
+    }
+    if (vin_number !== undefined) {
+      fields.push(`vin_number = $${paramIndex++}`);
+      values.push(vin_number);
+    }
+    if (engine_number !== undefined) {
+      fields.push(`engine_number = $${paramIndex++}`);
+      values.push(engine_number);
+    }
+    if (registration_expiry !== undefined) {
+      fields.push(`registration_expiry = $${paramIndex++}`);
+      values.push(registration_expiry);
+    }
+    if (location !== undefined) {
+      fields.push(`location = $${paramIndex++}`);
+      values.push(location);
+    }
+    if (max_height !== undefined) {
+      fields.push(`max_height = $${paramIndex++}`);
+      values.push(max_height);
+    }
+    if (wheelchair_accessible !== undefined) {
+      fields.push(`wheelchair_accessible = $${paramIndex++}`);
+      values.push(wheelchair_accessible);
     }
     
     // Add updated_at timestamp

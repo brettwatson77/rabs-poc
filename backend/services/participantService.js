@@ -60,24 +60,47 @@ const createParticipant = async (participantData) => {
     // accept either modern or legacy names
     phone = participantData.phone ?? participantData.contact_phone ?? null,
     email = participantData.email ?? participantData.contact_email ?? null,
-    is_plan_managed = participantData.is_plan_managed ?? false,
     notes = null,
     supervision_multiplier = 1.0,
-    mobility_requirements = null,
-    dietary_requirements = null,
-    medical_requirements = null,
-    behavior_support_plan = false
+    // Map to actual database column names
+    mobility_needs = participantData.mobility_requirements ?? null,
+    allergies = participantData.dietary_requirements ?? null,
+    medication_needs = participantData.medical_requirements ?? null,
+    has_behavior_support_plan = participantData.behavior_support_plan ?? false,
+
+    /* ----- NEW BOOLEAN FLAG FIELDS (003 migration) ------------------------ */
+    has_wheelchair_access      = false,
+    has_dietary_requirements   = false,
+    has_medical_requirements   = false,
+    has_behavioral_support     = false,
+    has_visual_impairment      = false,
+    has_hearing_impairment     = false,
+    has_cognitive_support      = false,
+    has_communication_needs    = false,
+
+    /* Plan-management enum coming from the UI */
+    plan_management_type = participantData.plan_management_type ?? 'agency_managed',
+    
+    // Additional fields from schema
+    emergency_contact_name = null,
+    emergency_contact_phone = null
   } = participantData;
 
   try {
     const result = await pool.query(
       `INSERT INTO participants 
        (first_name, last_name, address, suburb, state, postcode, ndis_number,
-        contact_phone, contact_email, notes, is_plan_managed, supervision_multiplier,
-        mobility_requirements, dietary_requirements, medical_requirements, behavior_support_plan)
+        phone, email, notes, supervision_multiplier,
+        mobility_needs, allergies, medication_needs, has_behavior_support_plan,
+        has_wheelchair_access, has_dietary_requirements, has_medical_requirements, has_behavioral_support,
+        has_visual_impairment, has_hearing_impairment, has_cognitive_support, has_communication_needs,
+        plan_management_type, emergency_contact_name, emergency_contact_phone)
        VALUES ($1, $2, $3, $4, $5, $6, $7,
-               $8, $9, $10, $11, $12,
-               $13, $14, $15, $16)
+               $8, $9, $10, $11,
+               $12, $13, $14, $15,
+               $16, $17, $18, $19,
+               $20, $21, $22, $23,
+               $24, $25, $26)
        RETURNING *`,
       [
         first_name,
@@ -90,12 +113,22 @@ const createParticipant = async (participantData) => {
         phone,
         email,
         notes,
-        is_plan_managed,
         supervision_multiplier,
-        mobility_requirements,
-        dietary_requirements,
-        medical_requirements,
-        behavior_support_plan
+        mobility_needs,
+        allergies,
+        medication_needs,
+        has_behavior_support_plan,
+        has_wheelchair_access,
+        has_dietary_requirements,
+        has_medical_requirements,
+        has_behavioral_support,
+        has_visual_impairment,
+        has_hearing_impairment,
+        has_cognitive_support,
+        has_communication_needs,
+        plan_management_type,
+        emergency_contact_name,
+        emergency_contact_phone
       ]
     );
     
@@ -129,13 +162,25 @@ const updateParticipant = async (id, participantData) => {
     phone,
     email,
     notes,
-    is_plan_managed,
-    supervision_multiplier
-    ,
-    mobility_requirements,
-    dietary_requirements,
-    medical_requirements,
-    behavior_support_plan
+    supervision_multiplier,
+    // Map to actual database column names
+    mobility_needs = participantData.mobility_requirements,
+    allergies = participantData.dietary_requirements,
+    medication_needs = participantData.medical_requirements,
+    has_behavior_support_plan = participantData.behavior_support_plan,
+    plan_management_type,
+    emergency_contact_name,
+    emergency_contact_phone,
+
+    /* NEW FLAGS ------------------------------------------------------------ */
+    has_wheelchair_access,
+    has_dietary_requirements,
+    has_medical_requirements,
+    has_behavioral_support,
+    has_visual_impairment,
+    has_hearing_impairment,
+    has_cognitive_support,
+    has_communication_needs
   } = participantData;
   
   try {
@@ -181,23 +226,23 @@ const updateParticipant = async (id, participantData) => {
     }
     
     if (phone !== undefined) {
-      fields.push(`contact_phone = $${paramIndex++}`);
+      fields.push(`phone = $${paramIndex++}`);
       values.push(phone);
     }
     
     if (email !== undefined) {
-      fields.push(`contact_email = $${paramIndex++}`);
+      fields.push(`email = $${paramIndex++}`);
       values.push(email);
     }
     
+    if (plan_management_type !== undefined) {
+      fields.push(`plan_management_type = $${paramIndex++}`);
+      values.push(plan_management_type);
+    }
+
     if (notes !== undefined) {
       fields.push(`notes = $${paramIndex++}`);
       values.push(notes);
-    }
-    
-    if (is_plan_managed !== undefined) {
-      fields.push(`is_plan_managed = $${paramIndex++}`);
-      values.push(is_plan_managed);
     }
     
     if (supervision_multiplier !== undefined) {
@@ -205,23 +250,54 @@ const updateParticipant = async (id, participantData) => {
       values.push(supervision_multiplier);
     }
     
-    if (mobility_requirements !== undefined) {
-      fields.push(`mobility_requirements = $${paramIndex++}`);
-      values.push(mobility_requirements);
-    }
-    if (dietary_requirements !== undefined) {
-      fields.push(`dietary_requirements = $${paramIndex++}`);
-      values.push(dietary_requirements);
-    }
-    if (medical_requirements !== undefined) {
-      fields.push(`medical_requirements = $${paramIndex++}`);
-      values.push(medical_requirements);
-    }
-    if (behavior_support_plan !== undefined) {
-      fields.push(`behavior_support_plan = $${paramIndex++}`);
-      values.push(behavior_support_plan);
+    if (mobility_needs !== undefined) {
+      fields.push(`mobility_needs = $${paramIndex++}`);
+      values.push(mobility_needs);
     }
     
+    if (allergies !== undefined) {
+      fields.push(`allergies = $${paramIndex++}`);
+      values.push(allergies);
+    }
+    
+    if (medication_needs !== undefined) {
+      fields.push(`medication_needs = $${paramIndex++}`);
+      values.push(medication_needs);
+    }
+    
+    if (has_behavior_support_plan !== undefined) {
+      fields.push(`has_behavior_support_plan = $${paramIndex++}`);
+      values.push(has_behavior_support_plan);
+    }
+    
+    if (emergency_contact_name !== undefined) {
+      fields.push(`emergency_contact_name = $${paramIndex++}`);
+      values.push(emergency_contact_name);
+    }
+    
+    if (emergency_contact_phone !== undefined) {
+      fields.push(`emergency_contact_phone = $${paramIndex++}`);
+      values.push(emergency_contact_phone);
+    }
+    
+    /* --------- Support-flag booleans ------------------------------------- */
+    const flagMap = {
+      has_wheelchair_access,
+      has_dietary_requirements,
+      has_medical_requirements,
+      has_behavioral_support,
+      has_visual_impairment,
+      has_hearing_impairment,
+      has_cognitive_support,
+      has_communication_needs
+    };
+    for (const [col, val] of Object.entries(flagMap)) {
+      if (val !== undefined) {
+        fields.push(`${col} = $${paramIndex++}`);
+        values.push(val);
+      }
+    }
+
     // Add updated_at timestamp
     fields.push(`updated_at = CURRENT_TIMESTAMP`);
     

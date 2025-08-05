@@ -36,10 +36,19 @@ const Participants = () => {
         emergency_contact_name: '',
         emergency_contact_phone: '',
         supervision_multiplier: 1.0,
-        mobility_requirements: '',
-        dietary_requirements: '',
-        medical_requirements: '',
-        behavior_support_plan: false,
+        mobility_needs: '',
+        allergies: '',
+        medication_needs: '',
+        has_behavior_support_plan: false,
+        /* ------------ Support-needs Boolean Flags (default false) ------------ */
+        has_wheelchair_access: false,
+        has_dietary_requirements: false,
+        has_medical_requirements: false,
+        has_behavioral_support: false,
+        has_visual_impairment: false,
+        has_hearing_impairment: false,
+        has_cognitive_support: false,
+        has_communication_needs: false,
         notes: ''
     };
 
@@ -108,14 +117,32 @@ const Participants = () => {
     };
 
     const handleEditClick = (participant) => {
-        setFormData({ 
-            ...participant, 
+        setFormData({
+            ...participant,
             plan_management_type: participant.plan_management_type || 'agency',
             supervision_multiplier: participant.supervision_multiplier || 1.0,
-            mobility_requirements: participant.mobility_requirements || '',
-            dietary_requirements: participant.dietary_requirements || '',
-            medical_requirements: participant.medical_requirements || '',
-            behavior_support_plan: participant.behavior_support_plan || false
+            mobility_needs: participant.mobility_needs || participant.mobility_requirements || '',
+            allergies: participant.allergies || participant.dietary_requirements || '',
+            medication_needs: participant.medication_needs || participant.medical_requirements || '',
+            has_behavior_support_plan: participant.has_behavior_support_plan ?? participant.behavior_support_plan ?? false,
+
+            /* ----- Ensure all boolean support-flags are present ----- */
+            has_wheelchair_access:
+                participant.has_wheelchair_access || false,
+            has_dietary_requirements:
+                participant.has_dietary_requirements || false,
+            has_medical_requirements:
+                participant.has_medical_requirements || false,
+            has_behavioral_support:
+                participant.has_behavioral_support || false,
+            has_visual_impairment:
+                participant.has_visual_impairment || false,
+            has_hearing_impairment:
+                participant.has_hearing_impairment || false,
+            has_cognitive_support:
+                participant.has_cognitive_support || false,
+            has_communication_needs:
+                participant.has_communication_needs || false
         });
         setIsFormVisible(true);
     };
@@ -351,13 +378,7 @@ const Participants = () => {
                                                     <div className="participant-top-row">
                                                         <h3>{p.first_name} {p.last_name}</h3>
                                                         
-                                                        <div className="participant-ndis">
-                                                            {p.ndis_number ? (
-                                                                <>NDIS: {p.ndis_number}</>
-                                                            ) : (
-                                                                <span className="no-ndis">No NDIS Number</span>
-                                                            )}
-                                                        </div>
+                                                        {/* NDIS now shown in card footer */}
                                                     </div>
                                                     
                                                     {/* --- BOTTOM ROW --------------------------------------------- */}
@@ -403,21 +424,76 @@ const Participants = () => {
                                                 </div>
                                             </div>
                                             
-                                            {/* Support Needs Tags */}
+                                            {/* Support Needs Flags */}
                                             <div className="support-needs-section">
-                                                {Object.entries(supportNeeds).map(([need, required]) => 
-                                                    required && (
-                                                        <span 
-                                                            key={need} 
-                                                            className="support-need-tag"
-                                                            title={`Requires ${need.replace('_', ' ')} support`}
-                                                        >
-                                                            {need.replace('_', ' ')}
-                                                        </span>
+                                                {[
+                                                    {
+                                                        key: 'has_wheelchair_access',
+                                                        icon: '♿',
+                                                        label: 'Wheelchair'
+                                                    },
+                                                    {
+                                                        key: 'has_dietary_requirements',
+                                                        icon: '🍽️',
+                                                        label: 'Dietary'
+                                                    },
+                                                    {
+                                                        key: 'has_medical_requirements',
+                                                        icon: '💊',
+                                                        label: 'Medical'
+                                                    },
+                                                    {
+                                                        key: 'has_behavioral_support',
+                                                        icon: '🔔',
+                                                        label: 'Behavioral'
+                                                    },
+                                                    {
+                                                        key: 'has_visual_impairment',
+                                                        icon: '👁️',
+                                                        label: 'Visual'
+                                                    },
+                                                    {
+                                                        key: 'has_hearing_impairment',
+                                                        icon: '👂',
+                                                        label: 'Hearing'
+                                                    },
+                                                    {
+                                                        key: 'has_cognitive_support',
+                                                        icon: '🧠',
+                                                        label: 'Cognitive'
+                                                    },
+                                                    {
+                                                        key: 'has_communication_needs',
+                                                        icon: '💬',
+                                                        label: 'Communication'
+                                                    }
+                                                ]
+                                                    .filter(
+                                                        (flag) =>
+                                                            p[flag.key] === true
                                                     )
-                                                )}
-                                                {!Object.values(supportNeeds).some(v => v) && (
-                                                    <span className="no-special-needs">No special support needs</span>
+                                                    .map((flag) => (
+                                                        <span
+                                                            key={flag.key}
+                                                            className="support-need-tag"
+                                                            title={flag.label}
+                                                        >
+                                                            {flag.icon}
+                                                        </span>
+                                                    ))}
+                                                {[
+                                                    'has_wheelchair_access',
+                                                    'has_dietary_requirements',
+                                                    'has_medical_requirements',
+                                                    'has_behavioral_support',
+                                                    'has_visual_impairment',
+                                                    'has_hearing_impairment',
+                                                    'has_cognitive_support',
+                                                    'has_communication_needs'
+                                                ].every((k) => !p[k]) && (
+                                                    <span className="no-special-needs">
+                                                        No special support needs
+                                                    </span>
                                                 )}
                                             </div>
                                             
@@ -483,6 +559,13 @@ const Participants = () => {
                                                 >
                                                     Plan
                                                 </Link>
+                                            </div>
+
+                                            {/* Footer – NDIS serial number */}
+                                            <div className="participant-card-footer">
+                                                <span className="participant-serial">
+                                                    {p.ndis_number ? `NDIS: ${p.ndis_number}` : 'No NDIS Number'}
+                                                </span>
                                             </div>
                                         </div>
                                     );
@@ -597,8 +680,8 @@ const Participants = () => {
                             <div className="form-field full-width">
                                 <label>Mobility Requirements</label>
                                 <textarea
-                                    name="mobility_requirements"
-                                    value={formData.mobility_requirements}
+                                    name="mobility_needs"
+                                    value={formData.mobility_needs}
                                     onChange={handleFormChange}
                                 ></textarea>
                             </div>
@@ -606,8 +689,8 @@ const Participants = () => {
                             <div className="form-field full-width">
                                 <label>Dietary Requirements</label>
                                 <textarea
-                                    name="dietary_requirements"
-                                    value={formData.dietary_requirements}
+                                    name="allergies"
+                                    value={formData.allergies}
                                     onChange={handleFormChange}
                                 ></textarea>
                             </div>
@@ -615,8 +698,8 @@ const Participants = () => {
                             <div className="form-field full-width">
                                 <label>Medical Requirements</label>
                                 <textarea
-                                    name="medical_requirements"
-                                    value={formData.medical_requirements}
+                                    name="medication_needs"
+                                    value={formData.medication_needs}
                                     onChange={handleFormChange}
                                 ></textarea>
                             </div>
@@ -625,12 +708,41 @@ const Participants = () => {
                                 <label className="checkbox-label">
                                     <input
                                         type="checkbox"
-                                        name="behavior_support_plan"
-                                        checked={formData.behavior_support_plan}
+                                        name="has_behavior_support_plan"
+                                        checked={formData.has_behavior_support_plan}
                                         onChange={handleFormChange}
                                     />
                                     Behaviour Support Plan in place
                                 </label>
+                            </div>
+
+                            {/* ----------------------------------------------------
+                             * Support-needs Boolean Flags
+                             * -------------------------------------------------- */}
+                            <div className="form-field full-width">
+                                <label>Support Needs Flags</label>
+                                <div className="support-flags-grid">
+                                    {[
+                                        { key: 'has_wheelchair_access',    label: 'Wheelchair Access' },
+                                        { key: 'has_dietary_requirements', label: 'Dietary Requirements' },
+                                        { key: 'has_medical_requirements', label: 'Medical Requirements' },
+                                        { key: 'has_behavioral_support',   label: 'Behavioural Support' },
+                                        { key: 'has_visual_impairment',    label: 'Visual Impairment' },
+                                        { key: 'has_hearing_impairment',   label: 'Hearing Impairment' },
+                                        { key: 'has_cognitive_support',    label: 'Cognitive Support' },
+                                        { key: 'has_communication_needs',  label: 'Communication Needs' }
+                                    ].map(({ key, label }) => (
+                                        <label key={key} className="checkbox-label flag-checkbox">
+                                            <input
+                                                type="checkbox"
+                                                name={key}
+                                                checked={formData[key]}
+                                                onChange={handleFormChange}
+                                            />
+                                            {label}
+                                        </label>
+                                    ))}
+                                </div>
                             </div>
                             
                             <div className="form-field full-width">

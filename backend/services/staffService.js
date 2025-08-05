@@ -48,15 +48,43 @@ const createStaff = async (staffData) => {
       phone = staffData.phone ?? staffData.contact_phone ?? null,
       // allow either modern `email` or legacy `contact_email`
       email = staffData.email ?? staffData.contact_email ?? null,
-      // legacy field – ignored, column no longer exists
-      notes = null
+      // optional additional columns that actually exist
+      position = staffData.position ?? staffData.role ?? null,
+      // --- NEW financial fields ---
+      contracted_hours = staffData.contracted_hours ?? null,
+      // allow a few legacy aliases for pay rate coming from CSV / UI
+      base_pay_rate =
+        staffData.base_pay_rate ??
+        staffData.pay_rate ??          // alias
+        staffData.hourly_rate ??       // alias
+        null,
+      // staff status flags
+      active = staffData.active ?? true
     } = staffData;
 
     const result = await pool.query(
       `INSERT INTO staff 
-       (first_name, last_name, address, suburb, state, postcode, contact_phone, contact_email)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-      [first_name, last_name, address, suburb, state, postcode, phone, email]
+       (first_name, last_name, address, suburb, state, postcode,
+        phone, email,
+        position,
+        contracted_hours, base_pay_rate,
+        active)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+       RETURNING *`,
+      [
+        first_name,
+        last_name,
+        address,
+        suburb,
+        state,
+        postcode,
+        phone,
+        email,
+        position,
+        contracted_hours,
+        base_pay_rate,
+        active
+      ]
     );
     return result.rows[0];
   } catch (err) {
@@ -86,9 +114,12 @@ const updateStaff = async (id, staffData) => {
     'suburb',
     'state',
     'postcode',
-    'contact_phone',
-    'contact_email',
-    'notes'
+    'phone',
+    'email',
+    'position',
+    'contracted_hours',
+    'base_pay_rate',
+    'active'
   ];
 
   const setFragments = [];
@@ -98,8 +129,11 @@ const updateStaff = async (id, staffData) => {
   for (const [key, value] of Object.entries(staffData)) {
     // map frontend keys -> DB columns where necessary
     let column = key;
-    if (key === 'phone') column = 'contact_phone';
-    if (key === 'email') column = 'contact_email';
+    // accept legacy keys coming from older frontend builds
+    if (key === 'contact_phone') column = 'phone';
+    if (key === 'contact_email') column = 'email';
+    if (key === 'role') column = 'position';           // legacy -> new
+    if (key === 'pay_rate' || key === 'hourly_rate') column = 'base_pay_rate'; // legacy -> new
 
     if (fieldsAllowed.includes(column)) {
       setFragments.push(`${column} = $${paramIdx++}`);

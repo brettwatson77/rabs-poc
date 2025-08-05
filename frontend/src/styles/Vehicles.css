@@ -260,6 +260,79 @@
     margin-bottom: 0;
 }
 
+/* Fuel Type Warning Tape Banner
+   ========================================================================== */
+.fuel-banner {
+    text-align: center;
+    font-weight: 700;
+    padding: 0.35rem 0.5rem;
+    font-size: 0.8rem;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+/* Petrol – black / yellow hazard stripes */
+.fuel-petrol {
+    color: #000;
+    background: repeating-linear-gradient(
+        -45deg,
+        #ffd600,
+        #ffd600 6px,
+        #000 6px,
+        #000 12px
+    );
+}
+
+/* Diesel – orange / black hazard stripes */
+.fuel-diesel {
+    color: #fff;
+    background: repeating-linear-gradient(
+        -45deg,
+        #ff9800,
+        #ff9800 6px,
+        #000 6px,
+        #000 12px
+    );
+}
+
+/* Electric (green), Hybrid (blue), Unknown (grey) */
+.fuel-electric {
+    background-color: #4caf50;
+    color: #fff;
+}
+
+.fuel-hybrid {
+    background-color: #2196f3;
+    color: #fff;
+}
+
+.fuel-unknown {
+    background-color: #9e9e9e;
+    color: #fff;
+}
+
+/* Make / Model emphasis */
+.vehicle-make-model {
+    font-weight: 600;
+    color: #37474f;
+    margin-bottom: 0.25rem;
+}
+
+/* Vehicle Card Footer (Serial Number)
+   ========================================================================== */
+.vehicle-card-footer {
+    padding: 0.45rem 0.75rem;
+    background: #fafafa;
+    border-top: 1px solid #f0f0f0;
+    text-align: right;
+}
+
+.vehicle-serial {
+    font-size: 0.7rem;
+    color: #9e9e9e;
+    letter-spacing: 0.5px;
+}
+
 /* Action Buttons
    ========================================================================== */
 .vehicle-card-actions {

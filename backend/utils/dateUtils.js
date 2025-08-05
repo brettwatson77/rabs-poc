@@ -92,5 +92,96 @@ module.exports = {
   // Newly added helpers
   parseDbDate,
   getTodaySydney,
-  isValidDate
+  isValidDate,
+
+  /* ------------------------------------------------------------------ */
+  /* Additional date-math helpers required by programService and others */
+  /* ------------------------------------------------------------------ */
+
+  /**
+   * Return a brand-new Date exactly `days` days after `date`.
+   * Negative `days` works like subtraction.  Input is not mutated.
+   * @param {Date} date
+   * @param {number} days
+   * @returns {Date}
+   */
+  addDays: (date, days = 0) => {
+    if (!(date instanceof Date) || isNaN(date)) return null;
+    if (typeof days !== 'number') days = Number(days) || 0;
+    const d = new Date(date.getTime());
+    d.setDate(d.getDate() + days);
+    return d;
+  },
+
+  /**
+   * Same as addDays but measured in weeks for clarity.
+   * @param {Date} date
+   * @param {number} weeks
+   * @returns {Date}
+   */
+  addWeeks: (date, weeks = 0) => {
+    return module.exports.addDays(date, weeks * 7);
+  },
+
+  /**
+   * Add whole calendar months.  JS Date auto-rolls days overflow.
+   * @param {Date} date
+   * @param {number} months
+   * @returns {Date}
+   */
+  addMonths: (date, months = 0) => {
+    if (!(date instanceof Date) || isNaN(date)) return null;
+    if (typeof months !== 'number') months = Number(months) || 0;
+    const d = new Date(date.getTime());
+    d.setMonth(d.getMonth() + months);
+    return d;
+  },
+
+  /**
+   * Subtract days (wrapper around addDays with negative value)
+   * @param {Date} date
+   * @param {number} days
+   * @returns {Date}
+   */
+  subtractDays: (date, days = 0) => {
+    return module.exports.addDays(date, -days);
+  },
+
+  /**
+   * Simple same-calendar-day comparison (year, month, date)
+   * @param {Date} d1
+   * @param {Date} d2
+   * @returns {boolean}
+   */
+  isSameDay: (d1, d2) => {
+    if (!(d1 instanceof Date) || !(d2 instanceof Date)) return false;
+    return (
+      d1.getFullYear() === d2.getFullYear() &&
+      d1.getMonth() === d2.getMonth() &&
+      d1.getDate() === d2.getDate()
+    );
+  },
+
+  /**
+   * Get Monday (start) of the week for the provided date (Sydney TZ)
+   * @param {Date} date
+   * @returns {Date}
+   */
+  getWeekStart: (date) => {
+    if (!(date instanceof Date) || isNaN(date)) return null;
+    const d = new Date(date.getTime());
+    const day = d.getDay(); // 0=Sun..6=Sat
+    const diff = day === 0 ? -6 : 1 - day; // move back to Monday
+    return module.exports.addDays(d, diff);
+  },
+
+  /**
+   * Get Sunday (end) of the ISO week for the provided date (Sydney TZ)
+   * @param {Date} date
+   * @returns {Date}
+   */
+  getWeekEnd: (date) => {
+    const start = module.exports.getWeekStart(date);
+    return start ? module.exports.addDays(start, 6) : null;
+  }
 };

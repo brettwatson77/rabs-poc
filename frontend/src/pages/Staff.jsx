@@ -37,12 +37,14 @@ const Staff = () => {
     const initialFormState = {
         first_name: '',
         last_name: '',
+        position: '',
         address: '',
         suburb: '',
         postcode: '',
         phone: '',
         email: '',
-        contracted_hours: 30
+        contracted_hours: 30,
+        base_pay_rate: 0
     };
 
     /* ---------------------------------------------------------------------
@@ -278,6 +280,17 @@ const Staff = () => {
                                 <label>Last Name</label>
                                 <input type="text" name="last_name" value={formData.last_name} onChange={handleFormChange} required />
                             </div>
+                            {/* ---- NEW: Position ----------------------------------------- */}
+                            <div className="form-field">
+                                <label>Position</label>
+                                <input
+                                    type="text"
+                                    name="position"
+                                    value={formData.position || ''}
+                                    onChange={handleFormChange}
+                                    placeholder="e.g., Support Worker"
+                                />
+                            </div>
                             <div className="form-field">
                                 <label>Address</label>
                                 <input type="text" name="address" value={formData.address || ''} onChange={handleFormChange} />
@@ -298,6 +311,18 @@ const Staff = () => {
                                     min="0"
                                     max="80"
                                     value={formData.contracted_hours}
+                                    onChange={handleFormChange}
+                                />
+                            </div>
+                            <div className="form-field">
+                                <label>Base Pay Rate ($/hr)</label>
+                                <input
+                                    type="number"
+                                    name="base_pay_rate"
+                                    min="0"
+                                    step="0.01"
+                                    placeholder="$28.50/hr"
+                                    value={formData.base_pay_rate || 0}
                                     onChange={handleFormChange}
                                 />
                             </div>
@@ -340,7 +365,6 @@ const Staff = () => {
                                             <h3>
                                                 {s.first_name} {s.last_name}
                                             </h3>
-                                            <span className="staff-id">ID: {s.id}</span>
                                         </div>
                                         {s.schads_level && (
                                             <span
@@ -384,6 +408,14 @@ const Staff = () => {
                                             <strong>Email:</strong>{' '}
                                             {s.email || 'N/A'}
                                         </div>
+                                        <div>
+                                            <strong>Pay Rate:</strong>{' '}
+                                            ${
+                                                s.base_pay_rate !== null && s.base_pay_rate !== undefined
+                                                    ? Number(s.base_pay_rate).toFixed(2)
+                                                    : '0.00'
+                                            }/hr
+                                        </div>
                                         {/* TODO: add weekend penalty preview, cost analysis */}
                                     </div>
 
@@ -411,6 +443,11 @@ const Staff = () => {
                                                     >
                                                         Manage Leave
                                                     </button>
+                                    </div>
+
+                                    {/* Footer – serial number */}
+                                    <div className="staff-card-footer">
+                                        <span className="staff-serial">ID: {s.id}</span>
                                     </div>
                                 </div>
                             );

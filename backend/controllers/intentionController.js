@@ -9,6 +9,8 @@
 const { pool } = require('../database');
 const { formatDateForDb, parseDbDate, getTodaySydney, isValidDate } = require('../utils/dateUtils');
 const logger = require('../utils/logger');
+// Loom services (for immediate intent application when required)
+const { createProgramFromIntent } = require('../services/loomRoller');
 
 /**
  * Validate intent data
@@ -50,6 +52,21 @@ const validateIntentData = (data) => {
       case 'ASSIGN_STAFF':
         if (!data.program_id) errors.push('Program ID is required');
         if (!data.staff_id) errors.push('Staff ID is required');
+        break;
+        
+      /* --------------------------------------------------------------
+       * New intent type: CREATE_PROGRAM
+       * --------------------------------------------------------------
+       *  • Used by MasterSchedule to create an entirely new program
+       *    via the operator-intent layer instead of a direct insert.
+       *  • program_id is expected to be null/undefined for creation.
+       *  • start / end date-time fields are mandatory.
+       * -------------------------------------------------------------- */
+      case 'CREATE_PROGRAM':
+        if (!data.start_date) errors.push('Start date is required');
+        if (!data.start_time) errors.push('Start time is required');
+        if (!data.end_time)   errors.push('End time is required');
+        // Note: program_id intentionally NOT required for create
         break;
         
       default:
@@ -388,31 +405,33 @@ const logAuditEntry = async (client, action, entityType, entityId, details = {})
  */
 const createIntent = async (req, res) => {
   const client = await pool.connect();
-  
+
   try {
-    // Validate request data
+    // 1. Validate the request data
     const validation = validateIntentData(req.body);
     if (!validation.isValid) {
-      return res.status(400).json({
-        success: false,
-        errors: validation.errors
+      return res.status(400).json({ 
+        success: false, 
+        errors: validation.errors 
       });
     }
-    
-    // Start transaction
+
+    // 2. Start transaction
     await client.query('BEGIN');
-    
-    // Check for conflicts
-    const hasConflicts = await checkConflictingIntents(client, req.body);
-    if (hasConflicts) {
-      await client.query('ROLLBACK');
-      return res.status(409).json({
-        success: false,
-        message: 'Conflicting intent exists for the specified date range'
-      });
+
+    // 3. Check for conflicts (except for CREATE_PROGRAM which is always new)
+    if (req.body.intent_type !== 'CREATE_PROGRAM') {
+      const hasConflicts = await checkConflictingIntents(client, req.body);
+      if (hasConflicts) {
+        await client.query('ROLLBACK');
+        return res.status(409).json({
+          success: false,
+          message: 'Conflicting intent exists for the specified date range'
+        });
+      }
     }
-    
-    // Prepare data for insertion
+
+    // 4. Extract all fields from request body
     const {
       intent_type,
       program_id,
@@ -424,102 +443,114 @@ const createIntent = async (req, res) => {
       end_date,
       start_time,
       end_time,
-      billing_code_id,
-      hours,
-      details
+      days_of_week,
+      notes,
+      participants,
+      // Additional fields from MasterSchedule.jsx
+      name,
+      type,
+      repeatPattern,
+      timeSlots,
+      staffAssignment
     } = req.body;
-    
-    // Insert the intent
+
+    // 5. Prepare metadata - store ALL complex program creation fields
+    const metadataObj = {
+      // Basic program info
+      name,
+      type,
+      notes,
+      
+      // Time information
+      start_time,
+      end_time,
+      
+      // Repeating pattern info
+      repeatPattern,
+      days_of_week: days_of_week || [],
+      
+      // Complex time slots array with activities
+      timeSlots,
+      
+      // Staff assignment strategy
+      staffAssignment,
+      
+      // For other intent types
+      billing_code_id: req.body.billing_code_id || null,
+      hours: req.body.hours || null,
+      details: req.body.details || null
+    };
+
+    // 6. Insert the intent with only columns that actually exist in the database
     const result = await client.query(
       `INSERT INTO tgl_operator_intents (
         intent_type, program_id, participant_id, staff_id, vehicle_id,
-        venue_id, start_date, end_date, start_time, end_time,
-        billing_code_id, hours, details, created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        venue_id, start_date, end_date, metadata, billing_codes, created_by
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       RETURNING id`,
       [
         intent_type,
-        program_id,
+        program_id || null,
         participant_id || null,
         staff_id || null,
         vehicle_id || null,
         venue_id || null,
         start_date,
         end_date || null,
-        start_time || null,
-        end_time || null,
-        billing_code_id || null,
-        hours || null,
-        details ? JSON.stringify(details) : null,
-        req.user?.id || null // If authentication is implemented
+        JSON.stringify(metadataObj),
+        participants ? JSON.stringify(participants) : null,
+        'system' // No user system, use 'system' as creator
       ]
     );
-    
+
     const intentId = result.rows[0].id;
-    
-    // Log the action
-    await logAuditEntry(client, 'CREATE', 'INTENT', intentId, {
-      intent_type,
-      program_id,
-      start_date,
-      end_date
-    });
-    
-    // Apply the intent to any existing instances in the current window
-    // This ensures immediate effect without waiting for the next daily roll
-    const today = getTodaySydney();
-    const todayFormatted = formatDateForDb(today);
-    
-    // Get window size from settings
-    const settingsResult = await client.query(
-      'SELECT value FROM settings WHERE key = $1',
-      ['loom_window_weeks']
-    );
-    
-    if (settingsResult.rows.length > 0) {
-      const windowWeeks = parseInt(settingsResult.rows[0].value, 10) || 4; // Default to 4 weeks
-      
-      // Only apply to instances within the current window
-      if (start_date <= formatDateForDb(addWeeks(today, windowWeeks))) {
-        // Import and use the applyOperatorIntents function from loomRoller
-        const { applyOperatorIntents } = require('../services/loomRoller');
-        
-        // Apply the intent to all dates from start_date to window end
-        // that fall within the current window
-        let currentDate = new Date(start_date);
-        const windowEnd = addWeeks(today, windowWeeks);
-        
-        while (currentDate <= windowEnd) {
-          if (currentDate >= today) {
-            await applyOperatorIntents(client, currentDate);
-          }
-          currentDate.setDate(currentDate.getDate() + 1);
-        }
+
+    /* ------------------------------------------------------------------
+     * 7.  Immediate processing for CREATE_PROGRAM intents
+     *     – Create the actual program record right away so users
+     *       see cards and roster shifts without waiting for nightly roll.
+     * ------------------------------------------------------------------ */
+    if (intent_type === 'CREATE_PROGRAM') {
+      try {
+        await createProgramFromIntent(client, intentId, req.body);
+        logger.info(`Created program immediately for intent ${intentId}`);
+      } catch (programError) {
+        // Non-fatal – the daily loom roll can still process it later
+        logger.warn(
+          `Failed to create program for intent ${intentId}: ${programError.message}`
+        );
       }
     }
-    
-    // Commit transaction
+
+    // 7. Log the action
+    await logAuditEntry(client, 'CREATE', 'INTENT', intentId, {
+      intent_type,
+      program_id: program_id || null,
+      start_date,
+      end_date: end_date || null
+    });
+
+    // 8. Commit transaction
     await client.query('COMMIT');
-    
-    // Return success response
-    res.status(201).json({
+
+    // 9. Return success response
+    return res.status(201).json({
       success: true,
       message: 'Intent created successfully',
       data: {
         id: intentId,
         intent_type,
-        program_id,
+        program_id: program_id || null,
         start_date,
-        end_date
+        end_date: end_date || null
       }
     });
   } catch (error) {
-    // Rollback transaction on error
+    // Rollback on error
     await client.query('ROLLBACK');
-    
     logger.error(`Error creating intent: ${error.message}`, { error });
     
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Failed to create intent',
       error: error.message

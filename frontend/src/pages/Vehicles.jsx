@@ -38,7 +38,14 @@ const Vehicles = () => {
     make: '',
     model: '',
     year: null,
+    fuel_type: '',
+    vin_number: '',
+    engine_number: '',
+    registration_expiry: '',
+    location: '',
+    max_height: null,
     active: true,
+    wheelchair_accessible: false,
     notes: '',
     location_lat: null,
     location_lng: null
@@ -210,6 +217,21 @@ const Vehicles = () => {
   };
 
   /* ----------------------------------------------------------
+   * Fuel type banner helpers
+   * -------------------------------------------------------- */
+  const getFuelBannerClass = (fuelType) => {
+    if (!fuelType) return 'fuel-unknown';
+    
+    const type = fuelType.toLowerCase();
+    if (type.includes('petrol')) return 'fuel-petrol';
+    if (type.includes('diesel')) return 'fuel-diesel';
+    if (type.includes('electric')) return 'fuel-electric';
+    if (type.includes('hybrid')) return 'fuel-hybrid';
+    
+    return 'fuel-unknown';
+  };
+
+  /* ----------------------------------------------------------
    * Filter + search vehicles
    * -------------------------------------------------------- */
   const filteredVehicles = vehicles
@@ -304,15 +326,14 @@ const Vehicles = () => {
                 {filteredVehicles.map((v) => {
                   const vehicleType = getVehicleType(v);
                   const statusStr = getStatusDisplay(v.active);
+                  const fuelBannerClass = getFuelBannerClass(v.fuel_type);
                   
                   return (
                     <div className="vehicle-card" key={v.id}>
+                      {/* HEADER: Vehicle name + status */}
                       <div className="vehicle-card-header">
                         <div className="vehicle-icon">{typeIcon(vehicleType)}</div>
-                        <h3>
-                          {v.name}{' '}
-                          <span className="vehicle-id">({v.id})</span>
-                        </h3>
+                        <h3>{v.name}</h3>
                         {!v.active && <span title="Out of Service">🔧</span>}
                         {v.active && hasUpcomingMaintenance(v) && (
                           <span title="Upcoming maintenance">⚠️</span>
@@ -325,6 +346,14 @@ const Vehicles = () => {
                         </span>
                       </div>
 
+                      {/* FUEL BANNER: Warning tape style */}
+                      {v.fuel_type && (
+                        <div className={`fuel-banner ${fuelBannerClass}`}>
+                          {v.fuel_type}
+                        </div>
+                      )}
+
+                      {/* CAPACITY SECTION */}
                       <div className="capacity-section">
                         <div className="capacity-bar-bg">
                           <div
@@ -344,16 +373,34 @@ const Vehicles = () => {
                         </small>
                       </div>
 
+                      {/* VEHICLE INFO: Make/model first (bold), then rego */}
                       <div className="vehicle-info">
+                        <div className="vehicle-make-model">
+                          <strong>{v.make} {v.model} {v.year || ''}</strong>
+                        </div>
                         <div>
                           <strong>Rego:</strong>{' '}
                           {v.registration || 'N/A'}
                         </div>
-                        <div>
-                          <strong>Make/Model:</strong> {v.make} {v.model} {v.year || ''}
-                        </div>
+                        {v.registration_expiry && (
+                          <div>
+                            <strong>Rego&nbsp;Exp:</strong>{' '}
+                            {new Date(v.registration_expiry).toLocaleDateString()}
+                          </div>
+                        )}
+                        {v.location && (
+                          <div>
+                            <strong>Based:</strong> {v.location}
+                          </div>
+                        )}
+                        {v.wheelchair_accessible && (
+                          <div title="Wheelchair Accessible">
+                            ♿
+                          </div>
+                        )}
                       </div>
 
+                      {/* ACTIONS */}
                       <div className="vehicle-card-actions">
                         <button
                           className="edit-button"
@@ -377,6 +424,11 @@ const Vehicles = () => {
                         >
                           Schedule&nbsp;Maintenance
                         </button>
+                      </div>
+
+                      {/* FOOTER: ID as serial number */}
+                      <div className="vehicle-card-footer">
+                        <span className="vehicle-serial">ID: {v.id}</span>
                       </div>
                     </div>
                   );
@@ -420,6 +472,73 @@ const Vehicles = () => {
                   <label>Year</label>
                   <input type="number" name="year" value={formData.year || ''} onChange={handleFormChange} min="1990" max="2030" />
                 </div>
+
+                {/* -------- New Fields -------- */}
+                <div className="form-field">
+                  <label>Fuel Type</label>
+                  <select
+                    name="fuel_type"
+                    value={formData.fuel_type || ''}
+                    onChange={handleFormChange}
+                  >
+                    <option value="">-- select --</option>
+                    <option>Diesel</option>
+                    <option>Petrol</option>
+                    <option>Electric</option>
+                    <option>Hybrid</option>
+                  </select>
+                </div>
+                <div className="form-field">
+                  <label>VIN Number</label>
+                  <input type="text" name="vin_number" value={formData.vin_number || ''} onChange={handleFormChange} />
+                </div>
+                <div className="form-field">
+                  <label>Engine Number</label>
+                  <input type="text" name="engine_number" value={formData.engine_number || ''} onChange={handleFormChange} />
+                </div>
+                <div className="form-field">
+                  <label>Registration Expiry</label>
+                  <input
+                    type="date"
+                    name="registration_expiry"
+                    value={formData.registration_expiry || ''}
+                    onChange={handleFormChange}
+                  />
+                </div>
+                <div className="form-field">
+                  <label>Location</label>
+                  <input
+                    type="text"
+                    name="location"
+                    placeholder="Where vehicle is usually parked"
+                    value={formData.location || ''}
+                    onChange={handleFormChange}
+                  />
+                </div>
+                <div className="form-field">
+                  <label>Max Height (m)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    name="max_height"
+                    placeholder="2.4"
+                    value={formData.max_height || ''}
+                    onChange={handleFormChange}
+                  />
+                </div>
+                <div className="form-field">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      name="wheelchair_accessible"
+                      checked={formData.wheelchair_accessible}
+                      onChange={handleFormChange}
+                    />
+                    Wheelchair Accessible
+                  </label>
+                </div>
+
                 <div className="form-field">
                   <label className="checkbox-label">
                     <input
@@ -446,46 +565,6 @@ const Vehicles = () => {
 
         {loading && <p>Loading vehicles...</p>}
       </div>
-
-      {!loading && !isFormVisible && (
-        <div className="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Registration</th>
-                <th>Capacity</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {vehicles.map(v => (
-                <tr key={v.id}>
-                  <td>{v.id}</td>
-                  <td>{v.name}</td>
-                  <td>{v.registration || 'N/A'}</td>
-                  <td>{v.capacity}</td>
-                  <td className="actions-cell">
-                    <button onClick={() => handleEditClick(v)} className="edit-button">Edit</button>
-                    <button onClick={() => handleDeleteClick(v.id)} className="delete-button">Delete</button>
-                    <button
-                      onClick={() => {
-                        setSelectedVehicle(v);
-                        setShowMaintModal(true);
-                        fetchVehicleBlackouts(v.id);
-                      }}
-                      className="maint-button"
-                    >
-                      Maint
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
 
       {/* ---------------- Maintenance Modal ---------------- */}
       {showMaintModal && selectedVehicle && (

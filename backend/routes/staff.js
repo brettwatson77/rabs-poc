@@ -27,6 +27,8 @@ router.get('/with-schads', staffController.getStaffWithSchads);
 router.get('/:id', validateUUIDParam, staffController.getStaffById);
 router.post('/', staffController.createStaff);
 router.put('/:id', validateUUIDParam, staffController.updateStaff);
+// Allow partial updates via HTTP PATCH as well
+router.patch('/:id', validateUUIDParam, staffController.updateStaff);
 router.delete('/:id', validateUUIDParam, staffController.deleteStaff);
 
 // Export the router

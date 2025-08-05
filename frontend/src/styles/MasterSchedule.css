@@ -78,6 +78,20 @@
 
 .action-button:hover {
   transform: translateY(-2px);
+.billing-help-note {
+  margin: 10px 0 15px 0;
+  padding: 10px 15px;
+  background: #e7f3ff;
+  border-left: 4px solid #2196f3;
+  border-radius: 4px;
+}
+
+.billing-help-note small {
+  color: #1565c0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
@@ -2087,6 +2101,171 @@
 .radio-label {
   display: flex;
   flex-direction: column;
+
+/* Dropdown / Search container */
+.participant-dropdown-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.participant-dropdown-container .participant-search input {
+  background-color: #ffffff;
+}
+
+/* Dropdown selector */
+.participant-dropdown {
+  padding: 0.6rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  background: #fff;
+  transition: all 0.2s ease;
+}
+
+.participant-dropdown:focus {
+  outline: none;
+  border-color: #4287f5;
+  box-shadow: 0 0 0 2px rgba(66, 135, 245, 0.15);
+}
+
+/* Selected participants list */
+.selected-participants {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.selected-participants h4 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.no-participants {
+  padding: 1rem;
+  text-align: center;
+  font-style: italic;
+  color: #666;
+  background: #fafafa;
+  border: 1px dashed #ddd;
+  border-radius: 6px;
+}
+
+/* Full-width participant card */
+.participant-card.full-width {
+  border: 1px solid #e9ecef;
+  border-left: 4px solid #4287f5;
+  border-radius: 8px;
+  padding: 1rem;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.participant-card.full-width:hover {
+  box-shadow: 0 2px 8px rgba(66, 135, 245, 0.12);
+}
+
+/* Header inside full card */
+.participant-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.participant-name-section {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.remove-participant-btn {
+  border: none;
+  background: transparent;
+  color: #dc3545;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.remove-participant-btn:hover {
+  color: #c82333;
+}
+
+/* Billing area */
+.participant-billing {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.participant-billing .billing-hours {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.participant-billing label {
+  font-size: 0.8rem;
+  color: #666;
+  font-weight: 600;
+}
+
+.participant-billing input[type="number"] {
+  width: 80px;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+/* Billing codes – full-width rows */
+.billing-code-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #f8f9fa;
+  padding: 0.6rem;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+}
+
+.billing-code-row select.billing-code-select {
+  flex: 2;
+}
+
+.billing-code-row .code-hours input {
+  width: 70px;
+}
+
+.billing-code-row .code-buttons {
+  display: flex;
+  gap: 0.25rem;
+}
+
+/* Responsive tweaks */
+@media (max-width: 768px) {
+  .billing-code-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .billing-code-row select.billing-code-select,
+  .billing-code-row .code-hours input {
+    width: 100%;
+  }
+  
+  .participant-billing .billing-hours {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
   gap: 0.5rem;
   padding: 1rem;
   background: white;
@@ -2157,6 +2336,175 @@
 
 .cancel-btn {
   padding: 0.75rem 1.5rem;
+   COMPACT PARTICIPANT BILLING LAYOUT & INLINE VENUE CREATION
+======================================================================== */
+
+/* --- Compact Participant Billing Rows -------------------------------- */
+.participant-billing {
+  margin-top: 15px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.billing-hours {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.billing-hours label {
+  font-weight: 600;
+  color: #495057;
+  min-width: 90px;
+}
+
+.billing-hours input {
+  width: 80px;
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.billing-codes-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.billing-codes-section > label {
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 5px;
+}
+
+.billing-code-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+}
+
+.billing-code-select {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 14px;
+  background: #ffffff;
+}
+
+.code-hours {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.code-hours-input {
+  width: 70px;
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.code-buttons {
+  display: flex;
+  gap: 5px;
+}
+
+.add-code-btn,
+.remove-code-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.add-code-btn {
+  background: #28a745;
+  color: #ffffff;
+}
+
+.add-code-btn:hover {
+  background: #218838;
+  transform: scale(1.1);
+}
+
+.remove-code-btn {
+  background: #dc3545;
+  color: #ffffff;
+}
+
+.remove-code-btn:hover {
+  background: #c82333;
+  transform: scale(1.1);
+}
+
+/* --- Inline Venue Creation ------------------------------------------ */
+.new-venue-form {
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+  margin-top: 15px;
+}
+
+.venue-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.cancel-venue-btn,
+.create-venue-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cancel-venue-btn {
+  background: #6c757d;
+  color: #ffffff;
+}
+
+.cancel-venue-btn:hover {
+  background: #5a6268;
+}
+
+.create-venue-btn {
+  background: #007bff;
+  color: #ffffff;
+}
+
+.create-venue-btn:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+.create-venue-btn:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+.venue-options {
+  margin-top: 15px;
+  padding: 10px 0;
+  border-top: 1px solid #e9ecef;
+}
+
   background: #6c757d;
   color: white;
   border: none;

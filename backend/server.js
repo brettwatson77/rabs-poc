@@ -32,6 +32,8 @@ const staffAssignmentsRouter = require('./routes/staffAssignments'); // <-- NEW
 const dynamicResourcesRouter = require('./routes/dynamicResources'); // <-- NEW
 // Loom system (dynamic scheduling & resource allocation) router
 const loomRouter           = require('./routes/loom'); // <-- NEW
+// Loom logs router (structured system logs endpoints)            <-- NEW
+const loomLogsRouter       = require('./routes/loomLogs'); // <-- NEW
 // Loom roller service (daily cron + manual roll endpoint)
 const { initCronJobs, triggerManualRoll } = require('./services/loomRoller'); // <-- NEW
 // Operator intents & temporal exceptions router
@@ -118,6 +120,8 @@ app.use('/api/v1/recalculate',  recalculationRouter);
 app.use('/api/v1/dynamic-resources', dynamicResourcesRouter); // <-- NEW
 // Loom endpoints (window management, instances, allocations …)
 app.use('/api/v1/loom',         loomRouter); // <-- NEW
+// System logs under loom namespace (e.g., /api/v1/loom/logs)
+app.use('/api/v1/loom',         loomLogsRouter); // <-- NEW
 // Operator intents & temporal exceptions
 app.use('/api/v1/intentions',   intentionsRouter); // <-- NEW
 

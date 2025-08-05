@@ -124,8 +124,49 @@ const getTimesheets = async (req, res) => {
   }
 };
 
+
+/**
+ * Get financial metrics for roster period
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+const getRosterMetrics = async (req, res) => {
+  try {
+    // Extract parameters from query string
+    const { startDate, endDate, date } = req.query;
+
+    if (!date && (!startDate || !endDate)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          'Missing required parameters: provide `date` or both `startDate` and `endDate`'
+      });
+    }
+    
+    // Call the service to get the metrics
+    const rosterParams = date
+      ? { date }
+      : { startDate, endDate };
+
+    const metrics = await rosterService.getRosterMetrics(rosterParams);
+    
+    res.status(200).json({
+      success: true,
+      data: metrics
+    });
+  } catch (error) {
+    console.error(`Error fetching roster metrics:`, error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching roster metrics',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
 module.exports = {
   getRoster,
   getFinancialMetrics,
-  getTimesheets
+  getTimesheets,
+  getRosterMetrics
 };
+

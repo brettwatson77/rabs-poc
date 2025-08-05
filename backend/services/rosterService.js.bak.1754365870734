@@ -1,0 +1,124 @@
+// backend/services/rosterService.js
+/**
+ * Roster Service
+ * ---------------
+ * Simplified implementation that directly uses loom instances data
+ * to ensure the Roster API works for the demo.
+ */
+
+const { pool } = require('../database'); // PostgreSQL pool
+
+/**
+ * Get roster data for a specific date or date range
+ * @param {Object} params - { date } OR { startDate, endDate }
+ * @returns {Promise<Object>} Roster data organized by program instance
+ */
+const getRoster = async (params) => {
+  try {
+    // ------------------------------------------------------------------
+    // Parameter handling – support single date or date range
+    // ------------------------------------------------------------------
+    const { date, startDate, endDate } = params || {};
+
+    let dateCondition = '';
+    const queryParams = [];
+    let paramIndex = 1;
+
+    if (date) {
+      // Single day - use partial matching for ISO date strings
+      dateCondition = `AND (li.instance_date::date = $${paramIndex} OR li.date::date = $${paramIndex})`;
+      queryParams.push(date);
+    } else if (startDate && endDate) {
+      // Date range - use partial matching for ISO date strings
+      dateCondition = `AND (
+        (li.instance_date::date BETWEEN $${paramIndex} AND $${paramIndex+1}) OR 
+        (li.date::date BETWEEN $${paramIndex} AND $${paramIndex+1})
+      )`;
+      queryParams.push(startDate, endDate);
+    } else {
+      throw new Error(
+        'Invalid parameters supplied to getRoster – provide `date` or both `startDate` and `endDate`'
+      );
+    }
+
+    /* ------------------------------------------------------------------
+     *  Core query – ONLY loom instances.
+     *  We deliberately avoid participant / staff joins for demo stability.
+     * ------------------------------------------------------------------ */
+    const query = `
+      SELECT 
+        li.id,
+        li.program_id,
+        li.instance_date,
+        li.date,
+        li.start_time,
+        li.end_time,
+        li.status,
+        li.notes
+      FROM tgl_loom_instances li
+      WHERE 1=1
+      ${dateCondition}
+      ORDER BY li.start_time
+    `;
+
+    // Execute the query
+    const { rows } = await pool.query(query, queryParams);
+
+    // Process the results
+    const programInstances = rows.map(row => {
+      // For now return empty arrays; real allocation joins can be added later.
+      const staff = [];
+      const participants = [];
+      const requiredStaffCount = 0;
+      const staffingStatus = 'unknown';
+      
+      // Format dates consistently
+      const formattedDate = row.date ? new Date(row.date).toISOString().split('T')[0] : 
+                           (row.instance_date ? new Date(row.instance_date).toISOString().split('T')[0] : null);
+      
+      // Return the processed row
+      return {
+        ...row,
+        date: formattedDate,
+        instance_date: formattedDate,
+        staff,
+        participants,
+        requiredStaffCount,
+        staffingStatus,
+        vehicles: [] // Placeholder
+      };
+    });
+
+    // Organize by time slot
+    const timeSlots = {};
+    programInstances.forEach(instance => {
+      const startTime = instance.start_time;
+      if (!timeSlots[startTime]) {
+        timeSlots[startTime] = [];
+      }
+      timeSlots[startTime].push(instance);
+    });
+
+    // Build the final payload
+    const payload = {
+      programInstances,
+      rosterByTimeSlot: timeSlots
+    };
+
+    if (date) {
+      payload.date = date;
+    } else {
+      payload.startDate = startDate;
+      payload.endDate = endDate;
+    }
+
+    return payload;
+  } catch (error) {
+    console.error('Error in getRoster:', error);
+    throw error;
+  }
+};
+
+module.exports = {
+  getRoster
+};

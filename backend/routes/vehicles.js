@@ -10,6 +10,8 @@ router.get('/', vehicleController.getAllVehicles);
 router.get('/:id', vehicleController.getVehicleById);
 router.post('/', vehicleController.createVehicle);
 router.put('/:id', vehicleController.updateVehicle);
+// Allow partial updates via HTTP PATCH as well
+router.patch('/:id', vehicleController.updateVehicle);
 router.delete('/:id', vehicleController.deleteVehicle);
 
 // Export the router
