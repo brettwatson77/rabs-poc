@@ -8,7 +8,8 @@ const router = express.Router();
 // Define routes
 router.get('/', rosterController.getRoster);
 
-// Financial metrics for roster period
+// Financial metrics for roster period - support both endpoints for compatibility
+router.get('/metrics', rosterController.getRosterMetrics || rosterController.getFinancialMetrics);
 router.get('/financial-metrics', rosterController.getFinancialMetrics);
 
 // Timesheet data for roster period
