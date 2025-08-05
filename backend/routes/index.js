@@ -12,6 +12,7 @@ const router = express.Router();
 const participantRoutes = require('./participants');
 const staffRoutes = require('./staff');
 const programRoutes = require('./programs');
+const masterScheduleRoutes = require('./master-schedule');
 const dashboardRoutes = require('./dashboard');
 const vehicleRoutes = require('./vehicles');
 const venueRoutes = require('./venues');
@@ -25,6 +26,7 @@ const systemRoutes = require('./system');
 router.use('/participants', participantRoutes);
 router.use('/staff', staffRoutes);
 router.use('/programs', programRoutes);
+router.use('/master-schedule', masterScheduleRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/vehicles', vehicleRoutes);
 router.use('/venues', venueRoutes);
@@ -45,6 +47,7 @@ router.get('/', (req, res) => {
       '/participants',
       '/staff',
       '/programs',
+      '/master-schedule',
       '/dashboard',
       '/vehicles',
       '/venues',

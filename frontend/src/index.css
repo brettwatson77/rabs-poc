@@ -1,3 +1,4 @@
+@import "./components.css";
 /* 
   RABS v3 - Glassmorphism "Ark-Mode" Theme
   A modern, dark UI system with frosted-glass effects
@@ -413,6 +414,82 @@ a:hover {
   animation: pulse 2s infinite;
 }
 
+/* ---------- Navigation Layout ---------- */
+
+.navbar-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-lg);
+}
+
+/* Left-side text navigation (Dashboard / Schedule / Roster) */
+.main-nav {
+  display: flex;
+  gap: var(--space-lg);
+}
+
+.main-nav .nav-link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: color var(--transition-fast);
+}
+
+.main-nav .nav-link svg {
+  width: 18px;
+  height: 18px;
+}
+
+.main-nav .nav-link.active,
+.main-nav .nav-link:hover {
+  color: var(--text-primary);
+}
+
+/* Right-side container that holds icon nav + health check */
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+}
+
+/* Icon-only nav (Participants, Staff, Vehicles, Venues, Finance, Settings) */
+.icon-nav {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.icon-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  color: var(--text-secondary);
+  transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+  position: relative;
+}
+
+.icon-link svg {
+  width: 18px;
+  height: 18px;
+}
+
+.icon-link:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  transform: translateY(-2px);
+}
+
+.icon-link.active {
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+  color: #fff;
+  box-shadow: var(--glow-blue);
+}
+
 /* ---------- Media Queries ---------- */
 @media (max-width: 768px) {
   .grid-2, .grid-3, .grid-4 {
@@ -432,4 +509,3 @@ a:hover {
 /*  Component-specific styles                                                */
 /* ------------------------------------------------------------------------- */
 
-@import "./components.css";

@@ -103,8 +103,43 @@ If a request fails at any level, lower layers **MUST NOT EXECUTE**.
 
 ---
 
-## 5. Alignment Checklist (must always be green)
+## 5. Page Architecture & User Flows
 
+The UI is split into four primary pages that map directly to the Workshed layers and the loom-generation timeline.
+
+| Page | Primary Object(s) Shown | Origin Layer | Key Interactions | Down-stream Effect |
+|------|------------------------|--------------|------------------|--------------------|
+| **Master Schedule** | **Program / Event Cards** (one per *loom instance*) | Wall ⊕ Calendar | • Create / edit program templates<br>• Apply date exceptions<br>• Drag-drop to new date / venue | Re-threads loom instance and *regenerates* dashboard & roster time-slot breakdowns |
+| **Dashboard** | **Time-Slot Cards** (Before / Now / Next / Later / After columns)<br>e.g. Pickup Run 1, Centre-Based, Lunch, Drop-off Run 2 | Loom-generated *time slots* | • Mark attendance / cancellation<br>• Re-assign staff / vehicles<br>• Quick “call sick” action | Writes **intentions** to Calendar → cascades back to roster & finance |
+| **Roster** | **Staff & Vehicle Allocations** | Derived from Dashboard selections | • Approve / swap / fill roster gaps<br>• Manage unavailability | Updates staff shifts & vehicle runs tables; triggers finance cost recompute |
+| **Finance** | **Billing Lines & CSV Exports** | Aggregated from Dashboard + Roster data | • Review NDIS codes & ratio splits<br>• Export PRODA CSV / invoices | Final immutable finance records |
+
+### Loom Dependency Chain
+
+```
+Wall (Program Template)
+        ⬇
+Calendar (Exceptions / Perm Changes)
+        ⬇   [loom window expands]
+Master Schedule ⟶ *Instance* rows (tgl_loom_instances)
+        ⬇  participant_count, staff_ratio
+Time-Slot Breakdown (tgl_loom_time_slots)
+        ⬇
+Dashboard Cards (pickup / event / drop-off …)
+        ⬇
+Roster Shifts & Vehicle Runs
+        ⬇
+Finance Billing Lines
+```
+
+Changing data **higher** in the chain **automatically invalidates or regenerates** everything below it:
+* Edit Template → all FUTURE instances regen.  
+* Calendar permanent change → updates Wall then future instances.  
+* Calendar temporary change → touches SINGLE DATE only.  
+
+---
+
+## 6. Alignment Checklist (must always be green)
 | Check | Tool |
 |-------|------|
 | OpenAPI ↔ Backend routes parity | `npm run test:routes` |

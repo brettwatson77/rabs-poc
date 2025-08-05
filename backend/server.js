@@ -40,7 +40,36 @@ pool.query('SELECT NOW()', (err, res) => {
 app.locals.pool = pool;
 
 // Middleware
-app.use(cors());
+// ---------------------------------------------------------------------------
+// CORS Configuration
+// ---------------------------------------------------------------------------
+const whitelist = [
+  'http://localhost:3008',
+  'http://localhost:3009',
+  'http://127.0.0.1:3008',
+  'http://127.0.0.1:3009',
+  'http://192.168.77.8:3008',
+  'http://192.168.77.8:3009',
+  'https://rabspoc.codexdiz.com',
+  'https://www.rabspoc.codexdiz.com',   // sub-domain with www just in case
+];
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (e.g. mobile apps, curl) or whitelisted
+    if (!origin || whitelist.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

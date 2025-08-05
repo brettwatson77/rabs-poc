@@ -14,11 +14,28 @@ import {
   FiSettings,
   FiActivity,
   FiCheckCircle,
-  FiAlertCircle
+  FiAlertCircle,
+  FiUser,
+  FiBriefcase,
+  FiTruck,
+  FiMapPin
 } from 'react-icons/fi';
 
 // API base URL
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3009';
+
+// Real page components
+import Dashboard from './pages/Dashboard';
+import MasterSchedule from './pages/MasterSchedule';
+import Roster from './pages/Roster';
+import Finance from './pages/Finance';
+import Settings from './pages/Settings';
+import Participants from './pages/Participants';
+import Staff from './pages/Staff';
+import Vehicles from './pages/Vehicles';
+import Venues from './pages/Venues';
+
+// The above four pages are full-featured components located in ./pages/
 
 // Health check component
 const HealthCheck = () => {
@@ -88,6 +105,7 @@ const Layout = ({ children }) => {
             </div>
           </div>
           
+          {/* Main text navigation (left) */}
           <nav className="main-nav">
             <NavLink 
               to="/" 
@@ -101,13 +119,13 @@ const Layout = ({ children }) => {
             </NavLink>
             
             <NavLink 
-              to="/master-schedule" 
+              to="/schedule" 
               className={({ isActive }) => 
                 isActive ? 'nav-link active' : 'nav-link'
               }
             >
               <FiCalendar />
-              <span>Master Schedule</span>
+              <span>Schedule</span>
             </NavLink>
             
             <NavLink 
@@ -119,29 +137,73 @@ const Layout = ({ children }) => {
               <FiUsers />
               <span>Roster</span>
             </NavLink>
-            
-            <NavLink 
-              to="/finance" 
-              className={({ isActive }) => 
-                isActive ? 'nav-link active' : 'nav-link'
-              }
-            >
-              <FiDollarSign />
-              <span>Finance</span>
-            </NavLink>
-            
-            <NavLink 
-              to="/settings" 
-              className={({ isActive }) => 
-                isActive ? 'nav-link active' : 'nav-link'
-              }
-            >
-              <FiSettings />
-              <span>Settings</span>
-            </NavLink>
           </nav>
           
+          {/* Right side with icons-only navigation and system status */}
           <div className="navbar-right">
+            {/* Icon-only navigation */}
+            <nav className="icon-nav">
+              <NavLink 
+                to="/participants" 
+                className={({ isActive }) => 
+                  isActive ? 'icon-link active' : 'icon-link'
+                }
+                title="Participants"
+              >
+                <FiUser />
+              </NavLink>
+              
+              <NavLink 
+                to="/staff" 
+                className={({ isActive }) => 
+                  isActive ? 'icon-link active' : 'icon-link'
+                }
+                title="Staff"
+              >
+                <FiBriefcase />
+              </NavLink>
+              
+              <NavLink 
+                to="/vehicles" 
+                className={({ isActive }) => 
+                  isActive ? 'icon-link active' : 'icon-link'
+                }
+                title="Vehicles"
+              >
+                <FiTruck />
+              </NavLink>
+              
+              <NavLink 
+                to="/venues" 
+                className={({ isActive }) => 
+                  isActive ? 'icon-link active' : 'icon-link'
+                }
+                title="Venues"
+              >
+                <FiMapPin />
+              </NavLink>
+              
+              <NavLink 
+                to="/finance" 
+                className={({ isActive }) => 
+                  isActive ? 'icon-link active' : 'icon-link'
+                }
+                title="Finance"
+              >
+                <FiDollarSign />
+              </NavLink>
+              
+              <NavLink 
+                to="/settings" 
+                className={({ isActive }) => 
+                  isActive ? 'icon-link active' : 'icon-link'
+                }
+                title="Settings"
+              >
+                <FiSettings />
+              </NavLink>
+            </nav>
+            
             <HealthCheck />
           </div>
         </div>
@@ -180,132 +242,20 @@ const Layout = ({ children }) => {
   );
 };
 
-// Placeholder page components
-const Dashboard = () => (
-  <div className="container">
-    <h2 className="page-title">Dashboard</h2>
-    <p className="page-description">
-      View today's schedule, active programs, and alerts.
-    </p>
-    
-    <div className="glass-card dashboard-welcome-card mb-4">
-      <h3>Welcome to RABS v3</h3>
-      <p>
-        The all-new Roster & Billing System for NDIS providers. 
-        This clean-slate rebuild follows the RP2 methodology, 
-        with API-IS-KING principle in full effect.
-      </p>
-      <p>
-        The loom window is ready to weave the future!
-      </p>
-    </div>
-    
-    <div className="grid grid-3">
-      <div className="glass-card dashboard-card">
-        <div className="dashboard-card-content">
-          <h4>Today's Programs</h4>
-          <p className="text-muted">Loading today's schedule...</p>
-        </div>
-      </div>
-      
-      <div className="glass-card dashboard-card">
-        <div className="dashboard-card-content">
-          <h4>Staff On Duty</h4>
-          <p className="text-muted">Loading staff roster...</p>
-        </div>
-      </div>
-      
-      <div className="glass-card dashboard-card">
-        <div className="dashboard-card-content">
-          <h4>Vehicle Assignments</h4>
-          <p className="text-muted">Loading vehicle data...</p>
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
-const MasterSchedule = () => (
-  <div className="container">
-    <h2 className="page-title">Master Schedule</h2>
-    <p className="page-description">
-      Create and manage program templates, view and edit the schedule.
-    </p>
-    
-    <div className="glass-card mb-4">
-      <div className="card-header">
-        <h3>Program Templates</h3>
-      </div>
-      <p className="text-muted">Loading program templates...</p>
-    </div>
-    
-    <div className="glass-card">
-      <div className="card-header">
-        <h3>Loom Calendar</h3>
-      </div>
-      <p className="text-muted">Loading loom instances...</p>
-    </div>
-  </div>
-);
-
-const Roster = () => (
-  <div className="container">
-    <h2 className="page-title">Roster</h2>
-    <p className="page-description">
-      Manage staff assignments, availability, and shifts.
-    </p>
-    
-    <div className="glass-card">
-      <div className="card-header">
-        <h3>Staff Roster</h3>
-      </div>
-      <p className="text-muted">Loading roster data...</p>
-    </div>
-  </div>
-);
-
-const Finance = () => (
-  <div className="container">
-    <h2 className="page-title">Finance</h2>
-    <p className="page-description">
-      Manage billing codes, generate invoices, and export financial data.
-    </p>
-    
-    <div className="glass-card">
-      <div className="card-header">
-        <h3>NDIS Billing</h3>
-      </div>
-      <p className="text-muted">Loading billing data...</p>
-    </div>
-  </div>
-);
-
-const Settings = () => (
-  <div className="container">
-    <h2 className="page-title">Settings</h2>
-    <p className="page-description">
-      Configure system settings, loom window, and user preferences.
-    </p>
-    
-    <div className="glass-card">
-      <div className="card-header">
-        <h3>System Configuration</h3>
-      </div>
-      <p className="text-muted">Loading settings...</p>
-    </div>
-  </div>
-);
-
 // Main App component
 const App = () => {
   return (
     <Layout>
       <Routes>
         <Route path="/" element={<Dashboard />} />
-        <Route path="/master-schedule" element={<MasterSchedule />} />
+        <Route path="/schedule" element={<MasterSchedule />} />
         <Route path="/roster" element={<Roster />} />
         <Route path="/finance" element={<Finance />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/participants" element={<Participants />} />
+        <Route path="/staff" element={<Staff />} />
+        <Route path="/vehicles" element={<Vehicles />} />
+        <Route path="/venues" element={<Venues />} />
       </Routes>
     </Layout>
   );

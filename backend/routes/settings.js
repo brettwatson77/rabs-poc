@@ -1,0 +1,403 @@
+/**
+ * Settings API Routes
+ * 
+ * Endpoints for system settings management:
+ * - GET /settings - Get all settings
+ * - GET /settings/:key - Get specific setting
+ * - PUT /settings/:key - Update setting
+ * - DELETE /settings/:key - Delete setting
+ * - POST /settings/bulk - Bulk update settings
+ */
+
+const express = require('express');
+const router = express.Router();
+
+// GET /settings - Get all settings
+router.get('/', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { category } = req.query;
+    
+    let query = `
+      SELECT key, value, description, category, is_system
+      FROM settings
+      WHERE 1=1
+    `;
+    
+    const queryParams = [];
+    let paramIndex = 1;
+    
+    if (category) {
+      query += ` AND category = $${paramIndex++}`;
+      queryParams.push(category);
+    }
+    
+    query += ` ORDER BY category, key`;
+    
+    const result = await pool.query(query, queryParams);
+    
+    res.json({
+      success: true,
+      data: result.rows,
+      count: result.rowCount
+    });
+  } catch (error) {
+    console.error('Error fetching settings:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch settings',
+      message: error.message
+    });
+  }
+});
+
+// GET /settings/:key - Get specific setting
+router.get('/:key', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { key } = req.params;
+    
+    const query = `
+      SELECT key, value, description, category, is_system
+      FROM settings
+      WHERE key = $1
+    `;
+    
+    const result = await pool.query(query, [key]);
+    
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Setting not found',
+        message: `No setting found with key: ${key}`
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error fetching setting:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch setting',
+      message: error.message
+    });
+  }
+});
+
+// PUT /settings/:key - Update setting
+router.put('/:key', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { key } = req.params;
+    const { value, description, category } = req.body;
+    
+    // Check if setting exists
+    const checkResult = await pool.query('SELECT key, is_system FROM settings WHERE key = $1', [key]);
+    
+    if (checkResult.rowCount === 0) {
+      // Setting doesn't exist, create it
+      const insertQuery = `
+        INSERT INTO settings (key, value, description, category, is_system)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING key, value, description, category, is_system
+      `;
+      
+      const insertResult = await pool.query(insertQuery, [
+        key,
+        value,
+        description || null,
+        category || 'general',
+        false // New settings created via API are not system settings
+      ]);
+      
+      return res.status(201).json({
+        success: true,
+        data: insertResult.rows[0],
+        message: 'Setting created successfully'
+      });
+    }
+    
+    // Check if it's a system setting that shouldn't be modified
+    if (checkResult.rows[0].is_system && req.body.value === undefined) {
+      return res.status(403).json({
+        success: false,
+        error: 'Cannot modify system setting',
+        message: 'This is a system setting and cannot be modified'
+      });
+    }
+    
+    // Build dynamic update query
+    const updates = [];
+    const values = [];
+    let paramIndex = 1;
+    
+    if (value !== undefined) {
+      updates.push(`value = $${paramIndex++}`);
+      values.push(value);
+    }
+    
+    if (description !== undefined) {
+      updates.push(`description = $${paramIndex++}`);
+      values.push(description);
+    }
+    
+    if (category !== undefined) {
+      updates.push(`category = $${paramIndex++}`);
+      values.push(category);
+    }
+    
+    // If no fields to update
+    if (updates.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'No fields to update',
+        message: 'Request must include at least one field to update'
+      });
+    }
+    
+    const query = `
+      UPDATE settings
+      SET ${updates.join(', ')}
+      WHERE key = $${paramIndex}
+      RETURNING key, value, description, category, is_system
+    `;
+    
+    values.push(key);
+    
+    const result = await pool.query(query, values);
+    
+    // Log setting change to system_logs
+    try {
+      await pool.query(
+        `INSERT INTO system_logs (level, message, source, details) 
+         VALUES ($1, $2, $3, $4)`,
+        [
+          'info',
+          `Setting updated: ${key}`,
+          'settings',
+          { 
+            key,
+            changes: req.body
+          }
+        ]
+      );
+    } catch (logError) {
+      console.error('Failed to log to system_logs:', logError);
+    }
+    
+    res.json({
+      success: true,
+      data: result.rows[0],
+      message: 'Setting updated successfully'
+    });
+  } catch (error) {
+    console.error('Error updating setting:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update setting',
+      message: error.message
+    });
+  }
+});
+
+// DELETE /settings/:key - Delete setting
+router.delete('/:key', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { key } = req.params;
+    
+    // Check if setting exists and if it's a system setting
+    const checkResult = await pool.query('SELECT key, is_system FROM settings WHERE key = $1', [key]);
+    
+    if (checkResult.rowCount === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Setting not found',
+        message: `No setting found with key: ${key}`
+      });
+    }
+    
+    // Prevent deletion of system settings
+    if (checkResult.rows[0].is_system) {
+      return res.status(403).json({
+        success: false,
+        error: 'Cannot delete system setting',
+        message: 'This is a system setting and cannot be deleted'
+      });
+    }
+    
+    const query = 'DELETE FROM settings WHERE key = $1 RETURNING key';
+    const result = await pool.query(query, [key]);
+    
+    // Log setting deletion to system_logs
+    try {
+      await pool.query(
+        `INSERT INTO system_logs (level, message, source, details) 
+         VALUES ($1, $2, $3, $4)`,
+        [
+          'info',
+          `Setting deleted: ${key}`,
+          'settings',
+          { key }
+        ]
+      );
+    } catch (logError) {
+      console.error('Failed to log to system_logs:', logError);
+    }
+    
+    res.json({
+      success: true,
+      data: { key: result.rows[0].key },
+      message: 'Setting deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting setting:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete setting',
+      message: error.message
+    });
+  }
+});
+
+// POST /settings/bulk - Bulk update settings
+router.post('/bulk', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { settings } = req.body;
+    
+    if (!settings || !Array.isArray(settings) || settings.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid request',
+        message: 'Request must include a non-empty array of settings'
+      });
+    }
+    
+    // Begin transaction
+    const client = await pool.connect();
+    
+    try {
+      await client.query('BEGIN');
+      
+      const results = {
+        updated: [],
+        created: [],
+        skipped: [],
+        failed: []
+      };
+      
+      // Process each setting
+      for (const setting of settings) {
+        const { key, value, description, category } = setting;
+        
+        if (!key) {
+          results.failed.push({
+            setting,
+            reason: 'Missing key'
+          });
+          continue;
+        }
+        
+        try {
+          // Check if setting exists
+          const checkResult = await client.query(
+            'SELECT key, is_system FROM settings WHERE key = $1',
+            [key]
+          );
+          
+          if (checkResult.rowCount === 0) {
+            // Create new setting
+            const insertResult = await client.query(
+              `INSERT INTO settings (key, value, description, category, is_system)
+               VALUES ($1, $2, $3, $4, $5)
+               RETURNING key, value, description, category, is_system`,
+              [
+                key,
+                value,
+                description || null,
+                category || 'general',
+                false // New settings created via API are not system settings
+              ]
+            );
+            
+            results.created.push(insertResult.rows[0]);
+          } else {
+            // Check if it's a system setting
+            if (checkResult.rows[0].is_system) {
+              results.skipped.push({
+                key,
+                reason: 'System setting cannot be modified'
+              });
+              continue;
+            }
+            
+            // Update existing setting
+            const updateResult = await client.query(
+              `UPDATE settings
+               SET value = $2,
+                   description = COALESCE($3, description),
+                   category = COALESCE($4, category)
+               WHERE key = $1
+               RETURNING key, value, description, category, is_system`,
+              [
+                key,
+                value,
+                description,
+                category
+              ]
+            );
+            
+            results.updated.push(updateResult.rows[0]);
+          }
+        } catch (settingError) {
+          results.failed.push({
+            key,
+            reason: settingError.message
+          });
+        }
+      }
+      
+      await client.query('COMMIT');
+      
+      // Log bulk update to system_logs
+      try {
+        await pool.query(
+          `INSERT INTO system_logs (level, message, source, details) 
+           VALUES ($1, $2, $3, $4)`,
+          [
+            'info',
+            `Bulk settings update: ${results.updated.length} updated, ${results.created.length} created`,
+            'settings',
+            { results }
+          ]
+        );
+      } catch (logError) {
+        console.error('Failed to log to system_logs:', logError);
+      }
+      
+      res.json({
+        success: true,
+        data: results,
+        message: `Settings updated: ${results.updated.length} updated, ${results.created.length} created, ${results.skipped.length} skipped, ${results.failed.length} failed`
+      });
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Error processing bulk settings update:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to process bulk settings update',
+      message: error.message
+    });
+  }
+});
+
+module.exports = router;

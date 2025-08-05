@@ -1,0 +1,1934 @@
+import React, { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from 'react-query';
+import axios from 'axios';
+import { format } from 'date-fns';
+import { 
+  FiUser, 
+  FiUsers, 
+  FiSearch, 
+  FiFilter, 
+  FiPlus, 
+  FiEdit2, 
+  FiTrash2,
+  FiCalendar,
+  FiDollarSign,
+  FiCheckSquare,
+  FiTarget,
+  FiClipboard,
+  FiFileText,
+  FiBarChart2,
+  FiStar,
+  FiPhone,
+  FiMail,
+  FiHome,
+  FiTag,
+  FiAlertCircle,
+  FiCheckCircle,
+  FiXCircle,
+  FiArrowLeft,
+  FiArrowRight,
+  FiRefreshCw,
+  FiSave,
+  FiPrinter,
+  FiDownload,
+  FiUpload
+} from 'react-icons/fi';
+
+// API base URL from environment
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3009';
+
+// Participants Page Component
+const Participants = () => {
+  const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState('directory');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filters, setFilters] = useState({
+    status: 'all',
+    supportLevel: 'all'
+  });
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedParticipant, setSelectedParticipant] = useState(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedPlanTab, setSelectedPlanTab] = useState('overview');
+  const [currentPage, setCurrentPage] = useState(1);
+  const participantsPerPage = 12;
+
+  // Form state for creating/editing participant
+  const [participantForm, setParticipantForm] = useState({
+    first_name: '',
+    last_name: '',
+    ndis_number: '',
+    date_of_birth: '',
+    gender: '',
+    phone: '',
+    email: '',
+    address: '',
+    suburb: '',
+    state: 'NSW',
+    postcode: '',
+    emergency_contact_name: '',
+    emergency_contact_phone: '',
+    support_level: 'standard',
+    status: 'active',
+    notes: '',
+    billing_codes: []
+  });
+
+  // Form state for adding a new goal
+  const [newGoal, setNewGoal] = useState({
+    title: '',
+    description: '',
+    target_date: '',
+    category: 'independence',
+    status: 'not_started'
+  });
+
+  // Form state for adding a new billing code
+  const [newBillingCode, setNewBillingCode] = useState({
+    code: '',
+    description: '',
+    rate: '',
+    total_amount: '',
+    remaining_amount: '',
+    start_date: '',
+    end_date: ''
+  });
+
+  // Fetch participants data
+  const { 
+    data: participantsData, 
+    isLoading: participantsLoading, 
+    error: participantsError,
+    refetch: refetchParticipants
+  } = useQuery(
+    ['participants'],
+    async () => {
+      const response = await axios.get(`${API_URL}/api/v1/participants`);
+      return response.data;
+    }
+  );
+
+  // Fetch programs data for enrollment
+  const { 
+    data: programsData, 
+    isLoading: programsLoading 
+  } = useQuery(
+    ['programs'],
+    async () => {
+      const response = await axios.get(`${API_URL}/api/v1/programs`);
+      return response.data;
+    }
+  );
+
+  // Create participant mutation
+  const createParticipantMutation = useMutation(
+    async (participantData) => {
+      const response = await axios.post(`${API_URL}/api/v1/participants`, participantData);
+      return response.data;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['participants']);
+        setIsCreateModalOpen(false);
+        resetParticipantForm();
+      }
+    }
+  );
+
+  // Update participant mutation
+  const updateParticipantMutation = useMutation(
+    async ({ id, participantData }) => {
+      const response = await axios.put(`${API_URL}/api/v1/participants/${id}`, participantData);
+      return response.data;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['participants']);
+        setIsEditModalOpen(false);
+      }
+    }
+  );
+
+  // Delete participant mutation
+  const deleteParticipantMutation = useMutation(
+    async (id) => {
+      const response = await axios.delete(`${API_URL}/api/v1/participants/${id}`);
+      return response.data;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['participants']);
+        setIsDeleteModalOpen(false);
+        setSelectedParticipant(null);
+      }
+    }
+  );
+
+  // Add goal mutation
+  const addGoalMutation = useMutation(
+    async ({ participantId, goalData }) => {
+      const response = await axios.post(`${API_URL}/api/v1/participants/${participantId}/goals`, goalData);
+      return response.data;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['participants']);
+        setNewGoal({
+          title: '',
+          description: '',
+          target_date: '',
+          category: 'independence',
+          status: 'not_started'
+        });
+      }
+    }
+  );
+
+  // Add billing code mutation
+  const addBillingCodeMutation = useMutation(
+    async ({ participantId, billingCodeData }) => {
+      const response = await axios.post(`${API_URL}/api/v1/participants/${participantId}/billing-codes`, billingCodeData);
+      return response.data;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['participants']);
+        setNewBillingCode({
+          code: '',
+          description: '',
+          rate: '',
+          total_amount: '',
+          remaining_amount: '',
+          start_date: '',
+          end_date: ''
+        });
+      }
+    }
+  );
+
+  // Enroll participant in program mutation
+  const enrollParticipantMutation = useMutation(
+    async ({ participantId, programId }) => {
+      const response = await axios.post(`${API_URL}/api/v1/participants/${participantId}/programs/${programId}`);
+      return response.data;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['participants']);
+      }
+    }
+  );
+
+  // Reset participant form
+  const resetParticipantForm = () => {
+    setParticipantForm({
+      first_name: '',
+      last_name: '',
+      ndis_number: '',
+      date_of_birth: '',
+      gender: '',
+      phone: '',
+      email: '',
+      address: '',
+      suburb: '',
+      state: 'NSW',
+      postcode: '',
+      emergency_contact_name: '',
+      emergency_contact_phone: '',
+      support_level: 'standard',
+      status: 'active',
+      notes: '',
+      billing_codes: []
+    });
+  };
+
+  // Handle opening edit modal
+  const handleEditParticipant = (participant) => {
+    setParticipantForm({
+      first_name: participant.first_name || '',
+      last_name: participant.last_name || '',
+      ndis_number: participant.ndis_number || '',
+      date_of_birth: participant.date_of_birth || '',
+      gender: participant.gender || '',
+      phone: participant.phone || '',
+      email: participant.email || '',
+      address: participant.address || '',
+      suburb: participant.suburb || '',
+      state: participant.state || 'NSW',
+      postcode: participant.postcode || '',
+      emergency_contact_name: participant.emergency_contact_name || '',
+      emergency_contact_phone: participant.emergency_contact_phone || '',
+      support_level: participant.support_level || 'standard',
+      status: participant.status || 'active',
+      notes: participant.notes || '',
+      billing_codes: participant.billing_codes || []
+    });
+    setIsEditModalOpen(true);
+  };
+
+  // Handle participant creation
+  const handleCreateParticipant = (e) => {
+    e.preventDefault();
+    createParticipantMutation.mutate(participantForm);
+  };
+
+  // Handle participant update
+  const handleUpdateParticipant = (e) => {
+    e.preventDefault();
+    if (selectedParticipant) {
+      updateParticipantMutation.mutate({
+        id: selectedParticipant.id,
+        participantData: participantForm
+      });
+    }
+  };
+
+  // Handle participant deletion
+  const handleDeleteParticipant = () => {
+    if (selectedParticipant) {
+      deleteParticipantMutation.mutate(selectedParticipant.id);
+    }
+  };
+
+  // Handle adding a new goal
+  const handleAddGoal = (e) => {
+    e.preventDefault();
+    if (selectedParticipant) {
+      addGoalMutation.mutate({
+        participantId: selectedParticipant.id,
+        goalData: newGoal
+      });
+    }
+  };
+
+  // Handle adding a new billing code
+  const handleAddBillingCode = (e) => {
+    e.preventDefault();
+    if (selectedParticipant) {
+      addBillingCodeMutation.mutate({
+        participantId: selectedParticipant.id,
+        billingCodeData: newBillingCode
+      });
+    }
+  };
+
+  // Handle enrolling participant in a program
+  const handleEnrollParticipant = (programId) => {
+    if (selectedParticipant) {
+      enrollParticipantMutation.mutate({
+        participantId: selectedParticipant.id,
+        programId
+      });
+    }
+  };
+
+  // Filter participants based on search term and filters
+  const filteredParticipants = participantsData?.data?.filter(participant => {
+    const matchesSearch = 
+      participant.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      participant.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      participant.ndis_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      `${participant.first_name} ${participant.last_name}`.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = filters.status === 'all' || participant.status === filters.status;
+    const matchesSupportLevel = filters.supportLevel === 'all' || participant.support_level === filters.supportLevel;
+    
+    return matchesSearch && matchesStatus && matchesSupportLevel;
+  }) || [];
+
+  // Pagination logic
+  const indexOfLastParticipant = currentPage * participantsPerPage;
+  const indexOfFirstParticipant = indexOfLastParticipant - participantsPerPage;
+  const currentParticipants = filteredParticipants.slice(indexOfFirstParticipant, indexOfLastParticipant);
+  const totalPages = Math.ceil(filteredParticipants.length / participantsPerPage);
+
+  // Page change handlers
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  // Format date for display
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    try {
+      return format(new Date(dateString), 'dd/MM/yyyy');
+    } catch (error) {
+      return 'Invalid Date';
+    }
+  };
+
+  // Calculate age from date of birth
+  const calculateAge = (dateOfBirth) => {
+    if (!dateOfBirth) return 'N/A';
+    try {
+      const birthDate = new Date(dateOfBirth);
+      const today = new Date();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      
+      return age;
+    } catch (error) {
+      return 'N/A';
+    }
+  };
+
+  // Get support level badge class
+  const getSupportLevelBadge = (level) => {
+    switch (level) {
+      case 'high':
+        return 'badge-red';
+      case 'medium':
+        return 'badge-yellow';
+      case 'standard':
+        return 'badge-blue';
+      case 'low':
+        return 'badge-green';
+      default:
+        return 'badge-gray';
+    }
+  };
+
+  // Get status badge class
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'active':
+        return 'badge-green';
+      case 'inactive':
+        return 'badge-gray';
+      case 'pending':
+        return 'badge-yellow';
+      case 'suspended':
+        return 'badge-red';
+      default:
+        return 'badge-gray';
+    }
+  };
+
+  // Get goal status badge class
+  const getGoalStatusBadge = (status) => {
+    switch (status) {
+      case 'completed':
+        return 'badge-green';
+      case 'in_progress':
+        return 'badge-blue';
+      case 'not_started':
+        return 'badge-gray';
+      case 'on_hold':
+        return 'badge-yellow';
+      case 'cancelled':
+        return 'badge-red';
+      default:
+        return 'badge-gray';
+    }
+  };
+
+  // Render directory tab content
+  const renderDirectoryTab = () => (
+    <div className="directory-tab">
+      {/* Search and Filter Bar */}
+      <div className="search-filter-bar glass-panel">
+        <div className="search-container">
+          <FiSearch className="search-icon" />
+          <input
+            type="text"
+            placeholder="Search participants..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="search-input"
+          />
+        </div>
+        
+        <div className="filter-container">
+          <button 
+            className="filter-toggle-btn"
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            <FiFilter />
+            <span>Filters</span>
+          </button>
+          
+          {showFilters && (
+            <div className="filter-dropdown glass-panel">
+              <div className="filter-group">
+                <label>Status</label>
+                <select
+                  value={filters.status}
+                  onChange={(e) => setFilters({...filters, status: e.target.value})}
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="pending">Pending</option>
+                  <option value="suspended">Suspended</option>
+                </select>
+              </div>
+              
+              <div className="filter-group">
+                <label>Support Level</label>
+                <select
+                  value={filters.supportLevel}
+                  onChange={(e) => setFilters({...filters, supportLevel: e.target.value})}
+                >
+                  <option value="all">All Levels</option>
+                  <option value="high">High</option>
+                  <option value="medium">Medium</option>
+                  <option value="standard">Standard</option>
+                  <option value="low">Low</option>
+                </select>
+              </div>
+            </div>
+          )}
+        </div>
+        
+        <button 
+          className="create-btn glass-button"
+          onClick={() => setIsCreateModalOpen(true)}
+        >
+          <FiPlus />
+          <span>New Participant</span>
+        </button>
+      </div>
+      
+      {/* Participants Grid */}
+      {participantsLoading ? (
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>Loading participants...</p>
+        </div>
+      ) : participantsError ? (
+        <div className="error-container glass-panel">
+          <FiAlertCircle className="error-icon" />
+          <p>Error loading participants: {participantsError.message}</p>
+          <button className="btn btn-primary" onClick={() => refetchParticipants()}>
+            <FiRefreshCw /> Try Again
+          </button>
+        </div>
+      ) : filteredParticipants.length === 0 ? (
+        <div className="empty-state glass-panel">
+          <FiUsers className="empty-icon" />
+          <h3>No participants found</h3>
+          <p>Try adjusting your search or filters, or add a new participant.</p>
+          <button 
+            className="btn btn-primary"
+            onClick={() => setIsCreateModalOpen(true)}
+          >
+            <FiPlus /> Add Participant
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="participants-grid">
+            {currentParticipants.map(participant => (
+              <div 
+                key={participant.id} 
+                className="participant-card glass-card"
+                onClick={() => setSelectedParticipant(participant)}
+              >
+                <div className="participant-header">
+                  <div className="participant-avatar">
+                    {participant.first_name?.[0]}{participant.last_name?.[0]}
+                  </div>
+                  <div className="participant-badges">
+                    <span className={`badge ${getStatusBadge(participant.status)}`}>
+                      {participant.status}
+                    </span>
+                    <span className={`badge ${getSupportLevelBadge(participant.support_level)}`}>
+                      {participant.support_level}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="participant-info">
+                  <h3 className="participant-name">
+                    {participant.first_name} {participant.last_name}
+                  </h3>
+                  <p className="participant-ndis">
+                    <span>NDIS:</span> {participant.ndis_number || 'N/A'}
+                  </p>
+                  <p className="participant-age">
+                    <span>Age:</span> {calculateAge(participant.date_of_birth)}
+                  </p>
+                </div>
+                
+                <div className="participant-footer">
+                  <div className="participant-contact">
+                    {participant.phone && (
+                      <div className="contact-item">
+                        <FiPhone className="contact-icon" />
+                        <span>{participant.phone}</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="participant-actions">
+                    <button 
+                      className="action-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditParticipant(participant);
+                      }}
+                      title="Edit"
+                    >
+                      <FiEdit2 />
+                    </button>
+                    <button 
+                      className="action-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedParticipant(participant);
+                        setIsDeleteModalOpen(true);
+                      }}
+                      title="Delete"
+                    >
+                      <FiTrash2 />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="pagination-container">
+              <button 
+                className="pagination-btn"
+                onClick={handlePrevPage}
+                disabled={currentPage === 1}
+              >
+                <FiArrowLeft />
+                <span>Previous</span>
+              </button>
+              
+              <div className="pagination-info">
+                Page {currentPage} of {totalPages}
+              </div>
+              
+              <button 
+                className="pagination-btn"
+                onClick={handleNextPage}
+                disabled={currentPage === totalPages}
+              >
+                <span>Next</span>
+                <FiArrowRight />
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+
+  // Render planning tab content
+  const renderPlanningTab = () => (
+    <div className="planning-tab">
+      {/* Participant Selection */}
+      <div className="planning-header glass-panel">
+        <h3>Participant Planning</h3>
+        <p>Select a participant from the directory to view and manage their planning.</p>
+        
+        <div className="search-container">
+          <FiSearch className="search-icon" />
+          <input
+            type="text"
+            placeholder="Search participants for planning..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="search-input"
+          />
+        </div>
+      </div>
+      
+      {!selectedParticipant ? (
+        <div className="participant-selection-grid">
+          {filteredParticipants.slice(0, 8).map(participant => (
+            <div 
+              key={participant.id} 
+              className="participant-selection-card glass-card"
+              onClick={() => setSelectedParticipant(participant)}
+            >
+              <div className="participant-avatar">
+                {participant.first_name?.[0]}{participant.last_name?.[0]}
+              </div>
+              <div className="participant-selection-info">
+                <h4>{participant.first_name} {participant.last_name}</h4>
+                <p>{participant.ndis_number || 'No NDIS'}</p>
+              </div>
+              <div className="participant-selection-badge">
+                <span className={`badge ${getSupportLevelBadge(participant.support_level)}`}>
+                  {participant.support_level}
+                </span>
+              </div>
+            </div>
+          ))}
+          
+          {filteredParticipants.length === 0 && (
+            <div className="empty-state glass-panel">
+              <FiUsers className="empty-icon" />
+              <h3>No participants found</h3>
+              <p>Try adjusting your search or add a new participant.</p>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="participant-planning">
+          <div className="planning-nav glass-panel">
+            <button 
+              className="back-btn"
+              onClick={() => setSelectedParticipant(null)}
+            >
+              <FiArrowLeft />
+              <span>Back to Selection</span>
+            </button>
+            
+            <div className="participant-planning-header">
+              <h3>{selectedParticipant.first_name} {selectedParticipant.last_name}</h3>
+              <span className={`badge ${getSupportLevelBadge(selectedParticipant.support_level)}`}>
+                {selectedParticipant.support_level}
+              </span>
+            </div>
+            
+            <div className="planning-tabs">
+              <button 
+                className={`planning-tab-btn ${selectedPlanTab === 'overview' ? 'active' : ''}`}
+                onClick={() => setSelectedPlanTab('overview')}
+              >
+                <FiClipboard />
+                <span>Overview</span>
+              </button>
+              <button 
+                className={`planning-tab-btn ${selectedPlanTab === 'goals' ? 'active' : ''}`}
+                onClick={() => setSelectedPlanTab('goals')}
+              >
+                <FiTarget />
+                <span>Goals</span>
+              </button>
+              <button 
+                className={`planning-tab-btn ${selectedPlanTab === 'programs' ? 'active' : ''}`}
+                onClick={() => setSelectedPlanTab('programs')}
+              >
+                <FiCalendar />
+                <span>Programs</span>
+              </button>
+              <button 
+                className={`planning-tab-btn ${selectedPlanTab === 'billing' ? 'active' : ''}`}
+                onClick={() => setSelectedPlanTab('billing')}
+              >
+                <FiDollarSign />
+                <span>Billing</span>
+              </button>
+            </div>
+          </div>
+          
+          <div className="planning-content">
+            {selectedPlanTab === 'overview' && (
+              <div className="planning-overview">
+                <div className="planning-section glass-card">
+                  <h4>Participant Overview</h4>
+                  <div className="participant-details">
+                    <div className="detail-group">
+                      <div className="detail-item">
+                        <span className="detail-label">NDIS Number:</span>
+                        <span className="detail-value">{selectedParticipant.ndis_number || 'N/A'}</span>
+                      </div>
+                      <div className="detail-item">
+                        <span className="detail-label">Date of Birth:</span>
+                        <span className="detail-value">{formatDate(selectedParticipant.date_of_birth)}</span>
+                      </div>
+                      <div className="detail-item">
+                        <span className="detail-label">Age:</span>
+                        <span className="detail-value">{calculateAge(selectedParticipant.date_of_birth)}</span>
+                      </div>
+                      <div className="detail-item">
+                        <span className="detail-label">Gender:</span>
+                        <span className="detail-value">{selectedParticipant.gender || 'N/A'}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="detail-group">
+                      <div className="detail-item">
+                        <span className="detail-label">Phone:</span>
+                        <span className="detail-value">{selectedParticipant.phone || 'N/A'}</span>
+                      </div>
+                      <div className="detail-item">
+                        <span className="detail-label">Email:</span>
+                        <span className="detail-value">{selectedParticipant.email || 'N/A'}</span>
+                      </div>
+                      <div className="detail-item">
+                        <span className="detail-label">Address:</span>
+                        <span className="detail-value">
+                          {selectedParticipant.address ? (
+                            <>
+                              {selectedParticipant.address}, {selectedParticipant.suburb}, {selectedParticipant.state} {selectedParticipant.postcode}
+                            </>
+                          ) : 'N/A'}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="detail-group">
+                      <div className="detail-item">
+                        <span className="detail-label">Emergency Contact:</span>
+                        <span className="detail-value">
+                          {selectedParticipant.emergency_contact_name ? (
+                            <>
+                              {selectedParticipant.emergency_contact_name} ({selectedParticipant.emergency_contact_phone || 'No phone'})
+                            </>
+                          ) : 'N/A'}
+                        </span>
+                      </div>
+                      <div className="detail-item">
+                        <span className="detail-label">Support Level:</span>
+                        <span className={`detail-value badge ${getSupportLevelBadge(selectedParticipant.support_level)}`}>
+                          {selectedParticipant.support_level || 'N/A'}
+                        </span>
+                      </div>
+                      <div className="detail-item">
+                        <span className="detail-label">Status:</span>
+                        <span className={`detail-value badge ${getStatusBadge(selectedParticipant.status)}`}>
+                          {selectedParticipant.status || 'N/A'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="planning-section glass-card">
+                  <h4>Notes</h4>
+                  <div className="notes-content">
+                    {selectedParticipant.notes ? (
+                      <p>{selectedParticipant.notes}</p>
+                    ) : (
+                      <p className="text-muted">No notes available for this participant.</p>
+                    )}
+                  </div>
+                  <button 
+                    className="btn btn-secondary"
+                    onClick={() => handleEditParticipant(selectedParticipant)}
+                  >
+                    <FiEdit2 /> Edit Notes
+                  </button>
+                </div>
+                
+                <div className="planning-section glass-card">
+                  <h4>Summary</h4>
+                  <div className="summary-stats">
+                    <div className="stat-card">
+                      <div className="stat-icon">
+                        <FiTarget />
+                      </div>
+                      <div className="stat-content">
+                        <div className="stat-value">
+                          {selectedParticipant.goals?.length || 0}
+                        </div>
+                        <div className="stat-label">Goals</div>
+                      </div>
+                    </div>
+                    
+                    <div className="stat-card">
+                      <div className="stat-icon">
+                        <FiCalendar />
+                      </div>
+                      <div className="stat-content">
+                        <div className="stat-value">
+                          {selectedParticipant.programs?.length || 0}
+                        </div>
+                        <div className="stat-label">Programs</div>
+                      </div>
+                    </div>
+                    
+                    <div className="stat-card">
+                      <div className="stat-icon">
+                        <FiDollarSign />
+                      </div>
+                      <div className="stat-content">
+                        <div className="stat-value">
+                          {selectedParticipant.billing_codes?.length || 0}
+                        </div>
+                        <div className="stat-label">Billing Codes</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {selectedPlanTab === 'goals' && (
+              <div className="planning-goals">
+                <div className="planning-section glass-card">
+                  <h4>Goals</h4>
+                  {selectedParticipant.goals?.length > 0 ? (
+                    <div className="goals-list">
+                      {selectedParticipant.goals.map((goal, index) => (
+                        <div key={index} className="goal-item">
+                          <div className="goal-header">
+                            <h5>{goal.title}</h5>
+                            <span className={`badge ${getGoalStatusBadge(goal.status)}`}>
+                              {goal.status.replace('_', ' ')}
+                            </span>
+                          </div>
+                          <p className="goal-description">{goal.description}</p>
+                          <div className="goal-footer">
+                            <div className="goal-category">
+                              <FiTag className="goal-icon" />
+                              <span>{goal.category}</span>
+                            </div>
+                            <div className="goal-target">
+                              <FiCalendar className="goal-icon" />
+                              <span>Target: {formatDate(goal.target_date)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted">No goals have been set for this participant.</p>
+                  )}
+                </div>
+                
+                <div className="planning-section glass-card">
+                  <h4>Add New Goal</h4>
+                  <form className="goal-form" onSubmit={handleAddGoal}>
+                    <div className="form-group">
+                      <label htmlFor="goal-title">Goal Title</label>
+                      <input
+                        id="goal-title"
+                        type="text"
+                        value={newGoal.title}
+                        onChange={(e) => setNewGoal({...newGoal, title: e.target.value})}
+                        required
+                      />
+                    </div>
+                    
+                    <div className="form-group">
+                      <label htmlFor="goal-description">Description</label>
+                      <textarea
+                        id="goal-description"
+                        value={newGoal.description}
+                        onChange={(e) => setNewGoal({...newGoal, description: e.target.value})}
+                        rows="3"
+                        required
+                      ></textarea>
+                    </div>
+                    
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label htmlFor="goal-category">Category</label>
+                        <select
+                          id="goal-category"
+                          value={newGoal.category}
+                          onChange={(e) => setNewGoal({...newGoal, category: e.target.value})}
+                        >
+                          <option value="independence">Independence</option>
+                          <option value="social">Social</option>
+                          <option value="health">Health</option>
+                          <option value="education">Education</option>
+                          <option value="employment">Employment</option>
+                          <option value="housing">Housing</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </div>
+                      
+                      <div className="form-group">
+                        <label htmlFor="goal-status">Status</label>
+                        <select
+                          id="goal-status"
+                          value={newGoal.status}
+                          onChange={(e) => setNewGoal({...newGoal, status: e.target.value})}
+                        >
+                          <option value="not_started">Not Started</option>
+                          <option value="in_progress">In Progress</option>
+                          <option value="completed">Completed</option>
+                          <option value="on_hold">On Hold</option>
+                          <option value="cancelled">Cancelled</option>
+                        </select>
+                      </div>
+                    </div>
+                    
+                    <div className="form-group">
+                      <label htmlFor="goal-target-date">Target Date</label>
+                      <input
+                        id="goal-target-date"
+                        type="date"
+                        value={newGoal.target_date}
+                        onChange={(e) => setNewGoal({...newGoal, target_date: e.target.value})}
+                        required
+                      />
+                    </div>
+                    
+                    <div className="form-actions">
+                      <button 
+                        type="submit" 
+                        className="btn btn-primary"
+                        disabled={addGoalMutation.isLoading}
+                      >
+                        {addGoalMutation.isLoading ? (
+                          <>
+                            <div className="loading-spinner-small"></div>
+                            Adding...
+                          </>
+                        ) : (
+                          <>
+                            <FiPlus /> Add Goal
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+            
+            {selectedPlanTab === 'programs' && (
+              <div className="planning-programs">
+                <div className="planning-section glass-card">
+                  <h4>Enrolled Programs</h4>
+                  {selectedParticipant.programs?.length > 0 ? (
+                    <div className="programs-list">
+                      {selectedParticipant.programs.map((program, index) => (
+                        <div key={index} className="program-item">
+                          <div className="program-header">
+                            <h5>{program.name}</h5>
+                            <span className="badge badge-blue">
+                              {program.recurring ? 'Recurring' : 'One-time'}
+                            </span>
+                          </div>
+                          <div className="program-details">
+                            <div className="program-detail">
+                              <FiCalendar className="program-icon" />
+                              <span>
+                                {program.recurring 
+                                  ? `Every ${program.repeat_pattern} from ${formatDate(program.start_date)}`
+                                  : formatDate(program.start_date)
+                                }
+                              </span>
+                            </div>
+                            <div className="program-detail">
+                              <FiClock className="program-icon" />
+                              <span>{program.start_time} - {program.end_time}</span>
+                            </div>
+                            <div className="program-detail">
+                              <FiHome className="program-icon" />
+                              <span>{program.venue_name || 'No venue'}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted">This participant is not enrolled in any programs.</p>
+                  )}
+                </div>
+                
+                <div className="planning-section glass-card">
+                  <h4>Available Programs</h4>
+                  {programsLoading ? (
+                    <div className="loading-container">
+                      <div className="loading-spinner-small"></div>
+                      <p>Loading programs...</p>
+                    </div>
+                  ) : programsData?.data?.length > 0 ? (
+                    <div className="available-programs-list">
+                      {programsData.data
+                        .filter(program => 
+                          !selectedParticipant.programs?.some(p => p.id === program.id)
+                        )
+                        .map((program, index) => (
+                          <div key={index} className="available-program-item">
+                            <div className="available-program-info">
+                              <h5>{program.name}</h5>
+                              <div className="program-details">
+                                <div className="program-detail">
+                                  <FiCalendar className="program-icon" />
+                                  <span>
+                                    {program.recurring 
+                                      ? `Every ${program.repeat_pattern} from ${formatDate(program.start_date)}`
+                                      : formatDate(program.start_date)
+                                    }
+                                  </span>
+                                </div>
+                                <div className="program-detail">
+                                  <FiClock className="program-icon" />
+                                  <span>{program.start_time} - {program.end_time}</span>
+                                </div>
+                              </div>
+                            </div>
+                            <button 
+                              className="btn btn-primary btn-sm"
+                              onClick={() => handleEnrollParticipant(program.id)}
+                              disabled={enrollParticipantMutation.isLoading}
+                            >
+                              <FiPlus /> Enroll
+                            </button>
+                          </div>
+                        ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted">No available programs found.</p>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {selectedPlanTab === 'billing' && (
+              <div className="planning-billing">
+                <div className="planning-section glass-card">
+                  <h4>Billing Codes</h4>
+                  {selectedParticipant.billing_codes?.length > 0 ? (
+                    <div className="billing-codes-list">
+                      {selectedParticipant.billing_codes.map((code, index) => (
+                        <div key={index} className="billing-code-item">
+                          <div className="billing-code-header">
+                            <h5>{code.code}</h5>
+                            <div className="billing-code-amount">
+                              <span className="amount-remaining">
+                                ${parseFloat(code.remaining_amount).toFixed(2)}
+                              </span>
+                              <span className="amount-separator">/</span>
+                              <span className="amount-total">
+                                ${parseFloat(code.total_amount).toFixed(2)}
+                              </span>
+                            </div>
+                          </div>
+                          <p className="billing-code-description">{code.description}</p>
+                          <div className="billing-code-footer">
+                            <div className="billing-code-dates">
+                              <FiCalendar className="billing-code-icon" />
+                              <span>
+                                {formatDate(code.start_date)} - {formatDate(code.end_date)}
+                              </span>
+                            </div>
+                            <div className="billing-code-rate">
+                              <FiDollarSign className="billing-code-icon" />
+                              <span>${parseFloat(code.rate).toFixed(2)}/hr</span>
+                            </div>
+                          </div>
+                          <div className="billing-code-progress">
+                            <div 
+                              className="progress-bar" 
+                              style={{
+                                width: `${(code.remaining_amount / code.total_amount) * 100}%`
+                              }}
+                            ></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted">No billing codes found for this participant.</p>
+                  )}
+                </div>
+                
+                <div className="planning-section glass-card">
+                  <h4>Add Billing Code</h4>
+                  <form className="billing-code-form" onSubmit={handleAddBillingCode}>
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label htmlFor="billing-code">NDIS Code</label>
+                        <input
+                          id="billing-code"
+                          type="text"
+                          value={newBillingCode.code}
+                          onChange={(e) => setNewBillingCode({...newBillingCode, code: e.target.value})}
+                          required
+                        />
+                      </div>
+                      
+                      <div className="form-group">
+                        <label htmlFor="billing-rate">Hourly Rate ($)</label>
+                        <input
+                          id="billing-rate"
+                          type="number"
+                          step="0.01"
+                          value={newBillingCode.rate}
+                          onChange={(e) => setNewBillingCode({...newBillingCode, rate: e.target.value})}
+                          required
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="form-group">
+                      <label htmlFor="billing-description">Description</label>
+                      <input
+                        id="billing-description"
+                        type="text"
+                        value={newBillingCode.description}
+                        onChange={(e) => setNewBillingCode({...newBillingCode, description: e.target.value})}
+                        required
+                      />
+                    </div>
+                    
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label htmlFor="billing-total">Total Amount ($)</label>
+                        <input
+                          id="billing-total"
+                          type="number"
+                          step="0.01"
+                          value={newBillingCode.total_amount}
+                          onChange={(e) => setNewBillingCode({
+                            ...newBillingCode, 
+                            total_amount: e.target.value,
+                            remaining_amount: e.target.value
+                          })}
+                          required
+                        />
+                      </div>
+                      
+                      <div className="form-group">
+                        <label htmlFor="billing-remaining">Remaining Amount ($)</label>
+                        <input
+                          id="billing-remaining"
+                          type="number"
+                          step="0.01"
+                          value={newBillingCode.remaining_amount}
+                          onChange={(e) => setNewBillingCode({...newBillingCode, remaining_amount: e.target.value})}
+                          required
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label htmlFor="billing-start-date">Start Date</label>
+                        <input
+                          id="billing-start-date"
+                          type="date"
+                          value={newBillingCode.start_date}
+                          onChange={(e) => setNewBillingCode({...newBillingCode, start_date: e.target.value})}
+                          required
+                        />
+                      </div>
+                      
+                      <div className="form-group">
+                        <label htmlFor="billing-end-date">End Date</label>
+                        <input
+                          id="billing-end-date"
+                          type="date"
+                          value={newBillingCode.end_date}
+                          onChange={(e) => setNewBillingCode({...newBillingCode, end_date: e.target.value})}
+                          required
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="form-actions">
+                      <button 
+                        type="submit" 
+                        className="btn btn-primary"
+                        disabled={addBillingCodeMutation.isLoading}
+                      >
+                        {addBillingCodeMutation.isLoading ? (
+                          <>
+                            <div className="loading-spinner-small"></div>
+                            Adding...
+                          </>
+                        ) : (
+                          <>
+                            <FiPlus /> Add Billing Code
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  // Render reports tab content
+  const renderReportsTab = () => (
+    <div className="reports-tab">
+      <div className="reports-header glass-panel">
+        <h3>Participant Reports</h3>
+        <p>Generate and view reports for participants.</p>
+      </div>
+      
+      <div className="reports-grid">
+        <div className="report-card glass-card">
+          <div className="report-icon">
+            <FiBarChart2 />
+          </div>
+          <div className="report-content">
+            <h4>Participant Summary Report</h4>
+            <p>Generate a summary report for all participants or filter by status.</p>
+            <button className="btn btn-primary">
+              <FiFileText /> Generate Report
+            </button>
+          </div>
+        </div>
+        
+        <div className="report-card glass-card">
+          <div className="report-icon">
+            <FiTarget />
+          </div>
+          <div className="report-content">
+            <h4>Goals Progress Report</h4>
+            <p>Track progress on participant goals and outcomes.</p>
+            <button className="btn btn-primary">
+              <FiFileText /> Generate Report
+            </button>
+          </div>
+        </div>
+        
+        <div className="report-card glass-card">
+          <div className="report-icon">
+            <FiDollarSign />
+          </div>
+          <div className="report-content">
+            <h4>Billing & Funding Report</h4>
+            <p>View NDIS billing codes and funding utilization.</p>
+            <button className="btn btn-primary">
+              <FiFileText /> Generate Report
+            </button>
+          </div>
+        </div>
+        
+        <div className="report-card glass-card">
+          <div className="report-icon">
+            <FiCalendar />
+          </div>
+          <div className="report-content">
+            <h4>Program Attendance Report</h4>
+            <p>Track participant attendance across all programs.</p>
+            <button className="btn btn-primary">
+              <FiFileText /> Generate Report
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <div className="export-options glass-panel">
+        <h4>Export Options</h4>
+        <div className="export-buttons">
+          <button className="btn btn-secondary">
+            <FiDownload /> Export to Excel
+          </button>
+          <button className="btn btn-secondary">
+            <FiDownload /> Export to PDF
+          </button>
+          <button className="btn btn-secondary">
+            <FiPrinter /> Print Reports
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Render create participant modal
+  const renderCreateModal = () => (
+    <div className="modal-overlay" onClick={() => setIsCreateModalOpen(false)}>
+      <div className="modal-content glass-panel" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>Create New Participant</h3>
+          <button className="modal-close" onClick={() => setIsCreateModalOpen(false)}>
+            <FiXCircle />
+          </button>
+        </div>
+        
+        <div className="modal-body">
+          <form className="participant-form" onSubmit={handleCreateParticipant}>
+            <div className="form-section">
+              <h4>Personal Information</h4>
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="first-name">First Name</label>
+                  <input
+                    id="first-name"
+                    type="text"
+                    value={participantForm.first_name}
+                    onChange={(e) => setParticipantForm({...participantForm, first_name: e.target.value})}
+                    required
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="last-name">Last Name</label>
+                  <input
+                    id="last-name"
+                    type="text"
+                    value={participantForm.last_name}
+                    onChange={(e) => setParticipantForm({...participantForm, last_name: e.target.value})}
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="ndis-number">NDIS Number</label>
+                  <input
+                    id="ndis-number"
+                    type="text"
+                    value={participantForm.ndis_number}
+                    onChange={(e) => setParticipantForm({...participantForm, ndis_number: e.target.value})}
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="date-of-birth">Date of Birth</label>
+                  <input
+                    id="date-of-birth"
+                    type="date"
+                    value={participantForm.date_of_birth}
+                    onChange={(e) => setParticipantForm({...participantForm, date_of_birth: e.target.value})}
+                  />
+                </div>
+              </div>
+              
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="gender">Gender</label>
+                  <select
+                    id="gender"
+                    value={participantForm.gender}
+                    onChange={(e) => setParticipantForm({...participantForm, gender: e.target.value})}
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="non-binary">Non-binary</option>
+                    <option value="other">Other</option>
+                    <option value="prefer-not-to-say">Prefer not to say</option>
+                  </select>
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="phone">Phone</label>
+                  <input
+                    id="phone"
+                    type="tel"
+                    value={participantForm.phone}
+                    onChange={(e) => setParticipantForm({...participantForm, phone: e.target.value})}
+                  />
+                </div>
+              </div>
+              
+              <div className="form-group">
+                <label htmlFor="email">Email</label>
+                <input
+                  id="email"
+                  type="email"
+                  value={participantForm.email}
+                  onChange={(e) => setParticipantForm({...participantForm, email: e.target.value})}
+                />
+              </div>
+            </div>
+            
+            <div className="form-section">
+              <h4>Address</h4>
+              <div className="form-group">
+                <label htmlFor="address">Street Address</label>
+                <input
+                  id="address"
+                  type="text"
+                  value={participantForm.address}
+                  onChange={(e) => setParticipantForm({...participantForm, address: e.target.value})}
+                />
+              </div>
+              
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="suburb">Suburb</label>
+                  <input
+                    id="suburb"
+                    type="text"
+                    value={participantForm.suburb}
+                    onChange={(e) => setParticipantForm({...participantForm, suburb: e.target.value})}
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="state">State</label>
+                  <select
+                    id="state"
+                    value={participantForm.state}
+                    onChange={(e) => setParticipantForm({...participantForm, state: e.target.value})}
+                  >
+                    <option value="NSW">NSW</option>
+                    <option value="VIC">VIC</option>
+                    <option value="QLD">QLD</option>
+                    <option value="SA">SA</option>
+                    <option value="WA">WA</option>
+                    <option value="TAS">TAS</option>
+                    <option value="NT">NT</option>
+                    <option value="ACT">ACT</option>
+                  </select>
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="postcode">Postcode</label>
+                  <input
+                    id="postcode"
+                    type="text"
+                    value={participantForm.postcode}
+                    onChange={(e) => setParticipantForm({...participantForm, postcode: e.target.value})}
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <div className="form-section">
+              <h4>Emergency Contact</h4>
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="emergency-contact-name">Name</label>
+                  <input
+                    id="emergency-contact-name"
+                    type="text"
+                    value={participantForm.emergency_contact_name}
+                    onChange={(e) => setParticipantForm({...participantForm, emergency_contact_name: e.target.value})}
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="emergency-contact-phone">Phone</label>
+                  <input
+                    id="emergency-contact-phone"
+                    type="tel"
+                    value={participantForm.emergency_contact_phone}
+                    onChange={(e) => setParticipantForm({...participantForm, emergency_contact_phone: e.target.value})}
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <div className="form-section">
+              <h4>Support Details</h4>
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="support-level">Support Level</label>
+                  <select
+                    id="support-level"
+                    value={participantForm.support_level}
+                    onChange={(e) => setParticipantForm({...participantForm, support_level: e.target.value})}
+                  >
+                    <option value="standard">Standard</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="status">Status</label>
+                  <select
+                    id="status"
+                    value={participantForm.status}
+                    onChange={(e) => setParticipantForm({...participantForm, status: e.target.value})}
+                  >
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="pending">Pending</option>
+                    <option value="suspended">Suspended</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div className="form-group">
+                <label htmlFor="notes">Notes</label>
+                <textarea
+                  id="notes"
+                  value={participantForm.notes}
+                  onChange={(e) => setParticipantForm({...participantForm, notes: e.target.value})}
+                  rows="3"
+                ></textarea>
+              </div>
+            </div>
+            
+            <div className="form-actions">
+              <button 
+                type="button" 
+                className="btn btn-secondary"
+                onClick={() => setIsCreateModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button 
+                type="submit" 
+                className="btn btn-primary"
+                disabled={createParticipantMutation.isLoading}
+              >
+                {createParticipantMutation.isLoading ? (
+                  <>
+                    <div className="loading-spinner-small"></div>
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <FiSave /> Create Participant
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Render edit participant modal
+  const renderEditModal = () => (
+    <div className="modal-overlay" onClick={() => setIsEditModalOpen(false)}>
+      <div className="modal-content glass-panel" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>Edit Participant</h3>
+          <button className="modal-close" onClick={() => setIsEditModalOpen(false)}>
+            <FiXCircle />
+          </button>
+        </div>
+        
+        <div className="modal-body">
+          <form className="participant-form" onSubmit={handleUpdateParticipant}>
+            <div className="form-section">
+              <h4>Personal Information</h4>
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="edit-first-name">First Name</label>
+                  <input
+                    id="edit-first-name"
+                    type="text"
+                    value={participantForm.first_name}
+                    onChange={(e) => setParticipantForm({...participantForm, first_name: e.target.value})}
+                    required
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="edit-last-name">Last Name</label>
+                  <input
+                    id="edit-last-name"
+                    type="text"
+                    value={participantForm.last_name}
+                    onChange={(e) => setParticipantForm({...participantForm, last_name: e.target.value})}
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="edit-ndis-number">NDIS Number</label>
+                  <input
+                    id="edit-ndis-number"
+                    type="text"
+                    value={participantForm.ndis_number}
+                    onChange={(e) => setParticipantForm({...participantForm, ndis_number: e.target.value})}
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="edit-date-of-birth">Date of Birth</label>
+                  <input
+                    id="edit-date-of-birth"
+                    type="date"
+                    value={participantForm.date_of_birth}
+                    onChange={(e) => setParticipantForm({...participantForm, date_of_birth: e.target.value})}
+                  />
+                </div>
+              </div>
+              
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="edit-gender">Gender</label>
+                  <select
+                    id="edit-gender"
+                    value={participantForm.gender}
+                    onChange={(e) => setParticipantForm({...participantForm, gender: e.target.value})}
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="non-binary">Non-binary</option>
+                    <option value="other">Other</option>
+                    <option value="prefer-not-to-say">Prefer not to say</option>
+                  </select>
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="edit-phone">Phone</label>
+                  <input
+                    id="edit-phone"
+                    type="tel"
+                    value={participantForm.phone}
+                    onChange={(e) => setParticipantForm({...participantForm, phone: e.target.value})}
+                  />
+                </div>
+              </div>
+              
+              <div className="form-group">
+                <label htmlFor="edit-email">Email</label>
+                <input
+                  id="edit-email"
+                  type="email"
+                  value={participantForm.email}
+                  onChange={(e) => setParticipantForm({...participantForm, email: e.target.value})}
+                />
+              </div>
+            </div>
+            
+            <div className="form-section">
+              <h4>Address</h4>
+              <div className="form-group">
+                <label htmlFor="edit-address">Street Address</label>
+                <input
+                  id="edit-address"
+                  type="text"
+                  value={participantForm.address}
+                  onChange={(e) => setParticipantForm({...participantForm, address: e.target.value})}
+                />
+              </div>
+              
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="edit-suburb">Suburb</label>
+                  <input
+                    id="edit-suburb"
+                    type="text"
+                    value={participantForm.suburb}
+                    onChange={(e) => setParticipantForm({...participantForm, suburb: e.target.value})}
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="edit-state">State</label>
+                  <select
+                    id="edit-state"
+                    value={participantForm.state}
+                    onChange={(e) => setParticipantForm({...participantForm, state: e.target.value})}
+                  >
+                    <option value="NSW">NSW</option>
+                    <option value="VIC">VIC</option>
+                    <option value="QLD">QLD</option>
+                    <option value="SA">SA</option>
+                    <option value="WA">WA</option>
+                    <option value="TAS">TAS</option>
+                    <option value="NT">NT</option>
+                    <option value="ACT">ACT</option>
+                  </select>
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="edit-postcode">Postcode</label>
+                  <input
+                    id="edit-postcode"
+                    type="text"
+                    value={participantForm.postcode}
+                    onChange={(e) => setParticipantForm({...participantForm, postcode: e.target.value})}
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <div className="form-section">
+              <h4>Emergency Contact</h4>
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="edit-emergency-contact-name">Name</label>
+                  <input
+                    id="edit-emergency-contact-name"
+                    type="text"
+                    value={participantForm.emergency_contact_name}
+                    onChange={(e) => setParticipantForm({...participantForm, emergency_contact_name: e.target.value})}
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="edit-emergency-contact-phone">Phone</label>
+                  <input
+                    id="edit-emergency-contact-phone"
+                    type="tel"
+                    value={participantForm.emergency_contact_phone}
+                    onChange={(e) => setParticipantForm({...participantForm, emergency_contact_phone: e.target.value})}
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <div className="form-section">
+              <h4>Support Details</h4>
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="edit-support-level">Support Level</label>
+                  <select
+                    id="edit-support-level"
+                    value={participantForm.support_level}
+                    onChange={(e) => setParticipantForm({...participantForm, support_level: e.target.value})}
+                  >
+                    <option value="standard">Standard</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="edit-status">Status</label>
+                  <select
+                    id="edit-status"
+                    value={participantForm.status}
+                    onChange={(e) => setParticipantForm({...participantForm, status: e.target.value})}
+                  >
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="pending">Pending</option>
+                    <option value="suspended">Suspended</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div className="form-group">
+                <label htmlFor="edit-notes">Notes</label>
+                <textarea
+                  id="edit-notes"
+                  value={participantForm.notes}
+                  onChange={(e) => setParticipantForm({...participantForm, notes: e.target.value})}
+                  rows="3"
+                ></textarea>
+              </div>
+            </div>
+            
+            <div className="form-actions">
+              <button 
+                type="button" 
+                className="btn btn-secondary"
+                onClick={() => setIsEditModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button 
+                type="submit" 
+                className="btn btn-primary"
+                disabled={updateParticipantMutation.isLoading}
+              >
+                {updateParticipantMutation.isLoading ? (
+                  <>
+                    <div className="loading-spinner-small"></div>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <FiSave /> Save Changes
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Render delete confirmation modal
+  const renderDeleteModal = () => (
+    <div className="modal-overlay" onClick={() => setIsDeleteModalOpen(false)}>
+      <div className="modal-content glass-panel" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>Delete Participant</h3>
+          <button className="modal-close" onClick={() => setIsDeleteModalOpen(false)}>
+            <FiXCircle />
+          </button>
+        </div>
+        
+        <div className="modal-body">
+          <div className="delete-confirmation">
+            <FiAlertCircle className="delete-icon" />
+            <p>
+              Are you sure you want to delete {selectedParticipant?.first_name} {selectedParticipant?.last_name}?
+              This action cannot be undone.
+            </p>
+          </div>
+        </div>
+        
+        <div className="modal-footer">
+          <button 
+            type="button" 
+            className="btn btn-secondary"
+            onClick={() => setIsDeleteModalOpen(false)}
+          >
+            Cancel
+          </button>
+          <button 
+            type="button" 
+            className="btn btn-danger"
+            onClick={handleDeleteParticipant}
+            disabled={deleteParticipantMutation.isLoading}
+          >
+            {deleteParticipantMutation.isLoading ? (
+              <>
+                <div className="loading-spinner-small"></div>
+                Deleting...
+              </>
+            ) : (
+              <>
+                <FiTrash2 /> Delete Participant
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="participants-page">
+      <div className="page-header">
+        <h2 className="page-title">Participants</h2>
+        <div className="page-tabs">
+          <button 
+            className={`tab-button ${activeTab === 'directory' ? 'active' : ''}`}
+            onClick={() => setActiveTab('directory')}
+          >
+            <FiUsers />
+            <span>Directory</span>
+          </button>
+          <button 
+            className={`tab-button ${activeTab === 'planning' ? 'active' : ''}`}
+            onClick={() => setActiveTab('planning')}
+          >
+            <FiTarget />
+            <span>Planning</span>
+          </button>
+          <button 
+            className={`tab-button ${activeTab === 'reports' ? 'active' : ''}`}
+            onClick={() => setActiveTab('reports')}
+          >
+            <FiBarChart2 />
+            <span>Reports</span>
+          </button>
+        </div>
+      </div>
+      
+      <div className="tab-content">
+        {activeTab === 'directory' && renderDirectoryTab()}
+        {activeTab === 'planning' && renderPlanningTab()}
+        {activeTab === 'reports' && renderReportsTab()}
+      </div>
+      
+      {/* Modals */}
+      {isCreateModalOpen && renderCreateModal()}
+      {isEditModalOpen && renderEditModal()}
+      {isDeleteModalOpen && renderDeleteModal()}
+    </div>
+  );
+};
+
+export default Participants;
