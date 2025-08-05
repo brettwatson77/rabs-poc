@@ -109,13 +109,19 @@ Each migrations file **MUST** reference this spec header.
 
 ## 9. Change Management
 
-1. **PR must include:**  
-   • spec update ➜ OpenAPI YAML diff  
-   • backend code  
-   • migration file  
-   • FE typings/tests
+1. **Every pull-request must contain:**  
+   • _Spec update_ – Keep `MASTER_SPEC.md` and the OpenAPI YAML in sync  
+   • _Backend code_ – Routes, services, and tests  
+   • _Migration file_ – Schema stays aligned with the spec  
+   • _Frontend typings / tests_ – Ensure the UI still fulfils the contract
 
-2. **Spec governed by CODEOWNERS** – at least one FE, one BE reviewer.
+2. **Review workflow (two-person team edition):**  
+   • Brett opens the PR, AI assistant auto-reviews & leaves comments.  
+   • If the AI generates the PR, Brett reviews and approves.  
+   • Merge only when both of us have explicitly ticked the “Spec aligned” checkbox.
+
+3. **Fast-lane Fixes:**  
+   Minor documentation tweaks or non-breaking style changes can be committed directly by either party, but **must not** modify API contracts or database schema without a PR review.
 
 ---
 
