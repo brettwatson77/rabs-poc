@@ -8,8 +8,6 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
-const fs = require('fs');
 const { Pool } = require('pg');
 const uuid = require('uuid');
 
@@ -18,34 +16,9 @@ const app = express();
 const PORT = process.env.PORT || 3009;
 
 // Database connection
-const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
+const apiRouter = require('./backend/routes');
+app.use('/api/v1', apiRouter);
   user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'postgres',
-  database: process.env.DB_NAME || 'rabspocdb',
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-});
-
-// Test database connection
-pool.query('SELECT NOW()', (err, res) => {
-  if (err) {
-    console.error('❌ Database connection error:', err.message);
-  } else {
-    console.log('✅ Database connected:', res.rows[0].now);
-  }
-});
-
-// Middleware
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Request logging middleware
-app.use((req, res, next) => {
-  const start = Date.now();
-  const requestId = uuid.v4();
   
   console.log(`📝 [${requestId}] ${req.method} ${req.url} started at ${new Date().toISOString()}`);
   

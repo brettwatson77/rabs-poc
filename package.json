@@ -2,7 +2,7 @@
   "name": "rabs-poc",
   "version": "1.0.0",
   "description": "Proof-of-concept for Real-time Adaptive Backend System (Reggie)",
-  "main": "server.js",
+  "main": "backend/server.js",
   "scripts": {
     "start": "node backend/server.js",
     "build": "cd frontend && npm run build",
