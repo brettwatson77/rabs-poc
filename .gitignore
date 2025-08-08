@@ -9,3 +9,7 @@ Thumbs.db
 .git_backup/
 # Vite build output
 dist/
+
+# Ignore macOS resource fork files
+._*
+**/._*

@@ -1,0 +1,23 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# Exit on error
+set -e
+
+# Store the repository root directory
+REPO_ROOT=$(git rev-parse --show-toplevel)
+
+echo "🔍 Running pre-commit checks..."
+
+# Run custom guard script to check for file issues
+echo "⚔️ Running file integrity guard..."
+node scripts/precommit-guard.js
+
+# Run frontend linting
+echo "🧹 Running frontend linting..."
+cd frontend && npm run lint
+
+# Return to repository root
+cd "$REPO_ROOT"
+
+echo "✅ Pre-commit checks passed!"
