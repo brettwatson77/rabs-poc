@@ -13,3 +13,11 @@ dist/
 # Ignore macOS resource fork files
 ._*
 **/._*
+
+# Temporary/backup files from edits
+*.bak
+*.bak_*
+*.bak[0-9]*
+
+# Quarantine folder
+second-toilet/
