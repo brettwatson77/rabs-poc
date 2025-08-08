@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { useQuery } from 'react-query';
+import { useQuery, useMutation, useQueryClient } from 'react-query';
 import axios from 'axios';
 import { 
   FiUsers, 
   FiSearch, 
   FiFilter, 
+  FiPlus,
   FiPhone,
   FiMail,
   FiHome,
@@ -31,8 +32,45 @@ const Staff = () => {
   });
   const [showFilters, setShowFilters] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const queryClient = useQueryClient();
   const [currentPage, setCurrentPage] = useState(1);
   const staffPerPage = 12;
+
+  // ------------------------------------------------------------------ //
+  //  Creation Mutation
+  // ------------------------------------------------------------------ //
+  const [newStaff, setNewStaff] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    phone: '',
+    role: 'support_worker',
+    employment_type: 'full_time',
+    status: 'active'
+  });
+
+  const createStaffMutation = useMutation(
+    async (body) => {
+      const res = await axios.post(`${API_URL}/api/v1/staff`, body);
+      return res.data;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['staff']);
+        setIsCreateModalOpen(false);
+        setNewStaff({
+          first_name: '',
+          last_name: '',
+          email: '',
+          phone: '',
+          role: 'support_worker',
+          employment_type: 'full_time',
+          status: 'active'
+        });
+      }
+    }
+  );
 
   // Fetch staff data
   const { 
@@ -198,6 +236,14 @@ const Staff = () => {
             </div>
           )}
         </div>
+
+        {/* NEW STAFF BUTTON */}
+        <button
+          className="create-btn glass-button"
+          onClick={() => setIsCreateModalOpen(true)}
+        >
+          <FiPlus /> New Staff
+        </button>
       </div>
       
       {/* Staff Grid */}
@@ -457,6 +503,120 @@ const Staff = () => {
         </div>
       )}
     </div>
+
+    {/* ---------------- New-Staff Modal ---------------- */}
+    {isCreateModalOpen && (
+      <div className="modal-overlay" onClick={() => setIsCreateModalOpen(false)}>
+        <div
+          className="modal-content glass-panel create-staff-modal"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="modal-header">
+            <h3>Create Staff</h3>
+            <button className="modal-close" onClick={() => setIsCreateModalOpen(false)}>
+              <FiXCircle />
+            </button>
+          </div>
+
+          <form
+            className="modal-body"
+            onSubmit={(e) => {
+              e.preventDefault();
+              createStaffMutation.mutate(newStaff);
+            }}
+          >
+            {/* Basic two-column grid */}
+            <div className="form-grid">
+              <label>
+                First Name
+                <input
+                  required
+                  value={newStaff.first_name}
+                  onChange={(e) => setNewStaff({ ...newStaff, first_name: e.target.value })}
+                />
+              </label>
+              <label>
+                Last Name
+                <input
+                  required
+                  value={newStaff.last_name}
+                  onChange={(e) => setNewStaff({ ...newStaff, last_name: e.target.value })}
+                />
+              </label>
+              <label>
+                Email
+                <input
+                  type="email"
+                  value={newStaff.email}
+                  onChange={(e) => setNewStaff({ ...newStaff, email: e.target.value })}
+                />
+              </label>
+              <label>
+                Phone
+                <input
+                  value={newStaff.phone}
+                  onChange={(e) => setNewStaff({ ...newStaff, phone: e.target.value })}
+                />
+              </label>
+              <label>
+                Role
+                <select
+                  value={newStaff.role}
+                  onChange={(e) => setNewStaff({ ...newStaff, role: e.target.value })}
+                >
+                  <option value="support_worker">Support Worker</option>
+                  <option value="team_leader">Team Leader</option>
+                  <option value="manager">Manager</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </label>
+              <label>
+                Employment Type
+                <select
+                  value={newStaff.employment_type}
+                  onChange={(e) => setNewStaff({ ...newStaff, employment_type: e.target.value })}
+                >
+                  <option value="full_time">Full-time</option>
+                  <option value="part_time">Part-time</option>
+                  <option value="casual">Casual</option>
+                  <option value="contractor">Contractor</option>
+                </select>
+              </label>
+              <label>
+                Status
+                <select
+                  value={newStaff.status}
+                  onChange={(e) => setNewStaff({ ...newStaff, status: e.target.value })}
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="on_leave">On Leave</option>
+                  <option value="terminated">Terminated</option>
+                </select>
+              </label>
+            </div>
+
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setIsCreateModalOpen(false)}
+                disabled={createStaffMutation.isLoading}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={createStaffMutation.isLoading}
+              >
+                {createStaffMutation.isLoading ? 'Creating…' : 'Create'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )}
   );
 };
 
