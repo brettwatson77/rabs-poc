@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useQuery } from 'react-query';
 import axios from 'axios';
-import { format, parseISO, isToday, isBefore, isAfter } from 'date-fns';
+import { format, parseISO, isBefore, isAfter } from 'date-fns';
 import { 
   FiCalendar, 
   FiClock, 
@@ -89,45 +89,49 @@ const Dashboard = () => {
     }
   );
   
-  // Organize time slots into columns (Before/Now/Next/Later/After)
+  // Organize time slots into columns (Earlier/Before/Now/Next/Later)
   const organizeTimeSlots = () => {
     if (!timeSlotsData || !timeSlotsData.data) return {
+      earlier: [],
       before: [],
       now: [],
       next: [],
-      later: [],
-      after: []
+      later: []
     };
     
     const now = new Date();
     const slots = timeSlotsData.data;
     
     return {
+      // Ended more than 1 hour ago
+      earlier: slots.filter(slot => {
+        const endTime = parseISO(`${formattedDate}T${slot.end_time}`);
+        const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+        return isBefore(endTime, oneHourAgo);
+      }),
+      // Ended within the last hour
       before: slots.filter(slot => {
         const endTime = parseISO(`${formattedDate}T${slot.end_time}`);
-        return isBefore(endTime, now);
+        const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+        return isAfter(endTime, oneHourAgo) && isBefore(endTime, now);
       }),
+      // Ongoing now
       now: slots.filter(slot => {
         const startTime = parseISO(`${formattedDate}T${slot.start_time}`);
         const endTime = parseISO(`${formattedDate}T${slot.end_time}`);
         return isBefore(startTime, now) && isAfter(endTime, now);
       }),
+      // Starts within next hour
       next: slots.filter(slot => {
         const startTime = parseISO(`${formattedDate}T${slot.start_time}`);
-        const endTime = parseISO(`${formattedDate}T${slot.end_time}`);
         const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
         return isAfter(startTime, now) && isBefore(startTime, oneHourFromNow);
       }),
+      // Starts more than 1 hour from now
       later: slots.filter(slot => {
         const startTime = parseISO(`${formattedDate}T${slot.start_time}`);
         const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
-        const fourHoursFromNow = new Date(now.getTime() + 4 * 60 * 60 * 1000);
-        return isAfter(startTime, oneHourFromNow) && isBefore(startTime, fourHoursFromNow);
-      }),
-      after: slots.filter(slot => {
-        const startTime = parseISO(`${formattedDate}T${slot.start_time}`);
-        const fourHoursFromNow = new Date(now.getTime() + 4 * 60 * 60 * 1000);
-        return isAfter(startTime, fourHoursFromNow);
+        return isAfter(startTime, oneHourFromNow);
       })
     };
   };
@@ -227,7 +231,7 @@ const Dashboard = () => {
           <p>
             <strong>The Loom System:</strong> RABS uses a "loom" metaphor where programs are woven 
             into the schedule. The Wall (program templates) + Calendar (dates) create the Master Schedule, 
-            which breaks down into time slots shown below (Before/Now/Next/Later/After).
+            which breaks down into time slots shown below (Earlier/Before/Now/Next/Later).
           </p>
         </div>
       </div>
@@ -255,6 +259,22 @@ const Dashboard = () => {
           </div>
         ) : (
           <div className="time-slots-grid">
+            {/* Earlier */}
+            <div className="time-column">
+              <div className="column-header earlier">
+                <h4>Earlier</h4>
+                <span className="count-badge">{timeSlotColumns.earlier.length}</span>
+              </div>
+              <div className="column-content">
+                {timeSlotColumns.earlier.length === 0 ? (
+                  <div className="empty-column-message">No early activities</div>
+                ) : (
+                  timeSlotColumns.earlier.map(slot => renderTimeSlotCard(slot))
+                )}
+              </div>
+            </div>
+
+            {/* Before */}
             <div className="time-column">
               <div className="column-header before">
                 <h4>Before</h4>
@@ -269,6 +289,7 @@ const Dashboard = () => {
               </div>
             </div>
             
+            {/* Now */}
             <div className="time-column">
               <div className="column-header now">
                 <h4>Now</h4>
@@ -283,6 +304,7 @@ const Dashboard = () => {
               </div>
             </div>
             
+            {/* Next */}
             <div className="time-column">
               <div className="column-header next">
                 <h4>Next</h4>
@@ -297,6 +319,7 @@ const Dashboard = () => {
               </div>
             </div>
             
+            {/* Later */}
             <div className="time-column">
               <div className="column-header later">
                 <h4>Later</h4>
@@ -307,20 +330,6 @@ const Dashboard = () => {
                   <div className="empty-column-message">No activities later today</div>
                 ) : (
                   timeSlotColumns.later.map(slot => renderTimeSlotCard(slot))
-                )}
-              </div>
-            </div>
-            
-            <div className="time-column">
-              <div className="column-header after">
-                <h4>After</h4>
-                <span className="count-badge">{timeSlotColumns.after.length}</span>
-              </div>
-              <div className="column-content">
-                {timeSlotColumns.after.length === 0 ? (
-                  <div className="empty-column-message">No evening activities</div>
-                ) : (
-                  timeSlotColumns.after.map(slot => renderTimeSlotCard(slot))
                 )}
               </div>
             </div>
