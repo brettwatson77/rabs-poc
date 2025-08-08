@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import '../styles/MasterSchedule.css';
 
+// API base URL from environment (matches Dashboard pattern)
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3009';
+
 /**
  * Master Schedule Page
  * Shows program/event cards from loom instances in a weekly calendar view
@@ -68,7 +71,7 @@ const MasterSchedule = () => {
       const endDate = new Date(currentWeekStart);
       endDate.setDate(currentWeekStart.getDate() + 6);
       
-      const response = await axios.get('/api/v1/master-schedule/instances', {
+      const response = await axios.get(`${API_URL}/api/v1/master-schedule/instances`, {
         params: {
           startDate: formatDateForApi(currentWeekStart),
           endDate: formatDateForApi(endDate)
@@ -91,7 +94,7 @@ const MasterSchedule = () => {
   // Fetch venues
   const fetchVenues = async () => {
     try {
-      const response = await axios.get('/api/v1/venues');
+      const response = await axios.get(`${API_URL}/api/v1/venues`);
       if (response.data && response.data.success) {
         setVenuesList(response.data.data);
       }
@@ -153,7 +156,7 @@ const MasterSchedule = () => {
         notes: programForm.notes
       };
       
-      const response = await axios.post('/api/v1/programs', programData);
+      const response = await axios.post(`${API_URL}/api/v1/programs`, programData);
       
       if (response.data && response.data.success) {
         setShowCreateModal(false);
@@ -297,6 +300,16 @@ const MasterSchedule = () => {
           <div className="modal glass-panel">
             <div className="modal-header">
               <h2>Create Program</h2>
+              {selectedDay && (
+                <div className="modal-subtitle">
+                  {selectedDay.toLocaleDateString('en-AU', {
+                    weekday: 'long',
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                  })}
+                </div>
+              )}
               <button className="close-button" onClick={() => setShowCreateModal(false)}>×</button>
             </div>
             
