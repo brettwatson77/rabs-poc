@@ -153,6 +153,35 @@ router.put('/:id', async (req, res, next) => {
 });
 
 /**
+ * @route   DELETE /api/v1/staff/:id
+ * @desc    Delete a staff member
+ * @access  Public
+ */
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      'DELETE FROM staff WHERE id = $1 RETURNING *',
+      [id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Staff member not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: result.rows[0]
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * @route   GET /api/v1/staff/:id
  * @desc    Get staff member by ID
  * @access  Public
