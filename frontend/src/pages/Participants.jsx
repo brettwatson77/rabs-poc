@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import axios from 'axios';
-import { format } from 'date-fns';
+import { format, startOfWeek, addDays } from 'date-fns';
 import { 
   FiUser, 
   FiUsers, 
@@ -60,6 +60,47 @@ const Participants = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const participantsPerPage = 12;
 
+  /* ------------------------------------------------------------------
+   * Weekly planner (minimal — uses existing /master-schedule/instances)
+   * ------------------------------------------------------------------ */
+  const [selectedWeek, setSelectedWeek] = useState(startOfWeek(new Date()));
+  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(selectedWeek, i));
+  const formatISODate = (d) => d.toISOString().split('T')[0];
+
+  const [instances, setInstances] = useState([]);
+  const [instancesLoading, setInstancesLoading] = useState(false);
+  const [instancesError, setInstancesError] = useState('');
+
+  useEffect(() => {
+    const fetchInstances = async () => {
+      setInstancesLoading(true);
+      setInstancesError('');
+      try {
+        const res = await axios.get(`${API_URL}/api/v1/master-schedule/instances`, {
+          params: {
+            startDate: formatISODate(weekDays[0]),
+            endDate: formatISODate(weekDays[6])
+          }
+        });
+        setInstances(res?.data?.data || []);
+      } catch (e) {
+        setInstancesError('Failed to load weekly program instances.');
+      } finally {
+        setInstancesLoading(false);
+      }
+    };
+    fetchInstances();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedWeek]);
+
+  const prevWeek = () => setSelectedWeek(addDays(selectedWeek, -7));
+  const nextWeek = () => setSelectedWeek(addDays(selectedWeek, 7));
+
+  const instancesForDate = (day) => {
+    const d = formatISODate(day);
+    return instances.filter((i) => typeof i.date === 'string' && i.date.includes(d));
+  };
+
   // Form state for creating/editing participant
   const [participantForm, setParticipantForm] = useState({
     first_name: '',
@@ -115,12 +156,6 @@ const Participants = () => {
     }
   );
 
-          start_date: '',
-          end_date: ''
-        });
-      }
-    }
-  );
 
   // Enroll participant in program mutation
   const enrollParticipantMutation = useMutation(
@@ -910,89 +945,65 @@ const Participants = () => {
             {selectedPlanTab === 'programs' && (
               <div className="planning-programs">
                 <div className="planning-section glass-card">
-                  <h4>Enrolled Programs</h4>
-                  {selectedParticipant.programs?.length > 0 ? (
-                    <div className="programs-list">
-                      {selectedParticipant.programs.map((program, index) => (
-                        <div key={index} className="program-item">
-                          <div className="program-header">
-                            <h5>{program.name}</h5>
-                            <span className="badge badge-blue">
-                              {program.recurring ? 'Recurring' : 'One-time'}
-                            </span>
+                  <div className="planning-week-header">
+                    <button className="nav-button glass-button" onClick={prevWeek}>&lt; Prev</button>
+                    <h4 style={{margin: 0}}>
+                      {format(weekDays[0], 'd MMM')} - {format(weekDays[6], 'd MMM yyyy')}
+                    </h4>
+                    <button className="nav-button glass-button" onClick={nextWeek}>Next &gt;</button>
+                  </div>
+                  {instancesLoading ? (
+                    <div className="loading-container">
+                      <div className="loading-spinner-small"></div>
+                      <p>Loading weekly instances...</p>
+                    </div>
+                  ) : instancesError ? (
+                    <div className="error-container glass-panel">
+                      <FiAlertCircle className="error-icon" />
+                      <p>{instancesError}</p>
+                    </div>
+                  ) : (
+                    <div className="calendar-grid">
+                      {weekDays.map((day, idx) => (
+                        <div key={idx} className="day-column glass-panel">
+                          <div className="day-header">
+                            <div className="day-name">{format(day, 'EEE')}</div>
+                            <div className="day-number">{format(day, 'd')}</div>
                           </div>
-                          <div className="program-details">
-                            <div className="program-detail">
-                              <FiCalendar className="program-icon" />
-                              <span>
-                                {program.recurring 
-                                  ? `Every ${program.repeat_pattern} from ${formatDate(program.start_date)}`
-                                  : formatDate(program.start_date)
-                                }
-                              </span>
-                            </div>
-                            <div className="program-detail">
-                              <FiClock className="program-icon" />
-                              <span>{program.start_time} - {program.end_time}</span>
-                            </div>
-                            <div className="program-detail">
-                              <FiHome className="program-icon" />
-                              <span>{program.venue_name || 'No venue'}</span>
-                            </div>
+                          <div className="day-instances">
+                            {instancesForDate(day).length > 0 ? (
+                              instancesForDate(day).map((inst) => {
+                                const ratio = inst.staff_ratio || 0;
+                                const participants = inst.participant_count || 0;
+                                const required = ratio > 0 ? Math.ceil(participants / ratio) : null;
+                                return (
+                                  <div key={inst.id} className="program-card glass-card">
+                                    <h5 style={{marginBottom: 4}}>{inst.program_name}</h5>
+                                    <p className="venue">{inst.venue_name}</p>
+                                    <p className="time">{inst.start_time} - {inst.end_time}</p>
+                                    <div className="meta-row">
+                                      <span>{participants} participants</span>
+                                      {required !== null && <span>Est. {required} staff</span>}
+                                    </div>
+                                    <div className="actions-row" style={{marginTop: 8}}>
+                                      <button
+                                        className="btn btn-secondary btn-sm"
+                                        disabled
+                                        title="Planning stub"
+                                      >
+                                        Plan for {selectedParticipant.first_name}
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            ) : (
+                              <div className="empty-day"><span>No programs</span></div>
+                            )}
                           </div>
                         </div>
                       ))}
                     </div>
-                  ) : (
-                    <p className="text-muted">This participant is not enrolled in any programs.</p>
-                  )}
-                </div>
-                
-                <div className="planning-section glass-card">
-                  <h4>Available Programs</h4>
-                  {programsLoading ? (
-                    <div className="loading-container">
-                      <div className="loading-spinner-small"></div>
-                      <p>Loading programs...</p>
-                    </div>
-                  ) : programsData?.data?.length > 0 ? (
-                    <div className="available-programs-list">
-                      {programsData.data
-                        .filter(program => 
-                          !selectedParticipant.programs?.some(p => p.id === program.id)
-                        )
-                        .map((program, index) => (
-                          <div key={index} className="available-program-item">
-                            <div className="available-program-info">
-                              <h5>{program.name}</h5>
-                              <div className="program-details">
-                                <div className="program-detail">
-                                  <FiCalendar className="program-icon" />
-                                  <span>
-                                    {program.recurring 
-                                      ? `Every ${program.repeat_pattern} from ${formatDate(program.start_date)}`
-                                      : formatDate(program.start_date)
-                                    }
-                                  </span>
-                                </div>
-                                <div className="program-detail">
-                                  <FiClock className="program-icon" />
-                                  <span>{program.start_time} - {program.end_time}</span>
-                                </div>
-                              </div>
-                            </div>
-                            <button 
-                              className="btn btn-primary btn-sm"
-                              onClick={() => handleEnrollParticipant(program.id)}
-                              disabled={enrollParticipantMutation.isLoading}
-                            >
-                              <FiPlus /> Enroll
-                            </button>
-                          </div>
-                        ))}
-                    </div>
-                  ) : (
-                    <p className="text-muted">No available programs found.</p>
                   )}
                 </div>
               </div>
