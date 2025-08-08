@@ -13,11 +13,21 @@ echo "🔍 Running pre-commit checks..."
 echo "⚔️ Running file integrity guard..."
 node scripts/precommit-guard.js
 
-# Run frontend linting
-echo "🧹 Running frontend linting..."
-cd frontend && npm run lint
+# Run frontend linting only on staged files
+echo "🧹 Running frontend linting (staged files only)..."
 
-# Return to repository root
+# Get staged JS/JSX files within frontend directory
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^frontend/.*\.(js|jsx)$' || true)
+
+if [ -n "$STAGED_FILES" ]; then
+  echo "$STAGED_FILES" | sed 's/^/ - /'
+  # Run ESLint on just the staged files from within frontend
+  (cd frontend && npx eslint $(echo "$STAGED_FILES" | sed 's#^frontend/##' | tr '\n' ' ') --max-warnings 0)
+else
+  echo "No staged frontend JS/JSX files to lint. Skipping."
+fi
+
+# Ensure we are at repo root for any subsequent steps
 cd "$REPO_ROOT"
 
 echo "✅ Pre-commit checks passed!"
