@@ -44,49 +44,35 @@ const Dashboard = () => {
     }
   );
   
-  // Fetch staff on duty today
   const { 
-    data: staffData, 
-    isLoading: staffLoading, 
-    error: staffError 
+    data: summaryData,
+    isLoading: summaryLoading,
+    error: summaryError,
+    refetch: refetchSummary
   } = useQuery(
-    ['dashboardStaff', formattedDate],
+    ['dashboardSummary', formattedDate],
     async () => {
-      const response = await axios.get(`${API_URL}/api/v1/dashboard/staff`, {
+      const response = await axios.get(`${API_URL}/api/v1/dashboard/summary`, {
         params: { date: formattedDate }
       });
       return response.data;
     }
   );
-  
-  // Fetch vehicle assignments
+
   const { 
-    data: vehiclesData, 
-    isLoading: vehiclesLoading, 
-    error: vehiclesError 
+    data: alertsData,
+    isLoading: alertsLoading,
+    error: alertsError,
+    refetch: refetchAlerts
   } = useQuery(
-    ['dashboardVehicles', formattedDate],
+    ['dashboardAlerts', formattedDate],
     async () => {
-      const response = await axios.get(`${API_URL}/api/v1/dashboard/vehicles`, {
+      const response = await axios.get(`${API_URL}/api/v1/dashboard/alerts`, {
         params: { date: formattedDate }
       });
       return response.data;
-    }
-  );
-  
-  // Fetch participant status
-  const { 
-    data: participantsData, 
-    isLoading: participantsLoading, 
-    error: participantsError 
-  } = useQuery(
-    ['dashboardParticipants', formattedDate],
-    async () => {
-      const response = await axios.get(`${API_URL}/api/v1/dashboard/participants`, {
-        params: { date: formattedDate }
-      });
-      return response.data;
-    }
+    },
+    { staleTime: 30000 }
   );
   
   // Organize time slots into columns (Earlier/Before/Now/Next/Later)
@@ -147,6 +133,8 @@ const Dashboard = () => {
   // Handle refresh button click
   const handleRefresh = () => {
     refetchTimeSlots();
+    refetchSummary();
+    refetchAlerts();
   };
   
   // Render time slot card
@@ -337,165 +325,83 @@ const Dashboard = () => {
         )}
       </section>
       
-      {/* Staff & Vehicles Grid */}
-      <div className="dashboard-grid">
-        {/* Staff Section */}
-        <section className="dashboard-section grid-item">
-          <div className="section-header">
-            <h3>
-              <FiUsers /> Staff on Duty
-            </h3>
-          </div>
-          
-          {staffLoading ? (
-            <div className="loading-container">
-              <div className="loading-spinner"></div>
-              <p>Loading staff data...</p>
-            </div>
-          ) : staffError ? (
-            <div className="error-container glass-card">
-              <FiAlertCircle className="error-icon" />
-              <p>Error loading staff data</p>
-            </div>
-          ) : (
-            <div className="staff-grid">
-              {!staffData || !staffData.data || staffData.data.length === 0 ? (
-                <div className="empty-data-message glass-card">
-                  <p>No staff scheduled for today</p>
-                </div>
-              ) : (
-                staffData.data.slice(0, 4).map(staff => (
-                  <div key={staff.id} className="glass-card staff-card">
-                    <div className="staff-avatar">
-                      {staff.first_name.charAt(0)}{staff.last_name.charAt(0)}
-                    </div>
-                    <div className="staff-info">
-                      <h4>{staff.first_name} {staff.last_name}</h4>
-                      <p className="staff-role">{staff.role || 'Support Worker'}</p>
-                      <div className="staff-schedule">
-                        <FiClock className="icon-small" />
-                        <span>{staff.start_time ? formatTime(staff.start_time) : '9:00 am'} - {staff.end_time ? formatTime(staff.end_time) : '5:00 pm'}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-              
-              {staffData && staffData.data && staffData.data.length > 4 && (
-                <div className="glass-card view-more-card">
-                  <button className="btn-link">
-                    View All Staff ({staffData.data.length})
-                    <FiChevronRight />
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </section>
-        
-        {/* Vehicles Section */}
-        <section className="dashboard-section grid-item">
-          <div className="section-header">
-            <h3>
-              <FiTruck /> Vehicle Assignments
-            </h3>
-          </div>
-          
-          {vehiclesLoading ? (
-            <div className="loading-container">
-              <div className="loading-spinner"></div>
-              <p>Loading vehicle data...</p>
-            </div>
-          ) : vehiclesError ? (
-            <div className="error-container glass-card">
-              <FiAlertCircle className="error-icon" />
-              <p>Error loading vehicle data</p>
-            </div>
-          ) : (
-            <div className="vehicles-grid">
-              {!vehiclesData || !vehiclesData.data || vehiclesData.data.length === 0 ? (
-                <div className="empty-data-message glass-card">
-                  <p>No vehicles assigned for today</p>
-                </div>
-              ) : (
-                vehiclesData.data.slice(0, 4).map(vehicle => (
-                  <div key={vehicle.id} className="glass-card vehicle-card">
-                    <div className={`vehicle-status ${vehicle.status || 'available'}`}>
-                      {vehicle.status || 'Available'}
-                    </div>
-                    <h4>{vehicle.make} {vehicle.model}</h4>
-                    <p className="vehicle-registration">{vehicle.registration}</p>
-                    {vehicle.fuel_type && (
-                      <div className={`fuel-type-badge ${vehicle.fuel_type.toLowerCase()}`}>
-                        {vehicle.fuel_type}
-                      </div>
-                    )}
-                    {vehicle.assigned_to && (
-                      <div className="vehicle-assignment">
-                        <strong>Driver:</strong> {vehicle.assigned_to}
-                      </div>
-                    )}
-                  </div>
-                ))
-              )}
-              
-              {vehiclesData && vehiclesData.data && vehiclesData.data.length > 4 && (
-                <div className="glass-card view-more-card">
-                  <button className="btn-link">
-                    View All Vehicles ({vehiclesData.data.length})
-                    <FiChevronRight />
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </section>
-      </div>
-      
-      {/* Participant Status Section */}
+      {/* KPI Overview Section */}
       <section className="dashboard-section">
         <div className="section-header">
-          <h3>
-            <FiUsers /> Participant Status
-          </h3>
+          <h3>Key Metrics</h3>
         </div>
-        
-        {participantsLoading ? (
-          <div className="loading-container">
-            <div className="loading-spinner"></div>
-            <p>Loading participant data...</p>
-          </div>
-        ) : participantsError ? (
-          <div className="error-container glass-card">
-            <FiAlertCircle className="error-icon" />
-            <p>Error loading participant data</p>
-          </div>
+        {summaryLoading ? (
+          <div className="loading-container"><div className="loading-spinner"></div><p>Loading summary...</p></div>
+        ) : summaryError ? (
+          <div className="error-container glass-card"><FiAlertCircle className="error-icon" /><p>Error loading summary</p></div>
         ) : (
-          <div className="participants-overview glass-card">
-            {!participantsData || !participantsData.data ? (
-              <div className="empty-data-message">
-                <p>No participant data available</p>
-              </div>
-            ) : (
-              <div className="participant-stats">
-                <div className="stat-item">
-                  <div className="stat-value">{participantsData.summary?.total || 0}</div>
-                  <div className="stat-label">Total Participants</div>
-                </div>
-                <div className="stat-item">
-                  <div className="stat-value">{participantsData.summary?.active || 0}</div>
-                  <div className="stat-label">Active Today</div>
-                </div>
-                <div className="stat-item">
-                  <div className="stat-value">{participantsData.summary?.checked_in || 0}</div>
-                  <div className="stat-label">Checked In</div>
-                </div>
-                <div className="stat-item">
-                  <div className="stat-value">{participantsData.summary?.absent || 0}</div>
-                  <div className="stat-label">Absent</div>
-                </div>
-              </div>
-            )}
+          <div className="kpi-grid">
+            <div className="glass-card kpi-card">
+              <div className="kpi-title"><FiClock className="icon-small" /> Time Slots</div>
+              <div className="kpi-value">{summaryData?.data?.time_slots?.total || 0}</div>
+              <div className="kpi-sub">Segment types: {summaryData?.data?.time_slots?.segment_types || 0}</div>
+            </div>
+            <div className="glass-card kpi-card">
+              <div className="kpi-title"><FiUsers className="icon-small" /> Participants</div>
+              <div className="kpi-value">{summaryData?.data?.participants?.total || 0}</div>
+              <div className="kpi-sub">Checked in: {summaryData?.data?.participants?.attended || 0} · Absent: {summaryData?.data?.participants?.absent || 0}</div>
+            </div>
+            <div className="glass-card kpi-card">
+              <div className="kpi-title"><FiUsers className="icon-small" /> Staff on Duty</div>
+              <div className="kpi-value">{summaryData?.data?.staff_count || 0}</div>
+            </div>
+            <div className="glass-card kpi-card">
+              <div className="kpi-title"><FiTruck className="icon-small" /> Vehicles in Use</div>
+              <div className="kpi-value">{summaryData?.data?.vehicle_count || 0}</div>
+            </div>
+          </div>
+        )}
+      </section>
+      
+      {/* Alerts Section */}
+      <section className="dashboard-section">
+        <div className="section-header">
+          <h3><FiAlertCircle /> Alerts</h3>
+        </div>
+        {alertsLoading ? (
+          <div className="loading-container"><div className="loading-spinner"></div><p>Loading alerts...</p></div>
+        ) : alertsError ? (
+          <div className="error-container glass-card"><FiAlertCircle className="error-icon" /><p>Error loading alerts</p></div>
+        ) : (
+          <div className="alerts-grid">
+            <div className="glass-card">
+              <h4>Staffing Alerts ({alertsData?.data?.staffing_alerts?.length || 0})</h4>
+              <ul className="list-unstyled">
+                {(alertsData?.data?.staffing_alerts || []).map((a) => (
+                  <li key={`s-${a.time_slot_id}`} className="alert-item">
+                    <strong>{a.program_name}</strong> · {a.segment_type} {a.start_time}–{a.end_time} · staff {a.staff_count}/{`CEIL(${a.participant_count}/`}{a.staff_ratio}
+                  </li>
+                ))}
+                {(alertsData?.data?.staffing_alerts || []).length === 0 && <li className="muted">No staffing alerts</li>}
+              </ul>
+            </div>
+            <div className="glass-card">
+              <h4>Vehicle Alerts ({alertsData?.data?.vehicle_alerts?.length || 0})</h4>
+              <ul className="list-unstyled">
+                {(alertsData?.data?.vehicle_alerts || []).map((v, idx) => (
+                  <li key={`v-${idx}`} className="alert-item">
+                    <strong>{v.make} {v.model}</strong> · {v.reason} ({v.start_date}–{v.end_date}) · affects {v.program_name} {v.start_time}–{v.end_time}
+                  </li>
+                ))}
+                {(alertsData?.data?.vehicle_alerts || []).length === 0 && <li className="muted">No vehicle alerts</li>}
+              </ul>
+            </div>
+            <div className="glass-card">
+              <h4>Staff Alerts ({alertsData?.data?.staff_alerts?.length || 0})</h4>
+              <ul className="list-unstyled">
+                {(alertsData?.data?.staff_alerts || []).map((s, idx) => (
+                  <li key={`st-${idx}`} className="alert-item">
+                    <strong>{s.first_name} {s.last_name}</strong> · {s.reason} ({s.start_date}–{s.end_date}) · affects {s.program_name} {s.start_time}–{s.end_time}
+                  </li>
+                ))}
+                {(alertsData?.data?.staff_alerts || []).length === 0 && <li className="muted">No staff alerts</li>}
+              </ul>
+            </div>
           </div>
         )}
       </section>
