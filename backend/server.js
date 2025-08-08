@@ -5,23 +5,39 @@
  * API-IS-KING: All endpoints follow the MASTER_SPEC.md contract.
  */
 
-require('dotenv').config();
+const path = require('path'); // keep single import
+
+// Always load .env from project root so cwd doesn't matter
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
+
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
 const uuid = require('uuid');
-const path = require('path');
 
 // Initialize express app
 const app = express();
 const PORT = process.env.PORT || 3009;
 
+// ---------------------------------------------------------------------------
 // Database connection
+// ---------------------------------------------------------------------------
+const DB_HOST = process.env.DB_HOST || 'localhost';
+const DB_USER = process.env.DB_USER || 'postgres';
+const DB_PASSWORD = process.env.DB_PASSWORD || 'postgres';
+const DB_NAME = process.env.DB_NAME || 'rabspocdb';
+const DB_PORT = process.env.DB_PORT ? Number(process.env.DB_PORT) : 5432;
+
+console.log(
+  `[DB] target host=${DB_HOST} port=${DB_PORT} db=${DB_NAME} user=${DB_USER}`
+);
+
 const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'postgres',
-  database: process.env.DB_NAME || 'rabspocdb',
+  host: DB_HOST,
+  port: DB_PORT,
+  user: DB_USER,
+  password: DB_PASSWORD,
+  database: DB_NAME,
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
