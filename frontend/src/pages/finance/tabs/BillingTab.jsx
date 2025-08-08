@@ -1,0 +1,226 @@
+import React from 'react';
+import { format, parseISO } from 'date-fns';
+import { FiSearch, FiPlusCircle, FiDownload, FiRefreshCw, FiEdit2, FiTrash2 } from 'react-icons/fi';
+import MonthNavigation from '../components/MonthNavigation';
+
+export default function BillingTab({
+  billingData,
+  billingLoading,
+  selectedMonth,
+  searchQuery,
+  setSearchQuery,
+  participantsData,
+  programsData,
+  filterOptions,
+  setFilterOptions,
+  onPrevMonth,
+  onCurrentMonth,
+  onNextMonth,
+  onRefetch,
+  onOpenNewBilling,
+  onOpenExport,
+  onEditBilling,
+  onDeleteBilling,
+}) {
+  const filteredBillingData = () => {
+    if (!billingData || !billingData.data) return [];
+    return billingData.data.filter((billing) => {
+      const participantName = billing.participant_name || '';
+      const programTitle = billing.program_title || '';
+      const rateCode = billing.rate_code || '';
+      return (
+        participantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        programTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        rateCode.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    });
+  };
+
+  return (
+    <div className="tab-content">
+      <div className="billing-controls">
+        <div className="control-row">
+          <div className="search-container">
+            <FiSearch className="search-icon" />
+            <input
+              type="text"
+              placeholder="Search billing entries..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          <div className="filter-container">
+            <div className="filter-item">
+              <label htmlFor="participant-filter">Participant:</label>
+              <select
+                id="participant-filter"
+                value={filterOptions.participant}
+                onChange={(e) => setFilterOptions({ ...filterOptions, participant: e.target.value })}
+              >
+                <option value="all">All Participants</option>
+                {participantsData?.data?.map((participant) => (
+                  <option key={participant.id} value={participant.id}>
+                    {participant.first_name} {participant.last_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="filter-item">
+              <label htmlFor="program-filter">Program:</label>
+              <select
+                id="program-filter"
+                value={filterOptions.program}
+                onChange={(e) => setFilterOptions({ ...filterOptions, program: e.target.value })}
+              >
+                <option value="all">All Programs</option>
+                {programsData?.data?.map((program) => (
+                  <option key={program.id} value={program.id}>
+                    {program.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="filter-item">
+              <label htmlFor="status-filter">Status:</label>
+              <select
+                id="status-filter"
+                value={filterOptions.status}
+                onChange={(e) => setFilterOptions({ ...filterOptions, status: e.target.value })}
+              >
+                <option value="all">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="billed">Billed</option>
+                <option value="paid">Paid</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="control-row">
+          <MonthNavigation
+            selectedMonth={selectedMonth}
+            onPrev={onPrevMonth}
+            onCurrent={onCurrentMonth}
+            onNext={onNextMonth}
+          />
+
+          <div className="action-buttons">
+            <button className="btn btn-primary" onClick={onOpenNewBilling}>
+              <FiPlusCircle /> New Billing Entry
+            </button>
+            <button className="btn btn-secondary" onClick={onOpenExport}>
+              <FiDownload /> Export
+            </button>
+            <button className="btn btn-icon" onClick={onRefetch} title="Refresh Billing Data">
+              <FiRefreshCw />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="billing-table-container">
+        <table className="billing-table glass-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Participant</th>
+              <th>Program</th>
+              <th>Hours</th>
+              <th>Rate Code</th>
+              <th>Rate</th>
+              <th>Support Ratio</th>
+              <th>Weekend Mult.</th>
+              <th>Total Amount</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredBillingData().map((billing) => (
+              <tr key={billing.id}>
+                <td>{format(parseISO(billing.date), 'MMM d, yyyy')}</td>
+                <td>{billing.participant_name}</td>
+                <td>{billing.program_title}</td>
+                <td>{billing.hours}</td>
+                <td>{billing.rate_code}</td>
+                <td>${parseFloat(billing.rate_amount).toFixed(2)}</td>
+                <td>{billing.support_ratio}x</td>
+                <td>{billing.weekend_multiplier}x</td>
+                <td className="amount">${parseFloat(billing.total_amount).toFixed(2)}</td>
+                <td>
+                  <span className={`status-badge ${billing.status}`}>
+                    {billing.status}
+                  </span>
+                </td>
+                <td>
+                  <div className="action-buttons">
+                    <button className="btn btn-icon" onClick={() => onEditBilling(billing)} title="Edit Billing">
+                      <FiEdit2 />
+                    </button>
+                    <button className="btn btn-icon" onClick={() => onDeleteBilling(billing)} title="Delete Billing">
+                      <FiTrash2 />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {filteredBillingData().length === 0 && !billingLoading && (
+              <tr>
+                <td colSpan="11" className="no-results">
+                  No billing entries found matching your search criteria
+                </td>
+              </tr>
+            )}
+          </tbody>
+          {billingData?.summary && (
+            <tfoot>
+              <tr>
+                <td colSpan="3" className="summary-label">Total</td>
+                <td>{parseFloat(billingData.summary.total_hours).toFixed(2)}</td>
+                <td colSpan="4"></td>
+                <td className="amount">${parseFloat(billingData.summary.total_amount).toFixed(2)}</td>
+                <td colSpan="2"></td>
+              </tr>
+            </tfoot>
+          )}
+        </table>
+        {billingLoading && (
+          <div className="loading-overlay">
+            <div className="loading-spinner"></div>
+            <p>Loading billing data...</p>
+          </div>
+        )}
+      </div>
+
+      <div className="billing-summary glass-card">
+        <h3>Billing Summary</h3>
+        <div className="summary-grid">
+          <div className="summary-item">
+            <div className="summary-label">Total Entries</div>
+            <div className="summary-value">{billingData?.count || 0}</div>
+          </div>
+          <div className="summary-item">
+            <div className="summary-label">Total Hours</div>
+            <div className="summary-value">
+              {billingData?.summary ? parseFloat(billingData.summary.total_hours).toFixed(2) : 0.0}
+            </div>
+          </div>
+          <div className="summary-item">
+            <div className="summary-label">Total Amount</div>
+            <div className="summary-value amount">
+              ${billingData?.summary ? parseFloat(billingData.summary.total_amount).toFixed(2) : 0.0}
+            </div>
+          </div>
+          <div className="summary-item">
+            <div className="summary-label">Month</div>
+            <div className="summary-value">{format(selectedMonth, 'MMMM yyyy')}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
