@@ -31,7 +31,23 @@ import {
   FiSave,
   FiPrinter,
   FiDownload,
-  FiUpload
+  FiUpload,
+  FiClock,
+  FiSliders,
+  FiActivity,
+  FiCheck,
+  FiX,
+  FiInfo,
+  FiAlertTriangle,
+  FiHelpCircle,
+  FiWheelchair,
+  FiCoffee,
+  FiHeart,
+  FiBell,
+  FiEye,
+  FiEar,
+  FiBrain,
+  FiMessageCircle
 } from 'react-icons/fi';
 
 // External modal components
@@ -41,6 +57,30 @@ import DeleteParticipantModal from './participants/modals/DeleteParticipantModal
 
 // API base URL from environment
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3009';
+
+// Support flag icon mapping
+const SUPPORT_FLAG_ICONS = {
+  has_wheelchair_access: <FiWheelchair />,
+  has_dietary_requirements: <FiCoffee />,
+  has_medical_requirements: <FiHeart />,
+  has_behavioral_support: <FiBell />,
+  has_visual_impairment: <FiEye />,
+  has_hearing_impairment: <FiEar />,
+  has_cognitive_support: <FiBrain />,
+  has_communication_needs: <FiMessageCircle />
+};
+
+// Support flag labels
+const SUPPORT_FLAG_LABELS = {
+  has_wheelchair_access: 'Wheelchair Access',
+  has_dietary_requirements: 'Dietary Requirements',
+  has_medical_requirements: 'Medical Requirements',
+  has_behavioral_support: 'Behavioral Support',
+  has_visual_impairment: 'Visual Impairment',
+  has_hearing_impairment: 'Hearing Impairment',
+  has_cognitive_support: 'Cognitive Support',
+  has_communication_needs: 'Communication Needs'
+};
 
 // Participants Page Component
 const Participants = () => {
@@ -59,6 +99,28 @@ const Participants = () => {
   const [selectedPlanTab, setSelectedPlanTab] = useState('overview');
   const [currentPage, setCurrentPage] = useState(1);
   const participantsPerPage = 12;
+
+  // New state for enhanced features
+  const [supervisionValue, setSupervisionValue] = useState(1.0);
+  const [supportFlags, setSupportFlags] = useState({
+    has_wheelchair_access: false,
+    has_dietary_requirements: false,
+    has_medical_requirements: false,
+    has_behavioral_support: false,
+    has_visual_impairment: false,
+    has_hearing_impairment: false,
+    has_cognitive_support: false,
+    has_communication_needs: false
+  });
+  const [enrollments, setEnrollments] = useState([]);
+  const [availablePrograms, setAvailablePrograms] = useState([]);
+  const [pendingChanges, setPendingChanges] = useState({});
+  const [effectiveDate, setEffectiveDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [changeHistory, setChangeHistory] = useState([]);
+  const [isLoading, setIsLoading] = useState({
+    enrollments: false,
+    changes: false
+  });
 
   /* ------------------------------------------------------------------
    * Weekly planner (minimal — uses existing /master-schedule/instances)
@@ -156,6 +218,165 @@ const Participants = () => {
     }
   );
 
+  // Load participant details when selected
+  useEffect(() => {
+    if (selectedParticipant) {
+      // Fetch participant details to get the latest data
+      const fetchParticipantDetails = async () => {
+        try {
+          const response = await axios.get(`${API_URL}/api/v1/participants/${selectedParticipant.id}`);
+          const participant = response.data.data;
+          
+          // Update supervision value
+          setSupervisionValue(parseFloat(participant.supervision_multiplier || 1.0));
+          
+          // Update support flags
+          setSupportFlags({
+            has_wheelchair_access: participant.has_wheelchair_access || false,
+            has_dietary_requirements: participant.has_dietary_requirements || false,
+            has_medical_requirements: participant.has_medical_requirements || false,
+            has_behavioral_support: participant.has_behavioral_support || false,
+            has_visual_impairment: participant.has_visual_impairment || false,
+            has_hearing_impairment: participant.has_hearing_impairment || false,
+            has_cognitive_support: participant.has_cognitive_support || false,
+            has_communication_needs: participant.has_communication_needs || false
+          });
+          
+          // Update selected participant with full details
+          setSelectedParticipant(participant);
+        } catch (error) {
+          console.error('Error fetching participant details:', error);
+        }
+      };
+      
+      fetchParticipantDetails();
+      
+      // Fetch enrollments
+      fetchEnrollments(selectedParticipant.id);
+      
+      // Fetch change history
+      fetchChangeHistory(selectedParticipant.id);
+    }
+  }, [selectedParticipant?.id]);
+
+  // Fetch enrollments for a participant
+  const fetchEnrollments = async (participantId) => {
+    if (!participantId) return;
+    
+    setIsLoading(prev => ({ ...prev, enrollments: true }));
+    try {
+      const response = await axios.get(`${API_URL}/api/v1/participants/${participantId}/enrollments`);
+      setEnrollments(response.data.enrollments || []);
+      setAvailablePrograms(response.data.availablePrograms || []);
+      setPendingChanges({});
+    } catch (error) {
+      console.error('Error fetching enrollments:', error);
+    } finally {
+      setIsLoading(prev => ({ ...prev, enrollments: false }));
+    }
+  };
+
+  // Fetch change history for a participant
+  const fetchChangeHistory = async (participantId) => {
+    if (!participantId) return;
+    
+    setIsLoading(prev => ({ ...prev, changes: true }));
+    try {
+      const response = await axios.get(`${API_URL}/api/v1/changes/participant/${participantId}/changes`);
+      setChangeHistory(response.data.changes || []);
+    } catch (error) {
+      console.error('Error fetching change history:', error);
+      // Set empty array if error
+      setChangeHistory([]);
+    } finally {
+      setIsLoading(prev => ({ ...prev, changes: false }));
+    }
+  };
+
+  // Update supervision multiplier
+  const updateSupervisionMultiplier = async () => {
+    if (!selectedParticipant) return;
+    
+    try {
+      await axios.patch(`${API_URL}/api/v1/participants/${selectedParticipant.id}`, {
+        supervision_multiplier: supervisionValue
+      });
+      
+      // Refetch participant data to update UI
+      queryClient.invalidateQueries(['participants']);
+      
+      // Show success message (could be implemented with a toast notification)
+      console.log('Supervision multiplier updated successfully');
+    } catch (error) {
+      console.error('Error updating supervision multiplier:', error);
+    }
+  };
+
+  // Update support flags
+  const updateSupportFlags = async () => {
+    if (!selectedParticipant) return;
+    
+    try {
+      await axios.patch(`${API_URL}/api/v1/participants/${selectedParticipant.id}`, supportFlags);
+      
+      // Refetch participant data to update UI
+      queryClient.invalidateQueries(['participants']);
+      
+      // Show success message (could be implemented with a toast notification)
+      console.log('Support flags updated successfully');
+    } catch (error) {
+      console.error('Error updating support flags:', error);
+    }
+  };
+
+  // Toggle program enrollment in pending changes
+  const toggleProgramEnrollment = (programId) => {
+    const isEnrolled = enrollments.some(e => e.program_id === programId);
+    
+    setPendingChanges(prev => {
+      const newChanges = { ...prev };
+      
+      // If already in pending changes, remove it
+      if (newChanges[programId]) {
+        delete newChanges[programId];
+      } else {
+        // Otherwise add it with the appropriate action
+        newChanges[programId] = {
+          action: isEnrolled ? 'remove' : 'add',
+          effectiveDate: effectiveDate
+        };
+      }
+      
+      return newChanges;
+    });
+  };
+
+  // Save pending enrollment changes
+  const saveEnrollmentChanges = async () => {
+    if (!selectedParticipant || Object.keys(pendingChanges).length === 0) return;
+    
+    try {
+      // Convert pendingChanges object to array format expected by API
+      const changes = Object.entries(pendingChanges).map(([programId, change]) => ({
+        program_id: parseInt(programId),
+        action: change.action,
+        effectiveDate: change.effectiveDate
+      }));
+      
+      await axios.post(`${API_URL}/api/v1/participants/${selectedParticipant.id}/enrollments`, {
+        changes
+      });
+      
+      // Clear pending changes and refetch enrollments
+      setPendingChanges({});
+      fetchEnrollments(selectedParticipant.id);
+      
+      // Show success message (could be implemented with a toast notification)
+      console.log('Enrollment changes saved successfully');
+    } catch (error) {
+      console.error('Error saving enrollment changes:', error);
+    }
+  };
 
   // Enroll participant in program mutation
   const enrollParticipantMutation = useMutation(
@@ -385,6 +606,30 @@ const Participants = () => {
     }
   };
 
+  // Get supervision multiplier color
+  const getSupervisionColor = (multiplier) => {
+    if (multiplier <= 1.0) return '#9e9e9e';
+    if (multiplier <= 1.5) return '#4caf50';
+    if (multiplier <= 2.0) return '#ff9800';
+    return '#e53935';
+  };
+
+  // Get change type badge class
+  const getChangeTypeBadge = (type) => {
+    switch (type) {
+      case 'PROGRAM_JOIN':
+        return 'badge-green';
+      case 'PROGRAM_LEAVE':
+        return 'badge-red';
+      case 'PROGRAM_CANCEL':
+        return 'badge-yellow';
+      case 'BILLING_CODE_CHANGE':
+        return 'badge-blue';
+      default:
+        return 'badge-gray';
+    }
+  };
+
   // Render directory tab content
   const renderDirectoryTab = () => (
     <div className="directory-tab">
@@ -481,74 +726,113 @@ const Participants = () => {
       ) : (
         <>
           <div className="participants-grid">
-            {currentParticipants.map(participant => (
-              <div 
-                key={participant.id} 
-                className="participant-card glass-card"
-                onClick={() => setSelectedParticipant(participant)}
-              >
-                <div className="participant-header">
-                  <div className="participant-avatar">
-                    {participant.first_name?.[0]}{participant.last_name?.[0]}
-                  </div>
-                  <div className="participant-badges">
-                    <span className={`badge ${getStatusBadge(participant.status)}`}>
-                      {participant.status}
-                    </span>
-                    <span className={`badge ${getSupportLevelBadge(participant.support_level)}`}>
-                      {participant.support_level}
-                    </span>
-                  </div>
-                </div>
-                
-                <div className="participant-info">
-                  <h3 className="participant-name">
-                    {participant.first_name} {participant.last_name}
-                  </h3>
-                  <p className="participant-ndis">
-                    <span>NDIS:</span> {participant.ndis_number || 'N/A'}
-                  </p>
-                  <p className="participant-age">
-                    <span>Age:</span> {calculateAge(participant.date_of_birth)}
-                  </p>
-                </div>
-                
-                <div className="participant-footer">
-                  <div className="participant-contact">
-                    {participant.phone && (
-                      <div className="contact-item">
-                        <FiPhone className="contact-icon" />
-                        <span>{participant.phone}</span>
-                      </div>
-                    )}
+            {currentParticipants.map(participant => {
+              // Calculate supervision multiplier color and width
+              const supervisionMultiplier = parseFloat(participant.supervision_multiplier || 1.0);
+              const supervisionColor = getSupervisionColor(supervisionMultiplier);
+              const supervisionWidth = Math.min((supervisionMultiplier / 2.5) * 100, 100);
+              
+              return (
+                <div 
+                  key={participant.id} 
+                  className="participant-card glass-card"
+                  onClick={() => setSelectedParticipant(participant)}
+                >
+                  <div className="participant-header">
+                    <div className="participant-avatar">
+                      {participant.first_name?.[0]}{participant.last_name?.[0]}
+                    </div>
+                    <div className="participant-badges">
+                      <span className={`badge ${getStatusBadge(participant.status)}`}>
+                        {participant.status}
+                      </span>
+                      <span className={`badge ${getSupportLevelBadge(participant.support_level)}`}>
+                        {participant.support_level}
+                      </span>
+                    </div>
                   </div>
                   
-                  <div className="participant-actions">
-                    <button 
-                      className="action-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEditParticipant(participant);
-                      }}
-                      title="Edit"
-                    >
-                      <FiEdit2 />
-                    </button>
-                    <button 
-                      className="action-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedParticipant(participant);
-                        setIsDeleteModalOpen(true);
-                      }}
-                      title="Delete"
-                    >
-                      <FiTrash2 />
-                    </button>
+                  <div className="participant-info">
+                    <h3 className="participant-name">
+                      {participant.first_name} {participant.last_name}
+                    </h3>
+                    <p className="participant-ndis">
+                      <span>NDIS:</span> {participant.ndis_number || 'N/A'}
+                    </p>
+                    <p className="participant-age">
+                      <span>Age:</span> {calculateAge(participant.date_of_birth)}
+                    </p>
+                  </div>
+                  
+                  {/* Supervision Multiplier Indicator */}
+                  <div className="supervision-indicator">
+                    <div className="supervision-label">
+                      <span>Supervision:</span>
+                      <span style={{ color: supervisionColor }}>{supervisionMultiplier.toFixed(2)}×</span>
+                    </div>
+                    <div className="supervision-bar-bg">
+                      <div 
+                        className="supervision-bar-fg"
+                        style={{ 
+                          width: `${supervisionWidth}%`,
+                          backgroundColor: supervisionColor
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+                  
+                  {/* Support Flags */}
+                  <div className="support-flags">
+                    {Object.entries(SUPPORT_FLAG_ICONS).map(([key, icon]) => (
+                      participant[key] && (
+                        <span 
+                          key={key} 
+                          className="support-flag-icon" 
+                          title={SUPPORT_FLAG_LABELS[key]}
+                        >
+                          {icon}
+                        </span>
+                      )
+                    ))}
+                  </div>
+                  
+                  <div className="participant-footer">
+                    <div className="participant-contact">
+                      {participant.phone && (
+                        <div className="contact-item">
+                          <FiPhone className="contact-icon" />
+                          <span>{participant.phone}</span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="participant-actions">
+                      <button 
+                        className="action-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditParticipant(participant);
+                        }}
+                        title="Edit"
+                      >
+                        <FiEdit2 />
+                      </button>
+                      <button 
+                        className="action-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedParticipant(participant);
+                          setIsDeleteModalOpen(true);
+                        }}
+                        title="Delete"
+                      >
+                        <FiTrash2 />
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           
           {/* Pagination */}
@@ -604,26 +888,48 @@ const Participants = () => {
       
       {!selectedParticipant ? (
         <div className="participant-selection-grid">
-          {filteredParticipants.slice(0, 8).map(participant => (
-            <div 
-              key={participant.id} 
-              className="participant-selection-card glass-card"
-              onClick={() => setSelectedParticipant(participant)}
-            >
-              <div className="participant-avatar">
-                {participant.first_name?.[0]}{participant.last_name?.[0]}
+          {filteredParticipants.slice(0, 8).map(participant => {
+            // Calculate supervision multiplier color and width
+            const supervisionMultiplier = parseFloat(participant.supervision_multiplier || 1.0);
+            const supervisionColor = getSupervisionColor(supervisionMultiplier);
+            
+            return (
+              <div 
+                key={participant.id} 
+                className="participant-selection-card glass-card"
+                onClick={() => setSelectedParticipant(participant)}
+              >
+                <div className="participant-avatar">
+                  {participant.first_name?.[0]}{participant.last_name?.[0]}
+                </div>
+                <div className="participant-selection-info">
+                  <h4>{participant.first_name} {participant.last_name}</h4>
+                  <p>{participant.ndis_number || 'No NDIS'}</p>
+                  <div className="mini-supervision">
+                    <span style={{ color: supervisionColor }}>{supervisionMultiplier.toFixed(2)}×</span>
+                  </div>
+                </div>
+                <div className="participant-selection-badge">
+                  <span className={`badge ${getSupportLevelBadge(participant.support_level)}`}>
+                    {participant.support_level}
+                  </span>
+                </div>
+                <div className="mini-support-flags">
+                  {Object.entries(SUPPORT_FLAG_ICONS).map(([key, icon]) => (
+                    participant[key] && (
+                      <span 
+                        key={key} 
+                        className="mini-flag-icon" 
+                        title={SUPPORT_FLAG_LABELS[key]}
+                      >
+                        {icon}
+                      </span>
+                    )
+                  ))}
+                </div>
               </div>
-              <div className="participant-selection-info">
-                <h4>{participant.first_name} {participant.last_name}</h4>
-                <p>{participant.ndis_number || 'No NDIS'}</p>
-              </div>
-              <div className="participant-selection-badge">
-                <span className={`badge ${getSupportLevelBadge(participant.support_level)}`}>
-                  {participant.support_level}
-                </span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
           
           {filteredParticipants.length === 0 && (
             <div className="empty-state glass-panel">
@@ -679,6 +985,13 @@ const Participants = () => {
               >
                 <FiDollarSign />
                 <span>Billing</span>
+              </button>
+              <button 
+                className={`planning-tab-btn ${selectedPlanTab === 'history' ? 'active' : ''}`}
+                onClick={() => setSelectedPlanTab('history')}
+              >
+                <FiClock />
+                <span>History</span>
               </button>
             </div>
           </div>
@@ -753,6 +1066,98 @@ const Participants = () => {
                         </span>
                       </div>
                     </div>
+                  </div>
+                </div>
+                
+                {/* Supervision Multiplier Section */}
+                <div className="planning-section glass-card">
+                  <h4>Supervision Multiplier</h4>
+                  <div className="supervision-settings">
+                    <div className="supervision-slider-container">
+                      <div className="supervision-value">
+                        <span className="value-label">Current Value:</span>
+                        <span 
+                          className="value-number"
+                          style={{ color: getSupervisionColor(supervisionValue) }}
+                        >
+                          {supervisionValue.toFixed(2)}×
+                        </span>
+                      </div>
+                      
+                      <input
+                        type="range"
+                        min="1"
+                        max="2.5"
+                        step="0.25"
+                        value={supervisionValue}
+                        onChange={(e) => setSupervisionValue(parseFloat(e.target.value))}
+                        className="supervision-slider"
+                      />
+                      
+                      <div className="slider-labels">
+                        <span>1.0×</span>
+                        <span>1.5×</span>
+                        <span>2.0×</span>
+                        <span>2.5×</span>
+                      </div>
+                      
+                      <div className="supervision-bar-container">
+                        <div className="supervision-bar-bg">
+                          <div 
+                            className="supervision-bar-fg"
+                            style={{ 
+                              width: `${Math.min((supervisionValue / 2.5) * 100, 100)}%`,
+                              backgroundColor: getSupervisionColor(supervisionValue)
+                            }}
+                          ></div>
+                        </div>
+                      </div>
+                      
+                      <div className="supervision-impact">
+                        {supervisionValue > 1.0 ? (
+                          <span>Requires {((supervisionValue - 1.0) * 100).toFixed(0)}% additional support</span>
+                        ) : (
+                          <span>Standard supervision level</span>
+                        )}
+                      </div>
+                      
+                      <button 
+                        className="btn btn-primary"
+                        onClick={updateSupervisionMultiplier}
+                      >
+                        <FiSave /> Save Supervision Multiplier
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Support Needs Section */}
+                <div className="planning-section glass-card">
+                  <h4>Support Needs</h4>
+                  <div className="support-needs-form">
+                    <div className="support-flags-grid">
+                      {Object.entries(SUPPORT_FLAG_LABELS).map(([key, label]) => (
+                        <div key={key} className="support-flag-item">
+                          <input
+                            type="checkbox"
+                            id={`flag-${key}`}
+                            checked={supportFlags[key] || false}
+                            onChange={(e) => setSupportFlags({...supportFlags, [key]: e.target.checked})}
+                          />
+                          <label htmlFor={`flag-${key}`} className="support-flag-label">
+                            <span className="support-flag-icon">{SUPPORT_FLAG_ICONS[key]}</span>
+                            <span>{label}</span>
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <button 
+                      className="btn btn-primary"
+                      onClick={updateSupportFlags}
+                    >
+                      <FiSave /> Save Support Flags
+                    </button>
                   </div>
                 </div>
                 
@@ -1006,6 +1411,101 @@ const Participants = () => {
                     </div>
                   )}
                 </div>
+                
+                {/* Enrollment Management Panel */}
+                <div className="planning-section glass-card">
+                  <h4>Enrollment Management</h4>
+                  
+                  <div className="enrollment-header">
+                    <div className="enrollment-title">
+                      <span>Manage program enrollments for {selectedParticipant.first_name}</span>
+                    </div>
+                    <div className="effective-date-container">
+                      <label htmlFor="effective-date">Effective Date:</label>
+                      <input
+                        id="effective-date"
+                        type="date"
+                        value={effectiveDate}
+                        onChange={(e) => setEffectiveDate(e.target.value)}
+                        min={format(new Date(), 'yyyy-MM-dd')}
+                      />
+                    </div>
+                  </div>
+                  
+                  {isLoading.enrollments ? (
+                    <div className="loading-container">
+                      <div className="loading-spinner-small"></div>
+                      <p>Loading enrollments...</p>
+                    </div>
+                  ) : (
+                    <div className="enrollment-list">
+                      {availablePrograms.length > 0 ? (
+                        availablePrograms.map(program => {
+                          const isEnrolled = enrollments.some(e => e.program_id === program.id);
+                          const pendingChange = pendingChanges[program.id];
+                          const isChecked = 
+                            (isEnrolled && !pendingChange) || 
+                            (isEnrolled && pendingChange?.action === 'add') || 
+                            (!isEnrolled && pendingChange?.action === 'add');
+                          
+                          return (
+                            <div key={program.id} className="enrollment-item">
+                              <div className="enrollment-checkbox">
+                                <input
+                                  type="checkbox"
+                                  id={`program-${program.id}`}
+                                  checked={isChecked}
+                                  onChange={() => toggleProgramEnrollment(program.id)}
+                                />
+                                <label htmlFor={`program-${program.id}`}>
+                                  {program.name}
+                                  {program.day_of_week !== undefined && (
+                                    <span className="program-day">
+                                      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][program.day_of_week]}
+                                    </span>
+                                  )}
+                                </label>
+                              </div>
+                              
+                              {pendingChange && (
+                                <div className={`pending-change ${pendingChange.action}`}>
+                                  <span>
+                                    Pending {pendingChange.action} on {pendingChange.effectiveDate}
+                                  </span>
+                                  <button 
+                                    className="cancel-btn"
+                                    onClick={() => {
+                                      setPendingChanges(prev => {
+                                        const newChanges = { ...prev };
+                                        delete newChanges[program.id];
+                                        return newChanges;
+                                      });
+                                    }}
+                                  >
+                                    <FiX />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <p className="text-muted">No available programs found.</p>
+                      )}
+                    </div>
+                  )}
+                  
+                  {Object.keys(pendingChanges).length > 0 && (
+                    <div className="enrollment-actions">
+                      <button 
+                        className="btn btn-primary"
+                        onClick={saveEnrollmentChanges}
+                      >
+                        <FiSave /> Save Enrollment Changes
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
             
@@ -1170,6 +1670,64 @@ const Participants = () => {
                       </button>
                     </div>
                   </form>
+                </div>
+              </div>
+            )}
+            
+            {/* History Tab */}
+            {selectedPlanTab === 'history' && (
+              <div className="planning-history">
+                <div className="planning-section glass-card">
+                  <h4>Change History</h4>
+                  
+                  {isLoading.changes ? (
+                    <div className="loading-container">
+                      <div className="loading-spinner-small"></div>
+                      <p>Loading change history...</p>
+                    </div>
+                  ) : changeHistory.length > 0 ? (
+                    <div className="change-history-list">
+                      {changeHistory.map(change => (
+                        <div key={change.id} className="change-item">
+                          <div className="change-date">
+                            {formatDate(change.date)}
+                          </div>
+                          <div className="change-content">
+                            <div className="change-header">
+                              <span className={`change-type-badge ${getChangeTypeBadge(change.type)}`}>
+                                {change.type?.replace('_', ' ') || 'CHANGE'}
+                              </span>
+                              {change.billingImpact && (
+                                <span className={`billing-badge ${change.billingStatus?.toLowerCase()}`}>
+                                  {change.billingStatus || 'BILLING'}
+                                </span>
+                              )}
+                            </div>
+                            <div className="change-message">{change.message}</div>
+                            {change.details && (
+                              <div className="change-details">{change.details}</div>
+                            )}
+                            <div className="change-meta">
+                              {change.reason && (
+                                <div className="change-reason">
+                                  <span className="meta-label">Reason:</span>
+                                  <span>{change.reason}</span>
+                                </div>
+                              )}
+                              {change.changedBy && (
+                                <div className="change-by">
+                                  <span className="meta-label">By:</span>
+                                  <span>{change.changedBy}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted">No change history available for this participant.</p>
+                  )}
                 </div>
               </div>
             )}
