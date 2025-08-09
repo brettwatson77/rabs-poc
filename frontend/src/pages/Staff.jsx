@@ -52,9 +52,11 @@ const Staff = () => {
     last_name: '',
     email: '',
     phone: '',
-    role: 'support_worker',
-    employment_type: 'full_time',
-    status: 'active'
+    position: 'support_worker',
+    status: 'active',
+    schads_level: 2,
+    contracted_hours: 38,
+    base_pay_rate: 30
   });
 
   const createStaffMutation = useMutation(
@@ -71,9 +73,11 @@ const Staff = () => {
           last_name: '',
           email: '',
           phone: '',
-          role: 'support_worker',
-          employment_type: 'full_time',
-          status: 'active'
+          position: 'support_worker',
+          status: 'active',
+          schads_level: 2,
+          contracted_hours: 38,
+          base_pay_rate: 30
         });
       }
     }
@@ -131,7 +135,7 @@ const Staff = () => {
       staff.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       `${staff.first_name} ${staff.last_name}`.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesRole = filters.role === 'all' || staff.role === filters.role;
+    const matchesRole = filters.role === 'all' || staff.position === filters.role;
     const matchesStatus = filters.status === 'all' || staff.status === filters.status;
     
     return matchesSearch && matchesRole && matchesStatus;
@@ -182,17 +186,9 @@ const Staff = () => {
       default: return 'badge-gray';
     }
   };
-
-  // Get employment type badge class
-  const getEmploymentTypeBadge = (type) => {
-    switch (type) {
-      case 'full_time': return 'badge-blue';
-      case 'part_time': return 'badge-green';
-      case 'casual': return 'badge-yellow';
-      case 'contractor': return 'badge-purple';
-      default: return 'badge-gray';
-    }
-  };
+  
+  // SCHADS level badge
+  const getSchadsBadge = (level) => `badge-purple`;
 
   // Get status badge class
   const getStatusBadge = (status) => {
@@ -209,12 +205,6 @@ const Staff = () => {
   const formatRole = (role) => {
     if (!role) return 'Unknown';
     return role.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-  };
-
-  // Format employment type for display
-  const formatEmploymentType = (type) => {
-    if (!type) return 'Unknown';
-    return type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   };
 
   return (
@@ -327,8 +317,8 @@ const Staff = () => {
                       <span className={`badge ${getStatusBadge(staff.status)}`}>
                         {staff.status}
                       </span>
-                      <span className={`badge ${getRoleBadge(staff.role)}`}>
-                        {formatRole(staff.role)}
+                      <span className={`badge ${getRoleBadge(staff.position)}`}>
+                        {formatRole(staff.position)}
                       </span>
                     </div>
                   </div>
@@ -338,18 +328,18 @@ const Staff = () => {
                       {staff.first_name} {staff.last_name}
                     </h3>
                     <p className="staff-employment">
-                      <span className={`badge ${getEmploymentTypeBadge(staff.employment_type)}`}>
-                        {formatEmploymentType(staff.employment_type)}
+                      <span className="badge badge-purple">
+                        SCHADS L{staff.schads_level || 2}
                       </span>
-                      {staff.contract_hours && (
+                      {staff.contracted_hours && (
                         <span className="contract-hours">
-                          {staff.contract_hours} hrs/week
+                          {staff.contracted_hours} hrs/week
                         </span>
                       )}
                     </p>
                     <p className="staff-rate">
                       <FiDollarSign className="icon" />
-                      {formatCurrency(staff.hourly_rate)}/hr
+                      {formatCurrency(staff.base_pay_rate)}/hr
                     </p>
                   </div>
                   
@@ -447,11 +437,11 @@ const Staff = () => {
                   <div className="profile-info">
                     <h2>{selectedStaff.first_name} {selectedStaff.last_name}</h2>
                     <div className="profile-badges">
-                      <span className={`badge ${getRoleBadge(selectedStaff.role)}`}>
-                        {formatRole(selectedStaff.role)}
+                      <span className={`badge ${getRoleBadge(selectedStaff.position)}`}>
+                        {formatRole(selectedStaff.position)}
                       </span>
-                      <span className={`badge ${getEmploymentTypeBadge(selectedStaff.employment_type)}`}>
-                        {formatEmploymentType(selectedStaff.employment_type)}
+                      <span className={`badge ${getSchadsBadge(selectedStaff.schads_level)}`}>
+                        SCHADS L{selectedStaff.schads_level || 2}
                       </span>
                       <span className={`badge ${getStatusBadge(selectedStaff.status)}`}>
                         {selectedStaff.status}
@@ -500,15 +490,15 @@ const Staff = () => {
                       <div className="detail-item">
                         <FiBriefcase className="detail-icon" />
                         <div className="detail-content">
-                          <span className="detail-label">Role</span>
-                          <span className="detail-value">{formatRole(selectedStaff.role)}</span>
+                          <span className="detail-label">Position</span>
+                          <span className="detail-value">{formatRole(selectedStaff.position)}</span>
                         </div>
                       </div>
                       <div className="detail-item">
-                        <FiClock className="detail-icon" />
+                        <FiBriefcase className="detail-icon" />
                         <div className="detail-content">
-                          <span className="detail-label">Employment Type</span>
-                          <span className="detail-value">{formatEmploymentType(selectedStaff.employment_type)}</span>
+                          <span className="detail-label">SCHADS Level</span>
+                          <span className="detail-value">{selectedStaff.schads_level || 'N/A'}</span>
                         </div>
                       </div>
                       <div className="detail-item">
@@ -521,15 +511,15 @@ const Staff = () => {
                       <div className="detail-item">
                         <FiClock className="detail-icon" />
                         <div className="detail-content">
-                          <span className="detail-label">Contract Hours</span>
-                          <span className="detail-value">{selectedStaff.contract_hours || 0} hours/week</span>
+                          <span className="detail-label">Contracted Hours</span>
+                          <span className="detail-value">{selectedStaff.contracted_hours || 0} hours/week</span>
                         </div>
                       </div>
                       <div className="detail-item">
                         <FiDollarSign className="detail-icon" />
                         <div className="detail-content">
-                          <span className="detail-label">Hourly Rate</span>
-                          <span className="detail-value">{formatCurrency(selectedStaff.hourly_rate)}/hour</span>
+                          <span className="detail-label">Base Pay Rate</span>
+                          <span className="detail-value">{formatCurrency(selectedStaff.base_pay_rate)}/hour</span>
                         </div>
                       </div>
                     </div>
@@ -616,27 +606,15 @@ const Staff = () => {
                   />
                 </label>
                 <label>
-                  Role
+                  Position
                   <select
-                    value={newStaff.role}
-                    onChange={(e) => setNewStaff({ ...newStaff, role: e.target.value })}
+                    value={newStaff.position}
+                    onChange={(e) => setNewStaff({ ...newStaff, position: e.target.value })}
                   >
                     <option value="support_worker">Support Worker</option>
                     <option value="team_leader">Team Leader</option>
                     <option value="manager">Manager</option>
                     <option value="admin">Admin</option>
-                  </select>
-                </label>
-                <label>
-                  Employment Type
-                  <select
-                    value={newStaff.employment_type}
-                    onChange={(e) => setNewStaff({ ...newStaff, employment_type: e.target.value })}
-                  >
-                    <option value="full_time">Full-time</option>
-                    <option value="part_time">Part-time</option>
-                    <option value="casual">Casual</option>
-                    <option value="contractor">Contractor</option>
                   </select>
                 </label>
                 <label>
@@ -650,6 +628,36 @@ const Staff = () => {
                     <option value="on_leave">On Leave</option>
                     <option value="terminated">Terminated</option>
                   </select>
+                </label>
+                <label>
+                  SCHADS Level
+                  <input
+                    type="number"
+                    min="1"
+                    max="8"
+                    value={newStaff.schads_level}
+                    onChange={(e) => setNewStaff({ ...newStaff, schads_level: parseInt(e.target.value) })}
+                  />
+                </label>
+                <label>
+                  Contracted Hours
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={newStaff.contracted_hours}
+                    onChange={(e) => setNewStaff({ ...newStaff, contracted_hours: parseFloat(e.target.value) })}
+                  />
+                </label>
+                <label>
+                  Base Pay Rate
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={newStaff.base_pay_rate}
+                    onChange={(e) => setNewStaff({ ...newStaff, base_pay_rate: parseFloat(e.target.value) })}
+                  />
                 </label>
               </div>
 
@@ -740,34 +748,17 @@ const Staff = () => {
                   />
                 </label>
                 <label>
-                  Role
+                  Position
                   <select
-                    value={editStaff.role || 'support_worker'}
+                    value={editStaff.position || 'support_worker'}
                     onChange={(e) =>
-                      setEditStaff({ ...editStaff, role: e.target.value })
+                      setEditStaff({ ...editStaff, position: e.target.value })
                     }
                   >
                     <option value="support_worker">Support Worker</option>
                     <option value="team_leader">Team Leader</option>
                     <option value="manager">Manager</option>
                     <option value="admin">Admin</option>
-                  </select>
-                </label>
-                <label>
-                  Employment Type
-                  <select
-                    value={editStaff.employment_type || 'full_time'}
-                    onChange={(e) =>
-                      setEditStaff({
-                        ...editStaff,
-                        employment_type: e.target.value,
-                      })
-                    }
-                  >
-                    <option value="full_time">Full-time</option>
-                    <option value="part_time">Part-time</option>
-                    <option value="casual">Casual</option>
-                    <option value="contractor">Contractor</option>
                   </select>
                 </label>
                 <label>
@@ -783,6 +774,42 @@ const Staff = () => {
                     <option value="on_leave">On Leave</option>
                     <option value="terminated">Terminated</option>
                   </select>
+                </label>
+                <label>
+                  SCHADS Level
+                  <input
+                    type="number"
+                    min="1"
+                    max="8"
+                    value={editStaff.schads_level || 2}
+                    onChange={(e) =>
+                      setEditStaff({ ...editStaff, schads_level: parseInt(e.target.value) })
+                    }
+                  />
+                </label>
+                <label>
+                  Contracted Hours
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={editStaff.contracted_hours || 0}
+                    onChange={(e) =>
+                      setEditStaff({ ...editStaff, contracted_hours: parseFloat(e.target.value) })
+                    }
+                  />
+                </label>
+                <label>
+                  Base Pay Rate
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={editStaff.base_pay_rate || 0}
+                    onChange={(e) =>
+                      setEditStaff({ ...editStaff, base_pay_rate: parseFloat(e.target.value) })
+                    }
+                  />
                 </label>
               </div>
 
