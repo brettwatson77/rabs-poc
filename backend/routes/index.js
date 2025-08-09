@@ -21,6 +21,7 @@ const intentionRoutes = require('./intentions');
 const financeRoutes = require('./finance');
 const settingsRoutes = require('./settings');
 const systemRoutes = require('./system');
+const changesRoutes = require('./changes');
 
 // Mount routes at their respective paths
 router.use('/participants', participantRoutes);
@@ -35,6 +36,7 @@ router.use('/intentions', intentionRoutes);
 router.use('/finance', financeRoutes);
 router.use('/settings', settingsRoutes);
 router.use('/system', systemRoutes);
+router.use('/changes', changesRoutes);
 
 // Root API info endpoint
 router.get('/', (req, res) => {
@@ -54,6 +56,7 @@ router.get('/', (req, res) => {
       '/loom',
       '/intentions',
       '/finance',
+      '/changes',
       '/settings',
       '/system'
     ]
