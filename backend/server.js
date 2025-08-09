@@ -124,15 +124,25 @@ app.get('/api/docs', (req, res) => {
 });
 
 // Error handling middleware
-app.use((err, req, res, next) => {
+app.use(async (err, req, res, next) => {
   console.error('❌ Error:', err);
   
   // Log error to system_logs table
   try {
-    pool.query(
-      `INSERT INTO system_logs (level, message, source, details) 
-       VALUES ($1, $2, $3, $4)`,
-      ['error', err.message, 'server', { stack: err.stack, path: req.path, method: req.method }]
+    await pool.query(
+      `INSERT INTO system_logs (id, severity, category, message, details)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [
+        uuid.v4(),          // id
+        'ERROR',            // severity
+        'SYSTEM',           // category
+        err.message,        // message
+        {                   // details
+          stack: err.stack,
+          path: req.path,
+          method: req.method
+        }
+      ]
     );
   } catch (logError) {
     console.error('Failed to log error to database:', logError);

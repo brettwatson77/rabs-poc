@@ -11,6 +11,7 @@
 
 const express = require('express');
 const router = express.Router();
+const uuid = require('uuid');
 
 // GET /settings - Get all settings
 router.get('/', async (req, res) => {
@@ -172,12 +173,13 @@ router.put('/:key', async (req, res) => {
     // Log setting change to system_logs
     try {
       await pool.query(
-        `INSERT INTO system_logs (level, message, source, details) 
-         VALUES ($1, $2, $3, $4)`,
+        `INSERT INTO system_logs (id, severity, category, message, details) 
+         VALUES ($1, $2, $3, $4, $5)`,
         [
-          'info',
+          uuid.v4(),
+          'INFO',
+          'SYSTEM',
           `Setting updated: ${key}`,
-          'settings',
           { 
             key,
             changes: req.body
@@ -235,12 +237,13 @@ router.delete('/:key', async (req, res) => {
     // Log setting deletion to system_logs
     try {
       await pool.query(
-        `INSERT INTO system_logs (level, message, source, details) 
-         VALUES ($1, $2, $3, $4)`,
+        `INSERT INTO system_logs (id, severity, category, message, details) 
+         VALUES ($1, $2, $3, $4, $5)`,
         [
-          'info',
+          uuid.v4(),
+          'INFO',
+          'SYSTEM',
           `Setting deleted: ${key}`,
-          'settings',
           { key }
         ]
       );
@@ -366,12 +369,13 @@ router.post('/bulk', async (req, res) => {
       // Log bulk update to system_logs
       try {
         await pool.query(
-          `INSERT INTO system_logs (level, message, source, details) 
-           VALUES ($1, $2, $3, $4)`,
+          `INSERT INTO system_logs (id, severity, category, message, details) 
+           VALUES ($1, $2, $3, $4, $5)`,
           [
-            'info',
+            uuid.v4(),
+            'INFO',
+            'SYSTEM',
             `Bulk settings update: ${results.updated.length} updated, ${results.created.length} created`,
-            'settings',
             { results }
           ]
         );

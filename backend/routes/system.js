@@ -16,23 +16,61 @@ const { exec } = require('child_process');
 const os = require('os');
 const path = require('path');
 const fs = require('fs');
+const uuid = require('uuid');
+
+/**
+ * Helpers to map legacy fields (level/source) to new schema
+ * severity: INFO | WARN | ERROR | CRITICAL
+ * category: RESOURCE | OPTIMIZATION | CONSTRAINT | SYSTEM | OPERATIONAL | FINANCIAL
+ */
+const SEVERITY_MAP = {
+  debug: 'INFO',
+  info: 'INFO',
+  warning: 'WARN',
+  warn: 'WARN',
+  error: 'ERROR',
+  critical: 'CRITICAL',
+};
+
+const CATEGORY_MAP = {
+  api: 'SYSTEM',
+  server: 'SYSTEM',
+  finance: 'FINANCIAL',
+};
+
+function normalizeSeverity(raw) {
+  if (!raw) return null;
+  const key = raw.toString().trim().toLowerCase();
+  return SEVERITY_MAP[key] || key.toUpperCase();
+}
+
+function normalizeCategory(raw) {
+  if (!raw) return null;
+  const key = raw.toString().trim().toLowerCase();
+  if (CATEGORY_MAP[key]) return CATEGORY_MAP[key];
+  return key.toUpperCase();
+}
 
 // GET /system/logs - Get system logs
 router.get('/logs', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { 
-      level, 
-      source,
+      severity,
+      category,
       start_date,
       end_date,
       limit = 100,
       offset = 0
     } = req.query;
+
+    // legacy alias support
+    const sev = normalizeSeverity(severity || req.query.level);
+    const cat = normalizeCategory(category || req.query.source);
     
     // Build query with optional filters
     let query = `
-      SELECT id, level, message, source, details, created_at
+      SELECT id, severity, category, message, details, timestamp, created_at
       FROM system_logs
       WHERE 1=1
     `;
@@ -40,23 +78,23 @@ router.get('/logs', async (req, res) => {
     const queryParams = [];
     let paramIndex = 1;
     
-    if (level) {
-      query += ` AND level = $${paramIndex++}`;
-      queryParams.push(level);
+    if (sev) {
+      query += ` AND severity = $${paramIndex++}`;
+      queryParams.push(sev);
     }
     
-    if (source) {
-      query += ` AND source = $${paramIndex++}`;
-      queryParams.push(source);
+    if (cat) {
+      query += ` AND category = $${paramIndex++}`;
+      queryParams.push(cat);
     }
     
     if (start_date) {
-      query += ` AND created_at >= $${paramIndex++}`;
+      query += ` AND timestamp >= $${paramIndex++}`;
       queryParams.push(start_date);
     }
     
     if (end_date) {
-      query += ` AND created_at <= $${paramIndex++}`;
+      query += ` AND timestamp <= $${paramIndex++}`;
       queryParams.push(end_date);
     }
     
@@ -76,23 +114,23 @@ router.get('/logs', async (req, res) => {
     let countParams = [];
     let countParamIndex = 1;
     
-    if (level) {
-      countQuery += ` AND level = $${countParamIndex++}`;
-      countParams.push(level);
+    if (sev) {
+      countQuery += ` AND severity = $${countParamIndex++}`;
+      countParams.push(sev);
     }
     
-    if (source) {
-      countQuery += ` AND source = $${countParamIndex++}`;
-      countParams.push(source);
+    if (cat) {
+      countQuery += ` AND category = $${countParamIndex++}`;
+      countParams.push(cat);
     }
     
     if (start_date) {
-      countQuery += ` AND created_at >= $${countParamIndex++}`;
+      countQuery += ` AND timestamp >= $${countParamIndex++}`;
       countParams.push(start_date);
     }
     
     if (end_date) {
-      countQuery += ` AND created_at <= $${countParamIndex++}`;
+      countQuery += ` AND timestamp <= $${countParamIndex++}`;
       countParams.push(end_date);
     }
     
@@ -123,38 +161,43 @@ router.get('/logs', async (req, res) => {
 router.post('/logs', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const { level, message, source, details } = req.body;
+    const { severity, category, message, details, level, source } = req.body;
+    
+    // Map legacy aliases
+    const sevNorm = normalizeSeverity(severity || level) || 'INFO';
+    const catNorm = normalizeCategory(category || source) || 'OPERATIONAL';
     
     // Validate required fields
-    if (!level || !message) {
+    if (!message) {
       return res.status(400).json({
         success: false,
         error: 'Missing required fields',
-        message: 'level and message are required'
+        message: 'message is required'
       });
     }
     
-    // Validate log level
-    const validLevels = ['debug', 'info', 'warning', 'error', 'critical'];
-    if (!validLevels.includes(level)) {
+    // Validate severity
+    const validSeverities = ['INFO','WARN','ERROR','CRITICAL'];
+    if (!validSeverities.includes(sevNorm)) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid log level',
-        message: `level must be one of: ${validLevels.join(', ')}`
+        error: 'Invalid severity',
+        message: `severity must be one of: ${validSeverities.join(', ')}`
       });
     }
     
     const query = `
-      INSERT INTO system_logs (level, message, source, details)
-      VALUES ($1, $2, $3, $4)
-      RETURNING id, level, message, source, details, created_at
+      INSERT INTO system_logs (id, severity, category, message, details)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING id, severity, category, message, details, timestamp, created_at
     `;
     
     const values = [
-      level,
+      uuid.v4(),
+      sevNorm,
+      catNorm,
       message,
-      source || 'api',
-      details || null
+      details || {}
     ];
     
     const result = await pool.query(query, values);
@@ -179,12 +222,15 @@ router.delete('/logs', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { 
-      level, 
-      source,
+      severity,
+      category,
       start_date,
       end_date,
       confirm
     } = req.query;
+    
+    const sev = normalizeSeverity(severity || req.query.level);
+    const cat = normalizeCategory(category || req.query.source);
     
     // Require confirmation for safety
     if (confirm !== 'true') {
@@ -201,23 +247,23 @@ router.delete('/logs', async (req, res) => {
     const queryParams = [];
     let paramIndex = 1;
     
-    if (level) {
-      query += ` AND level = $${paramIndex++}`;
-      queryParams.push(level);
+    if (sev) {
+      query += ` AND severity = $${paramIndex++}`;
+      queryParams.push(sev);
     }
     
-    if (source) {
-      query += ` AND source = $${paramIndex++}`;
-      queryParams.push(source);
+    if (cat) {
+      query += ` AND category = $${paramIndex++}`;
+      queryParams.push(cat);
     }
     
     if (start_date) {
-      query += ` AND created_at >= $${paramIndex++}`;
+      query += ` AND timestamp >= $${paramIndex++}`;
       queryParams.push(start_date);
     }
     
     if (end_date) {
-      query += ` AND created_at <= $${paramIndex++}`;
+      query += ` AND timestamp <= $${paramIndex++}`;
       queryParams.push(end_date);
     }
     
@@ -226,20 +272,16 @@ router.delete('/logs', async (req, res) => {
     
     // Create a log entry about the deletion
     await pool.query(
-      `INSERT INTO system_logs (level, message, source, details)
-       VALUES ($1, $2, $3, $4)`,
+      `INSERT INTO system_logs (id, severity, category, message, details)
+       VALUES ($1, $2, $3, $4, $5)`,
       [
-        'info',
+        uuid.v4(),
+        'INFO',
+        'SYSTEM',
         'System logs cleared',
-        'system',
         {
           deleted_rows: result.rowCount,
-          filters: {
-            level,
-            source,
-            start_date,
-            end_date
-          }
+          filters: { severity: sev, category: cat, start_date, end_date }
         }
       ]
     );
@@ -379,12 +421,13 @@ router.post('/backup', async (req, res) => {
         // Log backup failure
         try {
           await pool.query(
-            `INSERT INTO system_logs (level, message, source, details)
-             VALUES ($1, $2, $3, $4)`,
+            `INSERT INTO system_logs (id, severity, category, message, details)
+             VALUES ($1, $2, $3, $4, $5)`,
             [
-              'error',
+              uuid.v4(),
+              'ERROR',
+              'SYSTEM',
               'Database backup failed',
-              'system',
               {
                 format,
                 error: error.message,
@@ -410,12 +453,13 @@ router.post('/backup', async (req, res) => {
       // Log successful backup
       try {
         await pool.query(
-          `INSERT INTO system_logs (level, message, source, details)
-           VALUES ($1, $2, $3, $4)`,
+          `INSERT INTO system_logs (id, severity, category, message, details)
+           VALUES ($1, $2, $3, $4, $5)`,
           [
-            'info',
+            uuid.v4(),
+            'INFO',
+            'SYSTEM',
             'Database backup created',
-            'system',
             {
               format,
               filename: backupFilename,

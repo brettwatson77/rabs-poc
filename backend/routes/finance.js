@@ -11,6 +11,7 @@
 
 const express = require('express');
 const router = express.Router();
+const uuid = require('uuid');
 
 // GET /finance/billing - Get billing data
 router.get('/billing', async (req, res) => {
@@ -295,12 +296,13 @@ router.post('/export', async (req, res) => {
     // Log the export to system_logs
     try {
       await pool.query(
-        `INSERT INTO system_logs (level, message, source, details) 
-         VALUES ($1, $2, $3, $4)`,
+        `INSERT INTO system_logs (id, severity, category, message, details) 
+         VALUES ($1, $2, $3, $4, $5)`,
         [
-          'info',
+          uuid.v4(),
+          'INFO',
+          'FINANCIAL',
           `Billing data exported (${result.rowCount} records)`,
-          'finance',
           { 
             format, 
             start_date, 
@@ -460,12 +462,13 @@ router.put('/rates/:id', async (req, res) => {
     // Log the rate change
     try {
       await pool.query(
-        `INSERT INTO system_logs (level, message, source, details) 
-         VALUES ($1, $2, $3, $4)`,
+        `INSERT INTO system_logs (id, severity, category, message, details) 
+         VALUES ($1, $2, $3, $4, $5)`,
         [
-          'info',
+          uuid.v4(),
+          'INFO',
+          'FINANCIAL',
           `Billing rate updated: ${result.rows[0].code}`,
-          'finance',
           { 
             rate_id: id,
             changes: req.body

@@ -12,6 +12,7 @@
 
 const express = require('express');
 const router = express.Router();
+const uuid = require('uuid');
 
 // GET /intentions - List all intentions
 router.get('/', async (req, res) => {
@@ -577,12 +578,13 @@ router.post('/process', async (req, res) => {
       // Log to system_logs
       try {
         await pool.query(
-          `INSERT INTO system_logs (level, message, source, details) 
-           VALUES ($1, $2, $3, $4)`,
+          `INSERT INTO system_logs (id, severity, category, message, details) 
+           VALUES ($1, $2, $3, $4, $5)`,
           [
-            'info',
+            uuid.v4(),
+            'INFO',
+            'OPERATIONAL',
             `Processed ${results.processed} intentions (${results.failed} failed)`,
-            'intentions',
             { results }
           ]
         );
