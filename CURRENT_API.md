@@ -1,6 +1,6 @@
 # RABS API Documentation
 
-Generated on: 06/08/2025, 07:47:39
+Generated on: 09/08/2025, 09:11:42
 
 ## API Endpoints
 
@@ -61,6 +61,7 @@ Generated on: 06/08/2025, 07:47:39
 | POST | /api/v1/ | async |
 | GET | /api/v1/ | async |
 | GET | /api/v1/ | async |
+| POST | /api/v1/ | async |
 | GET | /api/v1/ | async |
 | GET | /api/v1/ | async |
 | POST | /api/v1/ | async |
@@ -74,6 +75,8 @@ Generated on: 06/08/2025, 07:47:39
 | DELETE | /api/v1/:id | async |
 | GET | /api/v1/:id | async |
 | GET | /api/v1/:id | async |
+| PUT | /api/v1/:id | async |
+| DELETE | /api/v1/:id | async |
 | GET | /api/v1/:id | async |
 | GET | /api/v1/:id | async |
 | GET | /api/v1/:id | async |

@@ -76,6 +76,8 @@ import {
   FiCornerDownRight,
   FiExternalLink,
   /* FiWheelchair removed: swapped for Font-Awesome equivalent */
+  FiEye,
+  FiArrowUp
 } from 'react-icons/fi';
 import { FaWheelchair } from 'react-icons/fa';
 
@@ -752,12 +754,107 @@ const Venues = () => {
   };
 
   // Render directory tab content
+const renderDirectoryTab = () => (
+  <div className="directory-tab">
+    {/* Page Header */}
+    <header className="page-header">
+      <h2>Venues</h2>
+      <div className="search-container">
+        <FiSearch className="search-icon" />
+        <input
+          type="text"
+          placeholder="Search venues..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="search-input"
+        />
+      </div>
+    </header>
 
-// Truncated modal/tab stubs
-const renderDirectoryTab = () => null;
+    {/* Venues Grid */}
+    {venuesLoading ? (
+      <div className="loading-container">
+        <div className="loading-spinner"></div>
+        <p>Loading venues...</p>
+      </div>
+    ) : venuesError ? (
+      <div className="error-container glass-panel">
+        <FiAlertCircle className="error-icon" />
+        <p>Error loading venues: {venuesError.message}</p>
+        <button className="btn btn-primary" onClick={() => refetchVenues()}>
+          <FiRefreshCw /> Try Again
+        </button>
+      </div>
+    ) : filteredVenues.length === 0 ? (
+      <div className="empty-state glass-panel">
+        <FiMapPin className="empty-icon" />
+        <h3>No venues found</h3>
+        <p>Try adjusting your search.</p>
+      </div>
+    ) : (
+      <>
+        <div className="venues-grid">
+          {currentVenues.map((venue) => (
+            <div
+              key={venue.id}
+              className="venue-card glass-card"
+            >
+              <div className="venue-header">
+                <h3 className="venue-name">{venue.name}</h3>
+                <span className={`badge ${getStatusBadge(venue.status)}`}>
+                  {formatStatus(venue.status)}
+                </span>
+              </div>
+              <div className="venue-info">
+                <p className="venue-address">
+                  {venue.address}, {venue.suburb} {venue.state} {venue.postcode}
+                </p>
+                {venue.capacity ? (
+                  <p className="venue-capacity">
+                    Capacity: {venue.capacity}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          ))}
+        </div>
 
-// Ensure component returns something if not already returned above
-return null;
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="pagination-container">
+            <button
+              className="pagination-btn"
+              onClick={handlePrevPage}
+              disabled={currentPage === 1}
+            >
+              <FiArrowLeft /> Previous
+            </button>
+            <div className="pagination-info">
+              Page {currentPage} of {totalPages}
+            </div>
+            <button
+              className="pagination-btn"
+              onClick={handleNextPage}
+              disabled={currentPage === totalPages}
+            >
+              Next <FiArrowRight />
+            </button>
+          </div>
+        )}
+      </>
+    )}
+  </div>
+);
+
+/* -------------------------------------------------------------------------- */
+/*                               Page Rendering                               */
+/* -------------------------------------------------------------------------- */
+
+return (
+  <div className="venues-page">
+    {renderDirectoryTab()}
+  </div>
+);
 };
 
 export default Venues;

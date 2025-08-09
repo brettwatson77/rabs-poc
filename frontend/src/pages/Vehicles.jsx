@@ -1928,10 +1928,46 @@ const Vehicles = () => {
   // Render bookings tab content
 
 // Truncated modal/tab stubs
-const renderBookingsTab = () => null;
+const renderBookingsTab = () => (
+  <div className="bookings-tab">
+    <p>Bookings functionality coming soon.</p>
+  </div>
+);
 
-// Ensure component returns something if not already returned above
-return null;
+/* -------------------------------------------------------------------------- */
+/*                               Page Rendering                               */
+/* -------------------------------------------------------------------------- */
+
+return (
+  <div className="vehicles-page">
+    {/* Page Header */}
+    <header className="page-header">
+      <h2>Vehicles</h2>
+    </header>
+
+    {/* Tab Navigation */}
+    <div className="tab-bar">
+      <button
+        className={`tab-btn ${activeTab === 'directory' ? 'active' : ''}`}
+        onClick={() => setActiveTab('directory')}
+      >
+        Directory
+      </button>
+      <button
+        className={`tab-btn ${activeTab === 'maintenance' ? 'active' : ''}`}
+        onClick={() => setActiveTab('maintenance')}
+      >
+        Maintenance
+      </button>
+    </div>
+
+    {/* Tab Content */}
+    <div className="tab-content">
+      {activeTab === 'directory' && renderDirectoryTab()}
+      {activeTab === 'maintenance' && renderMaintenanceTab()}
+    </div>
+  </div>
+);
 };
 
 export default Vehicles;

@@ -1,6 +1,54 @@
 # ð Database Schema: rabspocdb
-_Generated on Wed 06 Aug 2025 07:47:36 AEST_ by â¨ BrettGPT â¨
+_Generated on Sat 09 Aug 2025 09:11:40 AEST_ by â¨ BrettGPT â¨
 
+
+---
+
+## ðï¸ Table: `billing_rates`
+
+> _ _
+
+- **Estimated Rows**: `        -1`
+- **Estimated Disk Size**: ` 24 kB`
+
+### Columns
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| **id** | `uuid` | f | gen_random_uuid() | - |
+| **code** | `character varying(50)` | f | - | - |
+| **description** | `text` | f | - | - |
+| **base_rate** | `numeric(10` | 2) | f | - |
+| **ratio_1_1** | `numeric(10` | 2) | f | - |
+| **ratio_1_2** | `numeric(10` | 2) | f | - |
+| **ratio_1_3** | `numeric(10` | 2) | f | - |
+| **ratio_1_4** | `numeric(10` | 2) | f | - |
+| **active** | `boolean` | f | true | - |
+| **created_at** | `timestamp with time zone` | f | now() | - |
+| **updated_at** | `timestamp with time zone` | f | now() | - |
+
+### Constraints
+
+| Type | Column | Ref Table | Ref Column |
+|------|--------|-----------|------------|
+| PRIMARY KEY | `id` | billing_rates | id |
+| UNIQUE | `code` | billing_rates | code |
+| CHECK | `` | - | - |
+| CHECK | `` | - | - |
+| CHECK | `` | - | - |
+| CHECK | `` | - | - |
+| CHECK | `` | - | - |
+| CHECK | `` | - | - |
+| CHECK | `` | - | - |
+| CHECK | `` | - | - |
+| CHECK | `` | - | - |
+| CHECK | `` | - | - |
+| CHECK | `` | - | - |
+
+### Indexes
+
+- **billing_rates_pkey**: `CREATE UNIQUE INDEX billing_rates_pkey ON public.billing_rates USING btree (id)`
+- **billing_rates_code_key**: `CREATE UNIQUE INDEX billing_rates_code_key ON public.billing_rates USING btree (code)`
 
 ---
 
@@ -76,6 +124,58 @@ _Generated on Wed 06 Aug 2025 07:47:36 AEST_ by â¨ BrettGPT â¨
 
 - **migrations_pkey**: `CREATE UNIQUE INDEX migrations_pkey ON public.migrations USING btree (id)`
 - **migrations_name_key**: `CREATE UNIQUE INDEX migrations_name_key ON public.migrations USING btree (name)`
+
+---
+
+## ðï¸ Table: `venues`
+
+> _ _
+
+- **Estimated Rows**: `        -1`
+- **Estimated Disk Size**: ` 80 kB`
+
+### Columns
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| **id** | `uuid` | f | gen_random_uuid() | - |
+| **name** | `character varying(100)` | f | - | - |
+| **address** | `text` | f | - | - |
+| **suburb** | `character varying(100)` | t | - | - |
+| **state** | `character varying(50)` | t | - | - |
+| **postcode** | `character varying(10)` | t | - | - |
+| **capacity** | `integer` | t | - | - |
+| **facilities** | `text` | t | - | - |
+| **active** | `boolean` | f | true | - |
+| **created_at** | `timestamp with time zone` | f | now() | - |
+| **updated_at** | `timestamp with time zone` | f | now() | - |
+| **location_lat** | `numeric(10` | 8) | t | - |
+| **location_lng** | `numeric(11` | 8) | t | - |
+| **status** | `character varying(50)` | f | 'active'::character varying | - |
+| **notes** | `text` | t | - | - |
+| **website** | `text` | t | - | - |
+| **image_url** | `text` | t | - | - |
+
+### Constraints
+
+| Type | Column | Ref Table | Ref Column |
+|------|--------|-----------|------------|
+| PRIMARY KEY | `id` | venues | id |
+| CHECK | `` | venues | status |
+| CHECK | `` | - | - |
+| CHECK | `` | - | - |
+| CHECK | `` | - | - |
+| CHECK | `` | - | - |
+| CHECK | `` | - | - |
+| CHECK | `` | - | - |
+| CHECK | `` | - | - |
+
+### Indexes
+
+- **idx_venues_status**: `CREATE INDEX idx_venues_status ON public.venues USING btree (status)`
+- **venues_pkey**: `CREATE UNIQUE INDEX venues_pkey ON public.venues USING btree (id)`
+- **idx_venues_name**: `CREATE INDEX idx_venues_name ON public.venues USING btree (name)`
+- **idx_venues_location**: `CREATE INDEX idx_venues_location ON public.venues USING btree (location_lat, location_lng)`
 
 ---
 
@@ -1470,55 +1570,6 @@ _Generated on Wed 06 Aug 2025 07:47:36 AEST_ by â¨ BrettGPT â¨
 
 ---
 
-## ðï¸ Table: `venues`
-
-> _ _
-
-- **Estimated Rows**: `        -1`
-- **Estimated Disk Size**: ` 80 kB`
-
-### Columns
-
-| Column | Type | Nullable | Default | Description |
-|--------|------|----------|---------|-------------|
-| **id** | `uuid` | f | gen_random_uuid() | - |
-| **name** | `character varying(100)` | f | - | - |
-| **address** | `text` | f | - | - |
-| **suburb** | `character varying(100)` | t | - | - |
-| **state** | `character varying(50)` | t | - | - |
-| **postcode** | `character varying(10)` | t | - | - |
-| **capacity** | `integer` | t | - | - |
-| **facilities** | `text` | t | - | - |
-| **active** | `boolean` | f | true | - |
-| **created_at** | `timestamp with time zone` | f | now() | - |
-| **updated_at** | `timestamp with time zone` | f | now() | - |
-| **location_lat** | `numeric(10` | 8) | t | - |
-| **location_lng** | `numeric(11` | 8) | t | - |
-| **status** | `character varying(50)` | f | 'active'::character varying | - |
-
-### Constraints
-
-| Type | Column | Ref Table | Ref Column |
-|------|--------|-----------|------------|
-| PRIMARY KEY | `id` | venues | id |
-| CHECK | `` | venues | status |
-| CHECK | `` | - | - |
-| CHECK | `` | - | - |
-| CHECK | `` | - | - |
-| CHECK | `` | - | - |
-| CHECK | `` | - | - |
-| CHECK | `` | - | - |
-| CHECK | `` | - | - |
-
-### Indexes
-
-- **idx_venues_status**: `CREATE INDEX idx_venues_status ON public.venues USING btree (status)`
-- **venues_pkey**: `CREATE UNIQUE INDEX venues_pkey ON public.venues USING btree (id)`
-- **idx_venues_name**: `CREATE INDEX idx_venues_name ON public.venues USING btree (name)`
-- **idx_venues_location**: `CREATE INDEX idx_venues_location ON public.venues USING btree (location_lat, location_lng)`
-
----
-
 ## ðï¸ Table: `system_logs`
 
 > _ Stores system events, errors, and operational logs with structured data_
@@ -1852,50 +1903,6 @@ _Generated on Wed 06 Aug 2025 07:47:36 AEST_ by â¨ BrettGPT â¨
 
 ---
 
-## ðï¸ Table: `tgl_loom_time_slots`
-
-> _ Stores time slots for dashboard cards_
-
-- **Estimated Rows**: `        -1`
-- **Estimated Disk Size**: ` 64 kB`
-
-### Columns
-
-| Column | Type | Nullable | Default | Description |
-|--------|------|----------|---------|-------------|
-| **id** | `uuid` | f | gen_random_uuid() | - |
-| **instance_id** | `uuid` | f | - | - |
-| **start_time** | `time without time zone` | f | - | - |
-| **end_time** | `time without time zone` | f | - | - |
-| **label** | `text` | f | - | Display label for the card |
-| **card_type** | `tgl_card_type` | f | 'ACTIVITY'::tgl_card_type | Type of card: PICKUP, ACTIVITY, DROPOFF, PROGRAM |
-| **details** | `jsonb` | t | - | Additional card-specific details as JSON |
-| **created_at** | `timestamp with time zone` | f | now() | - |
-| **updated_at** | `timestamp with time zone` | f | now() | - |
-
-### Constraints
-
-| Type | Column | Ref Table | Ref Column |
-|------|--------|-----------|------------|
-| PRIMARY KEY | `id` | tgl_loom_time_slots | id |
-| FOREIGN KEY | `instance_id` | tgl_loom_instances | id |
-| CHECK | `` | - | - |
-| CHECK | `` | - | - |
-| CHECK | `` | - | - |
-| CHECK | `` | - | - |
-| CHECK | `` | - | - |
-| CHECK | `` | - | - |
-| CHECK | `` | - | - |
-| CHECK | `` | - | - |
-
-### Indexes
-
-- **tgl_loom_time_slots_pkey**: `CREATE UNIQUE INDEX tgl_loom_time_slots_pkey ON public.tgl_loom_time_slots USING btree (id)`
-- **idx_time_slots_instance**: `CREATE INDEX idx_time_slots_instance ON public.tgl_loom_time_slots USING btree (instance_id)`
-- **idx_time_slots_card_type**: `CREATE INDEX idx_time_slots_card_type ON public.tgl_loom_time_slots USING btree (card_type)`
-
----
-
 ## ðï¸ Table: `tgl_loom_audit_log`
 
 > _ _
@@ -1946,6 +1953,52 @@ _Generated on Wed 06 Aug 2025 07:47:36 AEST_ by â¨ BrettGPT â¨
 - **idx_tgl_loom_audit_log_details_gin**: `CREATE INDEX idx_tgl_loom_audit_log_details_gin ON public.tgl_loom_audit_log USING gin (details)`
 - **idx_tgl_loom_audit_log_user**: `CREATE INDEX idx_tgl_loom_audit_log_user ON public.tgl_loom_audit_log USING btree (user_id)`
 - **tgl_loom_audit_log_pkey**: `CREATE UNIQUE INDEX tgl_loom_audit_log_pkey ON public.tgl_loom_audit_log USING btree (id)`
+
+---
+
+## ðï¸ Table: `tgl_loom_time_slots`
+
+> _ Stores time slots for dashboard cards_
+
+- **Estimated Rows**: `        -1`
+- **Estimated Disk Size**: ` 64 kB`
+
+### Columns
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| **id** | `uuid` | f | gen_random_uuid() | - |
+| **instance_id** | `uuid` | f | - | - |
+| **start_time** | `time without time zone` | f | - | - |
+| **end_time** | `time without time zone` | f | - | - |
+| **label** | `text` | f | - | Display label for the card |
+| **card_type** | `tgl_card_type` | f | 'ACTIVITY'::tgl_card_type | Type of card: PICKUP, ACTIVITY, DROPOFF, PROGRAM |
+| **details** | `jsonb` | t | - | Additional card-specific details as JSON |
+| **created_at** | `timestamp with time zone` | f | now() | - |
+| **updated_at** | `timestamp with time zone` | f | now() | - |
+| **program_id** | `uuid` | t | - | - |
+
+### Constraints
+
+| Type | Column | Ref Table | Ref Column |
+|------|--------|-----------|------------|
+| PRIMARY KEY | `id` | tgl_loom_time_slots | id |
+| FOREIGN KEY | `instance_id` | tgl_loom_instances | id |
+| FOREIGN KEY | `program_id` | programs | id |
+| CHECK | `` | - | - |
+| CHECK | `` | - | - |
+| CHECK | `` | - | - |
+| CHECK | `` | - | - |
+| CHECK | `` | - | - |
+| CHECK | `` | - | - |
+| CHECK | `` | - | - |
+| CHECK | `` | - | - |
+
+### Indexes
+
+- **tgl_loom_time_slots_pkey**: `CREATE UNIQUE INDEX tgl_loom_time_slots_pkey ON public.tgl_loom_time_slots USING btree (id)`
+- **idx_time_slots_instance**: `CREATE INDEX idx_time_slots_instance ON public.tgl_loom_time_slots USING btree (instance_id)`
+- **idx_time_slots_card_type**: `CREATE INDEX idx_time_slots_card_type ON public.tgl_loom_time_slots USING btree (card_type)`
 
 ---
 

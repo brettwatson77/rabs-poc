@@ -17,8 +17,21 @@ router.get('/', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const query = `
-      SELECT id, name, address, postcode, contact_phone, contact_email, 
-             capacity, accessibility_features, venue_type, is_active
+      SELECT
+        id,
+        name,
+        address,
+        suburb,
+        state,
+        postcode,
+        capacity,
+        facilities,
+        active,
+        created_at,
+        updated_at,
+        location_lat,
+        location_lng,
+        status
       FROM venues
       ORDER BY name ASC
     `;
@@ -47,8 +60,21 @@ router.get('/:id', async (req, res) => {
     const { id } = req.params;
     
     const query = `
-      SELECT id, name, address, postcode, contact_phone, contact_email, 
-             capacity, accessibility_features, venue_type, is_active
+      SELECT
+        id,
+        name,
+        address,
+        suburb,
+        state,
+        postcode,
+        capacity,
+        facilities,
+        active,
+        created_at,
+        updated_at,
+        location_lat,
+        location_lng,
+        status
       FROM venues
       WHERE id = $1
     `;
