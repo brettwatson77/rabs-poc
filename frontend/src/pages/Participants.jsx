@@ -40,15 +40,16 @@ import {
   FiInfo,
   FiAlertTriangle,
   FiHelpCircle,
-  FiWheelchair,
   FiCoffee,
   FiHeart,
   FiBell,
   FiEye,
-  FiEar,
-  FiBrain,
   FiMessageCircle
 } from 'react-icons/fi';
+
+// Additional icons from other packs
+import { FaWheelchair, FaBrain } from 'react-icons/fa';
+import { BsEar } from 'react-icons/bs';
 
 // External modal components
 import CreateParticipantModal from './participants/modals/CreateParticipantModal';
@@ -60,13 +61,13 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3009';
 
 // Support flag icon mapping
 const SUPPORT_FLAG_ICONS = {
-  has_wheelchair_access: <FiWheelchair />,
+  has_wheelchair_access: <FaWheelchair />,
   has_dietary_requirements: <FiCoffee />,
   has_medical_requirements: <FiHeart />,
   has_behavioral_support: <FiBell />,
   has_visual_impairment: <FiEye />,
-  has_hearing_impairment: <FiEar />,
-  has_cognitive_support: <FiBrain />,
+  has_hearing_impairment: <BsEar />,
+  has_cognitive_support: <FaBrain />,
   has_communication_needs: <FiMessageCircle />
 };
 
