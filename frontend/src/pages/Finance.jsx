@@ -161,7 +161,8 @@ const Finance = () => {
         </div>
       </div>
 
-      <div className="finance-tabs glass-card">
+      {/* Unified global tab bar */}
+      <div className="page-tabs">
         <button className={`tab-button ${selectedTab === 'billing' ? 'active' : ''}`} onClick={() => setSelectedTab('billing')}>
           <FiDollarSign /> Billing
         </button>

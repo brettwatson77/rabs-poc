@@ -1,0 +1,151 @@
+/* Scope to page to avoid side-effects */
+.participants-page .tab-content { margin-top: 12px; }
+
+/* Directory grid */
+.participants-page .participants-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  gap: 14px;
+}
+
+/* Card layout */
+.participants-page .participant-card {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  grid-template-rows: auto auto auto;
+  column-gap: 14px;
+  row-gap: 8px;
+  align-items: center;
+}
+
+/* Avatar */
+.participants-page .participant-header { grid-column: 1; grid-row: 1 / span 2; display:flex; align-items:flex-start; gap:8px; }
+.participants-page .participant-avatar {
+  width: 48px; height: 48px; border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  display:flex; align-items:center; justify-content:center;
+  font-weight: 700; letter-spacing: -0.02em;
+}
+
+/* Badges near name */
+.participants-page .participant-badges { display:flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+
+/* Name + meta */
+.participants-page .participant-info { grid-column: 2; grid-row: 1; align-self:center; }
+.participants-page .participant-name { margin: 0 0 2px 0; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+.participants-page .participant-ndis, .participants-page .participant-age { margin: 0; color: rgba(255,255,255,0.7); display:inline-block; margin-right: 12px; }
+.participants-page .participant-ndis span, .participants-page .participant-age span { opacity: 0.8; margin-right: 6px; }
+
+/* Supervision indicator under meta */
+.participants-page .supervision-indicator { grid-column: 2; grid-row: 2; align-self:start; }
+.participants-page .supervision-label { display:flex; gap:8px; font-size: 12px; color: rgba(255,255,255,0.68); margin-bottom: 6px; }
+.participants-page .supervision-bar-bg { width: 220px; height: 6px; background: rgba(255,255,255,0.08); border-radius: 999px; overflow: hidden; }
+.participants-page .supervision-bar-fg { height: 100%; border-radius: 999px; }
+
+/* Support flags on the right */
+.participants-page .support-flags { grid-column: 3; grid-row: 1 / span 2; justify-self: end; display:flex; gap:8px; flex-wrap: wrap; max-width: 220px; }
+.participants-page .support-flag-icon { display:inline-flex; align-items:center; justify-content:center; width: 28px; height: 28px; border-radius: 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); }
+.participants-page .support-flag-icon svg { width:16px; height:16px; opacity: 0.9; }
+
+/* Footer row */
+.participants-page .participant-footer { grid-column: 1 / -1; grid-row: 3; display:flex; align-items:center; justify-content: space-between; gap: 12px; margin-top: 4px; padding-top: 6px; border-top: 1px dashed rgba(255,255,255,0.08); }
+.participants-page .participant-contact { display:flex; align-items:center; gap: 10px; color: rgba(255,255,255,0.78); }
+.participants-page .contact-item { display:flex; align-items:center; gap:6px; }
+.participants-page .contact-icon { width: 16px; height: 16px; opacity: 0.8; }
+
+/* Footer actions */
+.participants-page .participant-actions { display:flex; gap:8px; }
+.participants-page .participant-actions .action-btn { 
+  width: 34px; height: 34px; display:inline-flex; align-items:center; justify-content:center; 
+  border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.05);
+}
+.participants-page .participant-actions .action-btn:hover { background: rgba(255,255,255,0.08); }
+.participants-page .participant-actions .action-btn svg { width: 16px; height: 16px; }
+
+/* Search/filter tweaks inside page */
+.participants-page .search-filter-bar { margin-bottom: 12px; }
+
+/* Planning view tiles */
+.participants-page .participant-selection-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+.participants-page .participant-selection-card { display:grid; grid-template-columns: 44px 1fr auto; align-items:center; column-gap:12px; }
+.participants-page .participant-selection-card .participant-avatar { width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.08); display:flex; align-items:center; justify-content:center; font-weight:700; }
+.participants-page .participant-selection-info h4 { margin:0 0 2px 0; }
+.participants-page .participant-selection-badge { justify-self:end; }
+.participants-page .mini-support-flags { grid-column: 1 / -1; display:flex; gap:6px; flex-wrap:wrap; margin-top: 8px; }
+.participants-page .mini-flag-icon { width: 24px; height: 24px; border-radius: 6px; display:inline-flex; align-items:center; justify-content:center; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); }
+
+/* Planning tabs */
+.participants-page .planning-tabs { display:flex; gap:8px; padding:4px; border-radius: 10px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); }
+.participants-page .planning-tab-btn { display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius: 8px; color: rgba(255,255,255,0.7); border: 1px solid transparent; background: transparent; }
+.participants-page .planning-tab-btn.active { background: linear-gradient(180deg, rgba(124,124,249,0.22), rgba(124,124,249,0.14)); border-color: rgba(124,124,249,0.35); color: #fff; }
+
+/* Planning content sections */
+.participants-page .planning-content { margin-top: 16px; }
+.participants-page .planning-section { margin-bottom: 16px; }
+.participants-page .planning-section h4 { margin-top: 0; margin-bottom: 14px; }
+.participants-page .participant-details { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.participants-page .detail-group { display: flex; flex-direction: column; gap: 10px; }
+.participants-page .detail-item { display: flex; flex-direction: column; gap: 2px; }
+.participants-page .detail-label { font-size: 12px; color: rgba(255,255,255,0.6); }
+.participants-page .detail-value { font-weight: 500; }
+
+/* Support flags form */
+.participants-page .support-flags-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.participants-page .support-flag-item { display: flex; align-items: center; gap: 10px; }
+.participants-page .support-flag-label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+
+/* Goals and billing sections */
+.participants-page .goals-list, .participants-page .billing-codes-list { display: flex; flex-direction: column; gap: 12px; }
+.participants-page .goal-item, .participants-page .billing-code-item { padding: 12px; border-radius: 8px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); }
+.participants-page .goal-header, .participants-page .billing-code-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.participants-page .goal-header h5, .participants-page .billing-code-header h5 { margin: 0; }
+.participants-page .goal-footer, .participants-page .billing-code-footer { display: flex; justify-content: space-between; margin-top: 10px; font-size: 13px; color: rgba(255,255,255,0.7); }
+
+/* Calendar grid for programs */
+.participants-page .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-top: 12px; }
+.participants-page .day-column { padding: 8px; min-height: 120px; }
+.participants-page .day-header { text-align: center; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.participants-page .day-name { font-weight: 600; color: rgba(255,255,255,0.8); }
+.participants-page .day-number { font-size: 18px; font-weight: 700; }
+
+/* Enrollment management */
+.participants-page .enrollment-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.participants-page .enrollment-list { display: flex; flex-direction: column; gap: 8px; }
+.participants-page .enrollment-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); }
+.participants-page .enrollment-checkbox { display: flex; align-items: center; gap: 10px; }
+.participants-page .pending-change { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 4px 8px; border-radius: 6px; }
+.participants-page .pending-change.add { background: rgba(76, 175, 80, 0.15); color: #81c784; }
+.participants-page .pending-change.remove { background: rgba(244, 67, 54, 0.15); color: #e57373; }
+
+/* Change history */
+.participants-page .change-history-list { display: flex; flex-direction: column; gap: 12px; }
+.participants-page .change-item { display: grid; grid-template-columns: auto 1fr; gap: 12px; padding: 12px; border-radius: 8px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); }
+.participants-page .change-date { font-weight: 600; color: rgba(255,255,255,0.7); }
+.participants-page .change-content { display: flex; flex-direction: column; gap: 6px; }
+.participants-page .change-header { display: flex; gap: 8px; align-items: center; }
+.participants-page .change-message { font-weight: 500; }
+.participants-page .change-meta { display: flex; gap: 16px; font-size: 13px; color: rgba(255,255,255,0.7); margin-top: 4px; }
+
+/* Reports tab */
+.participants-page .reports-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; margin-top: 16px; }
+.participants-page .report-card { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: start; }
+.participants-page .report-icon { display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 12px; background: rgba(124,124,249,0.15); color: rgba(124,124,249,0.9); }
+.participants-page .report-icon svg { width: 24px; height: 24px; }
+.participants-page .report-content h4 { margin-top: 0; margin-bottom: 8px; }
+.participants-page .report-content p { margin-top: 0; margin-bottom: 12px; color: rgba(255,255,255,0.7); }
+
+/* Responsive */
+@media (max-width: 920px) {
+  .participants-page .participant-card { grid-template-columns: 48px 1fr; grid-template-rows: auto auto auto auto; }
+  .participants-page .support-flags { grid-column: 1 / -1; grid-row: 3; justify-self: start; }
+  .participants-page .participant-footer { grid-row: 4; }
+  .participants-page .supervision-bar-bg { width: 100%; }
+  .participants-page .calendar-grid { grid-template-columns: 1fr; }
+  .participants-page .participant-details { grid-template-columns: 1fr; }
+  .participants-page .planning-tabs { flex-wrap: wrap; }
+}
+
+@media (max-width: 480px) {
+  .participants-page .search-filter-bar { grid-template-columns: 1fr; }
+  .participants-page .enrollment-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+}
