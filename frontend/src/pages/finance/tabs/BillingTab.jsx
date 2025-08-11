@@ -38,25 +38,32 @@ export default function BillingTab({
 
   return (
     <div className="tab-content">
-      <div className="billing-controls">
-        <div className="control-row">
-          <div className="search-container">
-            <FiSearch className="search-icon" />
-            <input
-              type="text"
-              placeholder="Search billing entries..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
+      {/* Unified search / filter / action bar */}
+      <div className="search-filter-bar glass-panel">
+        {/* Search */}
+        <div className="search-container">
+          <FiSearch className="search-icon" />
+          <input
+            type="text"
+            placeholder="Search billing entries..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="search-input"
+          />
+        </div>
 
-          <div className="filter-container">
-            <div className="filter-item">
-              <label htmlFor="participant-filter">Participant:</label>
+        {/* Filters */}
+        <div className="filter-container">
+          <div className="filter-dropdown glass-panel">
+            {/* Participant */}
+            <div className="filter-group">
+              <label htmlFor="participant-filter">Participant</label>
               <select
                 id="participant-filter"
                 value={filterOptions.participant}
-                onChange={(e) => setFilterOptions({ ...filterOptions, participant: e.target.value })}
+                onChange={(e) =>
+                  setFilterOptions({ ...filterOptions, participant: e.target.value })
+                }
               >
                 <option value="all">All Participants</option>
                 {participantsData?.data?.map((participant) => (
@@ -67,12 +74,15 @@ export default function BillingTab({
               </select>
             </div>
 
-            <div className="filter-item">
-              <label htmlFor="program-filter">Program:</label>
+            {/* Program */}
+            <div className="filter-group">
+              <label htmlFor="program-filter">Program</label>
               <select
                 id="program-filter"
                 value={filterOptions.program}
-                onChange={(e) => setFilterOptions({ ...filterOptions, program: e.target.value })}
+                onChange={(e) =>
+                  setFilterOptions({ ...filterOptions, program: e.target.value })
+                }
               >
                 <option value="all">All Programs</option>
                 {programsData?.data?.map((program) => (
@@ -83,12 +93,15 @@ export default function BillingTab({
               </select>
             </div>
 
-            <div className="filter-item">
-              <label htmlFor="status-filter">Status:</label>
+            {/* Status */}
+            <div className="filter-group">
+              <label htmlFor="status-filter">Status</label>
               <select
                 id="status-filter"
                 value={filterOptions.status}
-                onChange={(e) => setFilterOptions({ ...filterOptions, status: e.target.value })}
+                onChange={(e) =>
+                  setFilterOptions({ ...filterOptions, status: e.target.value })
+                }
               >
                 <option value="all">All Statuses</option>
                 <option value="pending">Pending</option>
@@ -100,28 +113,27 @@ export default function BillingTab({
           </div>
         </div>
 
-        <div className="control-row">
-          <MonthNavigation
-            selectedMonth={selectedMonth}
-            onPrev={onPrevMonth}
-            onCurrent={onCurrentMonth}
-            onNext={onNextMonth}
-          />
-
-          <div className="action-buttons">
-            <button className="btn btn-primary" onClick={onOpenNewBilling}>
-              <FiPlusCircle /> New Billing Entry
-            </button>
-            <button className="btn btn-secondary" onClick={onOpenExport}>
-              <FiDownload /> Export
-            </button>
-            <button className="btn btn-icon" onClick={onRefetch} title="Refresh Billing Data">
-              <FiRefreshCw />
-            </button>
-          </div>
+        {/* Actions */}
+        <div className="actions">
+          <button className="create-btn glass-button" onClick={onOpenNewBilling}>
+            <FiPlusCircle /> New
+          </button>
+          <button className="nav-button" onClick={onOpenExport}>
+            <FiDownload /> Export
+          </button>
+          <button className="nav-button" onClick={onRefetch} title="Refresh Billing Data">
+            <FiRefreshCw />
+          </button>
         </div>
       </div>
 
+      {/* Month navigation */}
+      <MonthNavigation
+        selectedMonth={selectedMonth}
+        onPrev={onPrevMonth}
+        onCurrent={onCurrentMonth}
+        onNext={onNextMonth}
+      />
       <div className="billing-table-container">
         <table className="billing-table glass-table">
           <thead>

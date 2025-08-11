@@ -157,7 +157,7 @@ const Finance = () => {
       <div className="page-header">
         <h2 className="page-title">Finance</h2>
         <div className="page-actions">
-          <button className="btn btn-icon" onClick={() => { refetchBilling(); refetchRates(); refetchReport(); }} title="Refresh All Data">
+          <button className="nav-button" onClick={() => { refetchBilling(); refetchRates(); refetchReport(); }} title="Refresh All Data">
             <FiRefreshCw />
           </button>
           <span className="date-display">{format(new Date(), 'EEEE, MMMM d, yyyy')}</span>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery } from 'react-query';
 import axios from 'axios';
-import { format, startOfWeek, endOfWeek, eachDayOfInterval } from 'date-fns';
+import { format, startOfWeek, endOfWeek } from 'date-fns';
 import { 
   FiMapPin, 
   FiSearch, 
@@ -37,7 +37,6 @@ import '../styles/Venues.css';
 
 // Venues Page Component
 const Venues = () => {
-  const [activeTab, setActiveTab] = useState('directory');
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
     capacity: 'all',
@@ -45,69 +44,12 @@ const Venues = () => {
     availability: 'all'
   });
   const [selectedVenue, setSelectedVenue] = useState(null);
-  const [selectedVenueTab, setSelectedVenueTab] = useState('overview');
   const [currentPage, setCurrentPage] = useState(1);
-  const [currentWeekStart, setCurrentWeekStart] = useState(() => {
+  const [currentWeekStart] = useState(() => {
     const today = new Date();
     return startOfWeek(today, { weekStartsOn: 1 }); // Week starts on Monday
   });
   const venuesPerPage = 24;
-
-  // Form state for creating/editing venue
-  const [venueForm, setVenueForm] = useState({
-    name: '',
-    address: '',
-    suburb: '',
-    state: '',
-    postcode: '',
-    capacity: 0,
-    hourly_rate: 0,
-    daily_rate: 0,
-    contact_name: '',
-    contact_phone: '',
-    contact_email: '',
-    description: '',
-    accessibility_features: [],
-    facilities: [],
-    equipment: [],
-    operating_hours: {
-      monday: { open: '09:00', close: '17:00', is_open: true },
-      tuesday: { open: '09:00', close: '17:00', is_open: true },
-      wednesday: { open: '09:00', close: '17:00', is_open: true },
-      thursday: { open: '09:00', close: '17:00', is_open: true },
-      friday: { open: '09:00', close: '17:00', is_open: true },
-      saturday: { open: '10:00', close: '16:00', is_open: false },
-      sunday: { open: '10:00', close: '16:00', is_open: false }
-    },
-    status: 'active',
-    notes: '',
-    website: '',
-    image_url: '',
-    latitude: null,
-    longitude: null
-  });
-
-  // Form state for adding equipment
-  const [equipmentForm, setEquipmentForm] = useState({
-    name: '',
-    type: 'audio',
-    quantity: 1,
-    condition: 'good',
-    notes: ''
-  });
-
-  // Form state for adding a booking
-  const [bookingForm, setBookingForm] = useState({
-    start_date: format(new Date(), 'yyyy-MM-dd'),
-    end_date: format(new Date(), 'yyyy-MM-dd'),
-    start_time: '09:00',
-    end_time: '17:00',
-    program_id: '',
-    staff_id: '',
-    purpose: '',
-    attendees: 0,
-    notes: ''
-  });
 
   // Fetch venues data
   const { 
@@ -125,8 +67,7 @@ const Venues = () => {
 
   // Fetch bookings data
   const { 
-    data: bookingsData, 
-    isLoading: bookingsLoading
+    data: bookingsData
   } = useQuery(
     ['venueBookings', currentWeekStart],
     async () => {
@@ -140,138 +81,6 @@ const Venues = () => {
       return response.data;
     }
   );
-
-  // Reset venue form
-  const resetVenueForm = () => {
-    setVenueForm({
-      name: '',
-      address: '',
-      suburb: '',
-      state: '',
-      postcode: '',
-      capacity: 0,
-      hourly_rate: 0,
-      daily_rate: 0,
-      contact_name: '',
-      contact_phone: '',
-      contact_email: '',
-      description: '',
-      accessibility_features: [],
-      facilities: [],
-      equipment: [],
-      operating_hours: {
-        monday: { open: '09:00', close: '17:00', is_open: true },
-        tuesday: { open: '09:00', close: '17:00', is_open: true },
-        wednesday: { open: '09:00', close: '17:00', is_open: true },
-        thursday: { open: '09:00', close: '17:00', is_open: true },
-        friday: { open: '09:00', close: '17:00', is_open: true },
-        saturday: { open: '10:00', close: '16:00', is_open: false },
-        sunday: { open: '10:00', close: '16:00', is_open: false }
-      },
-      status: 'active',
-      notes: '',
-      website: '',
-      image_url: '',
-      latitude: null,
-      longitude: null
-    });
-  };
-
-  // Reset equipment form
-  const resetEquipmentForm = () => {
-    setEquipmentForm({
-      name: '',
-      type: 'audio',
-      quantity: 1,
-      condition: 'good',
-      notes: ''
-    });
-  };
-
-  // Reset booking form
-  const resetBookingForm = () => {
-    setBookingForm({
-      start_date: format(new Date(), 'yyyy-MM-dd'),
-      end_date: format(new Date(), 'yyyy-MM-dd'),
-      start_time: '09:00',
-      end_time: '17:00',
-      program_id: '',
-      staff_id: '',
-      purpose: '',
-      attendees: 0,
-      notes: ''
-    });
-  };
-
-  // Handle opening edit modal
-  const handleEditVenue = (venue) => {
-    setVenueForm({
-      name: venue.name || '',
-      address: venue.address || '',
-      suburb: venue.suburb || '',
-      state: venue.state || '',
-      postcode: venue.postcode || '',
-      capacity: venue.capacity || 0,
-      hourly_rate: venue.hourly_rate || 0,
-      daily_rate: venue.daily_rate || 0,
-      contact_name: venue.contact_name || '',
-      contact_phone: venue.contact_phone || '',
-      contact_email: venue.contact_email || '',
-      description: venue.description || '',
-      accessibility_features: venue.accessibility_features || [],
-      facilities: venue.facilities || [],
-      equipment: venue.equipment || [],
-      operating_hours: venue.operating_hours || {
-        monday: { open: '09:00', close: '17:00', is_open: true },
-        tuesday: { open: '09:00', close: '17:00', is_open: true },
-        wednesday: { open: '09:00', close: '17:00', is_open: true },
-        thursday: { open: '09:00', close: '17:00', is_open: true },
-        friday: { open: '09:00', close: '17:00', is_open: true },
-        saturday: { open: '10:00', close: '16:00', is_open: false },
-        sunday: { open: '10:00', close: '16:00', is_open: false }
-      },
-      status: venue.status || 'active',
-      notes: venue.notes || '',
-      website: venue.website || '',
-      image_url: venue.image_url || '',
-      latitude: venue.latitude || null,
-      longitude: venue.longitude || null
-    });
-  };
-
-  // Handle accessibility feature toggle
-  const handleAccessibilityToggle = (feature) => {
-    const features = [...venueForm.accessibility_features];
-    const index = features.indexOf(feature);
-    
-    if (index === -1) {
-      features.push(feature);
-    } else {
-      features.splice(index, 1);
-    }
-    
-    setVenueForm({
-      ...venueForm,
-      accessibility_features: features
-    });
-  };
-
-  // Handle facility toggle
-  const handleFacilityToggle = (facility) => {
-    const facilities = [...venueForm.facilities];
-    const index = facilities.indexOf(facility);
-    
-    if (index === -1) {
-      facilities.push(facility);
-    } else {
-      facilities.splice(index, 1);
-    }
-    
-    setVenueForm({
-      ...venueForm,
-      facilities: facilities
-    });
-  };
 
   // Filter venues based on search term and filters
   const filteredVenues = venuesData?.data?.filter(venue => {
@@ -297,40 +106,29 @@ const Venues = () => {
     return matchesSearch && matchesCapacity && matchesAccessibility && matchesAvailability;
   }) || [];
 
-  // Check if venue is available today
+  // Determine if a venue is available today (used in filters and status display)
   const isVenueAvailable = (venue) => {
+    // Only active venues can be available
     if (venue.status !== 'active') return false;
-    
+
     const today = new Date();
-    const dayOfWeek = format(today, 'EEEE').toLowerCase();
+    const dayOfWeek = format(today, 'EEEE').toLowerCase(); // e.g. 'monday'
     const todayStr = format(today, 'yyyy-MM-dd');
-    
-    // Check operating hours
+
+    // If venue is closed today according to operating hours
     if (!venue.operating_hours?.[dayOfWeek]?.is_open) return false;
-    
-    // Check if venue has bookings today
-    return !bookingsData?.data?.some(booking => 
-      booking.venue_id === venue.id && 
-      booking.start_date === todayStr
+
+    // If the venue has an existing booking for today
+    return !bookingsData?.data?.some(
+      (booking) => booking.venue_id === venue.id && booking.start_date === todayStr
     );
   };
 
-  // Format date for display
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    try {
-      return format(new Date(dateString), 'dd/MM/yyyy');
-    } catch (error) {
-      return 'Invalid Date';
-    }
-  };
-
-  // Format currency
+  // Currency formatter
   const formatCurrency = (amount) => {
     if (amount === null || amount === undefined) return '$0.00';
     return `$${parseFloat(amount).toFixed(2)}`;
   };
-
   // Get status badge class
   const getStatusBadge = (status) => {
     switch (status) {
@@ -351,24 +149,6 @@ const Venues = () => {
   const formatStatus = (status) => {
     if (!status) return 'Unknown';
     return status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-  };
-
-  // Get week dates array
-  const getWeekDates = () => {
-    return eachDayOfInterval({
-      start: currentWeekStart,
-      end: endOfWeek(currentWeekStart, { weekStartsOn: 1 })
-    });
-  };
-
-  // Get bookings for venue and date
-  const getBookingsForVenueAndDate = (venueId, date) => {
-    if (!bookingsData || !bookingsData.data) return [];
-    
-    const dateStr = format(date, 'yyyy-MM-dd');
-    return bookingsData.data.filter(booking => 
-      booking.venue_id === venueId && booking.start_date === dateStr
-    );
   };
 
   // Pagination logic
@@ -460,59 +240,59 @@ const renderDirectoryTab = () => (
 
       {/* Filters */}
       <div className="filter-container">
-        {/* Capacity */}
-        <div className="filter-item">
-          <label htmlFor="capacity-filter">Capacity:</label>
-          <select
-            id="capacity-filter"
-            value={filters.capacity}
-            onChange={(e) =>
-              setFilters({ ...filters, capacity: e.target.value })
-            }
-          >
-            <option value="all">All</option>
-            <option value="small">Small</option>
-            <option value="medium">Medium</option>
-            <option value="large">Large</option>
-          </select>
-        </div>
+        <div className="filter-dropdown glass-panel">
+          {/* Capacity */}
+          <div className="filter-group">
+            <label htmlFor="capacity-filter">Capacity</label>
+            <select
+              id="capacity-filter"
+              value={filters.capacity}
+              onChange={(e) =>
+                setFilters({ ...filters, capacity: e.target.value })
+              }
+            >
+              <option value="all">All</option>
+              <option value="small">Small</option>
+              <option value="medium">Medium</option>
+              <option value="large">Large</option>
+            </select>
+          </div>
 
-        {/* Accessibility */}
-        <div className="filter-item">
-          <label htmlFor="access-filter">Accessibility:</label>
-          <select
-            id="access-filter"
-            value={filters.accessibility}
-            onChange={(e) =>
-              setFilters({ ...filters, accessibility: e.target.value })
-            }
-          >
-            <option value="all">All</option>
-            <option value="wheelchair">Wheelchair</option>
-            <option value="hearing">Hearing</option>
-            <option value="vision">Vision</option>
-          </select>
-        </div>
+          {/* Accessibility */}
+          <div className="filter-group">
+            <label htmlFor="access-filter">Accessibility</label>
+            <select
+              id="access-filter"
+              value={filters.accessibility}
+              onChange={(e) =>
+                setFilters({ ...filters, accessibility: e.target.value })
+              }
+            >
+              <option value="all">All</option>
+              <option value="wheelchair">Wheelchair</option>
+              <option value="hearing">Hearing</option>
+              <option value="vision">Vision</option>
+            </select>
+          </div>
 
-        {/* Availability */}
-        <div className="filter-item">
-          <label htmlFor="availability-filter">Availability:</label>
-          <select
-            id="availability-filter"
-            value={filters.availability}
-            onChange={(e) =>
-              setFilters({ ...filters, availability: e.target.value })
-            }
-          >
-            <option value="all">All</option>
-            <option value="available">Available</option>
-            <option value="unavailable">Unavailable</option>
-          </select>
+          {/* Availability */}
+          <div className="filter-group">
+            <label htmlFor="availability-filter">Availability</label>
+            <select
+              id="availability-filter"
+              value={filters.availability}
+              onChange={(e) =>
+                setFilters({ ...filters, availability: e.target.value })
+              }
+            >
+              <option value="all">All</option>
+              <option value="available">Available</option>
+              <option value="unavailable">Unavailable</option>
+            </select>
+          </div>
         </div>
       </div>
 
-      {/* Placeholder for future right-side actions */}
-      <div></div>
     </div>
 
     {/* Venues Grid */}

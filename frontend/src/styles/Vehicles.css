@@ -1,1 +1,86 @@
-/* placeholder */
+/* Scope to vehicles page */
+.vehicles-page .tab-content { margin-top: 12px; }
+
+/* Grid */
+.vehicles-page .vehicles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  gap: 14px;
+  margin-top: 12px;          /* spacing so cards don’t touch blocks above */
+}
+
+/* Selected card backlight/invert effect */
+.vehicles-page .vehicle-card.selected {
+  background: radial-gradient(ellipse at center, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.65) 60%, rgba(255,255,255,0.25) 100%);
+  border-color: rgba(255,255,255,0.9) !important;
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.9), 0 12px 28px rgba(255,255,255,0.35), 0 0 20px rgba(124,124,249,0.45) inset;
+  color: #111;
+}
+.vehicles-page .vehicle-card.selected * { color:#111; }
+.vehicles-page .vehicle-card.selected .badge { background: rgba(0,0,0,0.08); border-color: rgba(0,0,0,0.1); color:#111; }
+
+/* Footer actions colour cues */
+.vehicles-page .vehicle-actions .action-btn { width:34px; height:34px; border-radius:8px; border:1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.05); display:inline-flex; align-items:center; justify-content:center; }
+.vehicles-page .vehicle-actions .action-btn:hover { background: rgba(255,255,255,0.08); }
+.vehicles-page .vehicle-actions .action-btn svg { width:16px; height:16px; }
+
+/* Modal sizing & overlay */
+.vehicles-page .modal-overlay{ position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:9998; display:flex; align-items:center; justify-content:center; }
+.vehicles-page .modal-content{ width: clamp(820px, 85vw, 1100px); max-height: 92vh; overflow-y:auto; border-radius:12px; }
+.vehicles-page .modal-header .modal-close svg{ color:#ffffff; }
+
+/* Minor responsive */
+@media (max-width: 920px){
+  .vehicles-page .vehicles-grid { grid-template-columns: 1fr; }
+}
+
+/* ------------------------------------------------------------------
+ * Summary layouts (fleet & maintenance)
+ * ------------------------------------------------------------------*/
+.vehicles-page .fleet-summary,
+.vehicles-page .maintenance-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin: 12px 0 16px;
+}
+.vehicles-page .fleet-summary .summary-item,
+.vehicles-page .maintenance-summary .summary-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.03);
+}
+.vehicles-page .summary-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(124,124,249,0.15);
+  color: rgba(124,124,249,0.9);
+}
+.vehicles-page .summary-content { display: flex; flex-direction: column; }
+.vehicles-page .summary-value {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+}
+.vehicles-page .summary-label {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+/* ------------------------------------------------------------------
+ * Spacing for maintenance/document blocks
+ * ------------------------------------------------------------------*/
+.vehicles-page .maintenance-summary,
+.vehicles-page .upcoming-maintenance,
+.vehicles-page .maintenance-history,
+.vehicles-page .document-expiry {
+  margin-top: 12px;
+}

@@ -19,7 +19,9 @@ export default function RatesTab({
 
   return (
     <div className="tab-content">
-      <div className="control-row">
+      {/* Unified search / action bar */}
+      <div className="search-filter-bar glass-panel">
+        {/* Search */}
         <div className="search-container">
           <FiSearch className="search-icon" />
           <input
@@ -27,9 +29,15 @@ export default function RatesTab({
             placeholder="Search rates..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            className="search-input"
           />
         </div>
-        <button className="btn btn-icon" onClick={onRefetch} title="Refresh Rates">
+
+        {/* Spacer for potential future filters */}
+        <div></div>
+
+        {/* Refresh */}
+        <button className="nav-button" onClick={onRefetch} title="Refresh Rates">
           <FiRefreshCw />
         </button>
       </div>

@@ -58,15 +58,23 @@
 }
 .page-tabs .tab-button svg, .tab-bar .tab-btn svg { width: 18px; height: 18px; opacity: 0.9; }
 
-/* Search + filter bar */
 .search-filter-bar {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
+  display: flex;
+  align-items: center;
   gap: 12px;
   padding: 12px;
   border: 1px solid var(--ui-border);
+  overflow-x: auto;
+  white-space: nowrap;          /* keep in one line on large screens */
+  margin-bottom: 12px;          /* consistent spacing below bar */
 }
-.search-container { position: relative; }
+
+/* Search input area grows to consume remaining space */
+.search-container { 
+  position: relative; 
+  flex: 1;
+  min-width: 260px;
+}
 .search-container .search-icon {
   position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
   width: 18px; height: 18px; opacity: 0.6;
@@ -84,6 +92,30 @@
   display: inline-flex; align-items: center; gap: 8px; height: 40px; 
   padding: 0 12px; border-radius: 10px; border: 1px solid var(--ui-border);
   background: rgba(255,255,255,0.04); color: var(--ui-text);
+}
+
+/* Filter dropdown (inline, not absolute) */
+.filter-container { position: relative; display:flex; align-items:center; }
+.filter-dropdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: 8px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--ui-border);
+  background: rgba(255,255,255,0.04);
+  white-space: nowrap;
+}
+.filter-dropdown .filter-group { display:flex; align-items:center; gap:8px; }
+.filter-dropdown label { color: var(--ui-text-muted); font-size: 13px; }
+.filter-dropdown select {
+  height: 32px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--ui-border);
+  color: var(--ui-text);
+  border-radius: 8px;
+  padding: 0 8px;
 }
 .filter-toggle-btn:hover, .nav-button:hover { background: rgba(255,255,255,0.06); }
 .create-btn { background: linear-gradient(180deg, rgba(124,124,249,0.22), rgba(124,124,249,0.14)); border-color: rgba(124,124,249,0.35); }
@@ -103,6 +135,15 @@
 /* Cards: tighten padding and standardize internal spacing */
 .glass-card { padding: 16px 18px; }
 
+/* Selected card highlight */
+.participants-grid .participant-card.selected,
+.staff-grid .staff-card.selected,
+.vehicles-grid .vehicle-card.selected,
+.venues-grid .venue-card.selected {
+  border-color: rgba(124,124,249,0.45) !important;
+  box-shadow: 0 0 0 2px rgba(124,124,249,0.25), 0 12px 30px rgba(124,124,249,0.20);
+}
+
 /* Badges */
 .badge { font-weight: 600; letter-spacing: -0.01em; }
 
@@ -111,4 +152,13 @@
   .page-tabs, .tab-bar { gap: 6px; padding: 3px; }
   .page-tabs .tab-button, .tab-bar .tab-btn { padding: 8px 10px; }
   .participants-grid, .vehicles-grid, .venues-grid, .staff-grid { grid-template-columns: 1fr; }
+
+  /* allow wrapping & full-width dropdown on smaller screens */
+  .search-filter-bar { flex-wrap: wrap; white-space: normal; }
+  .filter-dropdown {
+    width: 100%;
+    margin-left: 0;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
 }
