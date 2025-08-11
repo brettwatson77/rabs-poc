@@ -37,9 +37,12 @@ import Venues from './pages/Venues';
 
 // The above four pages are full-featured components located in ./pages/
 
+// Global UI styles
+import './styles/UI.css';
+
 // Health check component
 const HealthCheck = () => {
-  const { data, error, isLoading } = useQuery(
+  const { error, isLoading } = useQuery(
     'health',
     async () => {
       const response = await axios.get(`${API_URL}/health`);

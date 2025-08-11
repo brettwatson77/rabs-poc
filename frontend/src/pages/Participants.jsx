@@ -2,49 +2,35 @@ import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import axios from 'axios';
 import { format, startOfWeek, addDays } from 'date-fns';
-import { 
-  FiUser, 
-  FiUsers, 
-  FiSearch, 
-  FiFilter, 
-  FiPlus, 
-  FiEdit2, 
+import {
+  FiUsers,
+  FiSearch,
+  FiFilter,
+  FiPlus,
+  FiEdit2,
   FiTrash2,
-  FiCalendar,
-  FiDollarSign,
-  FiCheckSquare,
   FiTarget,
-  FiClipboard,
   FiFileText,
   FiBarChart2,
-  FiStar,
   FiPhone,
-  FiMail,
-  FiHome,
-  FiTag,
   FiAlertCircle,
-  FiCheckCircle,
-  FiXCircle,
   FiArrowLeft,
   FiArrowRight,
   FiRefreshCw,
-  FiSave,
   FiPrinter,
   FiDownload,
-  FiUpload,
-  FiClock,
-  FiSliders,
-  FiActivity,
-  FiCheck,
-  FiX,
-  FiInfo,
-  FiAlertTriangle,
-  FiHelpCircle,
   FiCoffee,
   FiHeart,
   FiBell,
   FiEye,
   FiMessageCircle
+  ,FiClipboard
+  ,FiCalendar
+  ,FiDollarSign
+  ,FiClock
+  ,FiSave
+  ,FiTag
+  ,FiX
 } from 'react-icons/fi';
 
 // Additional icons from other packs
@@ -55,6 +41,9 @@ import { BsEar } from 'react-icons/bs';
 import CreateParticipantModal from './participants/modals/CreateParticipantModal';
 import EditParticipantModal from './participants/modals/EditParticipantModal';
 import DeleteParticipantModal from './participants/modals/DeleteParticipantModal';
+
+// Page-specific styles
+import '../styles/Participants.css';
 
 // API base URL from environment
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3009';
@@ -153,7 +142,6 @@ const Participants = () => {
       }
     };
     fetchInstances();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedWeek]);
 
   const prevWeek = () => setSelectedWeek(addDays(selectedWeek, -7));
@@ -388,6 +376,78 @@ const Participants = () => {
     {
       onSuccess: () => {
         queryClient.invalidateQueries(['participants']);
+      }
+    }
+  );
+
+  /* ------------------------------------------------------------------
+   * CRUD / helper mutations – inserted per instructions
+   * ------------------------------------------------------------------ */
+
+  const createParticipantMutation = useMutation(
+    async (body) => {
+      const res = await axios.post(`${API_URL}/api/v1/participants`, body);
+      return res.data;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['participants']);
+        setIsCreateModalOpen(false);
+        resetParticipantForm();
+      }
+    }
+  );
+
+  const updateParticipantMutation = useMutation(
+    async ({ id, participantData }) => {
+      const res = await axios.put(`${API_URL}/api/v1/participants/${id}`, participantData);
+      return res.data;
+    },
+    {
+      onSuccess: (data) => {
+        queryClient.invalidateQueries(['participants']);
+        setIsEditModalOpen(false);
+        setSelectedParticipant(data?.data || null);
+      }
+    }
+  );
+
+  const deleteParticipantMutation = useMutation(
+    async (id) => {
+      const res = await axios.delete(`${API_URL}/api/v1/participants/${id}`);
+      return res.data;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['participants']);
+        setIsDeleteModalOpen(false);
+        setSelectedParticipant(null);
+      }
+    }
+  );
+
+  const addGoalMutation = useMutation(
+    async ({ participantId, goalData }) => {
+      const res = await axios.post(`${API_URL}/api/v1/participants/${participantId}/goals`, goalData);
+      return res.data;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['participants']);
+        setNewGoal({ title: '', description: '', target_date: '', category: 'independence', status: 'not_started' });
+      }
+    }
+  );
+
+  const addBillingCodeMutation = useMutation(
+    async ({ participantId, billingCodeData }) => {
+      const res = await axios.post(`${API_URL}/api/v1/participants/${participantId}/billing-codes`, billingCodeData);
+      return res.data;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['participants']);
+        setNewBillingCode({ code: '', description: '', rate: '', total_amount: '', remaining_amount: '', start_date: '', end_date: '' });
       }
     }
   );
@@ -691,7 +751,7 @@ const Participants = () => {
         
         <button 
           className="create-btn glass-button"
-          onClick={() => setIsCreateModalOpen(true)}
+          onClick={() => { resetParticipantForm(); setIsCreateModalOpen(true); }}
         >
           <FiPlus />
           <span>New Participant</span>
@@ -719,7 +779,7 @@ const Participants = () => {
           <p>Try adjusting your search or filters, or add a new participant.</p>
           <button 
             className="btn btn-primary"
-            onClick={() => setIsCreateModalOpen(true)}
+            onClick={() => { resetParticipantForm(); setIsCreateModalOpen(true);} }
           >
             <FiPlus /> Add Participant
           </button>
