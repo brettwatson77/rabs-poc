@@ -12,6 +12,9 @@ import BillingModal from './finance/modals/BillingModal';
 import RateModal from './finance/modals/RateModal';
 import ExportModal from './finance/modals/ExportModal';
 
+// Page-specific styles
+import '../styles/Finance.css';
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3009';
 
 const Finance = () => {

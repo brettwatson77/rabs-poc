@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import axios from 'axios';
-import { format, parseISO, addDays, isBefore, isAfter, eachDayOfInterval, startOfWeek, endOfWeek } from 'date-fns';
+import { format, addDays } from 'date-fns';
 import { 
   FiTruck, 
   FiSearch, 
@@ -11,44 +11,28 @@ import {
   FiTrash2,
   FiCalendar,
   FiDollarSign,
-  FiClipboard,
   FiFileText,
-  FiBarChart2,
-  FiPhone,
-  FiMail,
-  FiTag,
   FiAlertCircle,
   FiCheckCircle,
-  FiXCircle,
+  FiX,
   FiArrowLeft,
   FiArrowRight,
   FiRefreshCw,
-  FiSave,
-  FiPrinter,
-  FiDownload,
-  FiUpload,
   FiClock,
-  FiPercent,
   FiUser,
   FiUsers,
-  FiMapPin,
   FiTool,
   FiActivity,
   FiShield,
   FiDroplet,
-  FiCreditCard,
-  FiHash,
-  FiAward,
-  FiFlag,
-  FiThermometer,
-  FiSlash,
-  FiRotateCw,
-  FiList,
-  FiEye
+  FiHash
 } from 'react-icons/fi';
 
 // API base URL from environment
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3009';
+
+// Page-specific styles
+import '../styles/Vehicles.css';
 
 // Vehicles Page Component
 const Vehicles = () => {
@@ -62,11 +46,11 @@ const Vehicles = () => {
   });
   const [showFilters, setShowFilters] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState(null);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [isMaintenanceModalOpen, setIsMaintenanceModalOpen] = useState(false);
-  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [, setIsCreateModalOpen] = useState(false);
+  const [, setIsEditModalOpen] = useState(false);
+  const [, setIsDeleteModalOpen] = useState(false);
+  const [, setIsMaintenanceModalOpen] = useState(false);
+  const [, setIsBookingModalOpen] = useState(false);
   const [selectedVehicleTab, setSelectedVehicleTab] = useState('overview');
   const [currentPage, setCurrentPage] = useState(1);
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
@@ -75,7 +59,7 @@ const Vehicles = () => {
     const diff = today.getDate() - day + (day === 0 ? -6 : 1);
     return new Date(today.setDate(diff));
   });
-  const vehiclesPerPage = 12;
+  const vehiclesPerPage = 24;
 
   // Form state for creating/editing vehicle
   const [vehicleForm, setVehicleForm] = useState({
@@ -146,8 +130,7 @@ const Vehicles = () => {
 
   // Fetch staff data for driver selection
   const { 
-    data: staffData, 
-    isLoading: staffLoading 
+    data: staffData
   } = useQuery(
     ['staff'],
     async () => {
@@ -156,23 +139,10 @@ const Vehicles = () => {
     }
   );
 
-  // Fetch programs data for booking assignment
-  const { 
-    data: programsData, 
-    isLoading: programsLoading 
-  } = useQuery(
-    ['programs'],
-    async () => {
-      const response = await axios.get(`${API_URL}/api/v1/programs`);
-      return response.data;
-    }
-  );
-
   // Fetch bookings data
   const { 
     data: bookingsData, 
-    isLoading: bookingsLoading,
-    refetch: refetchBookings
+    isLoading: bookingsLoading
   } = useQuery(
     ['vehicleBookings', currentWeekStart],
     async () => {
@@ -184,80 +154,6 @@ const Vehicles = () => {
         }
       });
       return response.data;
-    }
-  );
-
-  // Create vehicle mutation
-  const createVehicleMutation = useMutation(
-    async (vehicleData) => {
-      const response = await axios.post(`${API_URL}/api/v1/vehicles`, vehicleData);
-      return response.data;
-    },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['vehicles']);
-        setIsCreateModalOpen(false);
-        resetVehicleForm();
-      }
-    }
-  );
-
-  // Update vehicle mutation
-  const updateVehicleMutation = useMutation(
-    async ({ id, vehicleData }) => {
-      const response = await axios.put(`${API_URL}/api/v1/vehicles/${id}`, vehicleData);
-      return response.data;
-    },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['vehicles']);
-        setIsEditModalOpen(false);
-      }
-    }
-  );
-
-  // Delete vehicle mutation
-  const deleteVehicleMutation = useMutation(
-    async (id) => {
-      const response = await axios.delete(`${API_URL}/api/v1/vehicles/${id}`);
-      return response.data;
-    },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['vehicles']);
-        setIsDeleteModalOpen(false);
-        setSelectedVehicle(null);
-      }
-    }
-  );
-
-  // Add maintenance record mutation
-  const addMaintenanceMutation = useMutation(
-    async ({ vehicleId, maintenanceData }) => {
-      const response = await axios.post(`${API_URL}/api/v1/vehicles/${vehicleId}/maintenance`, maintenanceData);
-      return response.data;
-    },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['vehicles']);
-        setIsMaintenanceModalOpen(false);
-        resetMaintenanceForm();
-      }
-    }
-  );
-
-  // Add booking mutation
-  const addBookingMutation = useMutation(
-    async ({ vehicleId, bookingData }) => {
-      const response = await axios.post(`${API_URL}/api/v1/vehicles/${vehicleId}/bookings`, bookingData);
-      return response.data;
-    },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['vehicleBookings']);
-        setIsBookingModalOpen(false);
-        resetBookingForm();
-      }
     }
   );
 
@@ -375,54 +271,8 @@ const Vehicles = () => {
   };
 
   // Handle opening booking modal
-  const handleAddBooking = (vehicle) => {
+  const handleAddBooking = () => {
     setIsBookingModalOpen(true);
-  };
-
-  // Handle vehicle creation
-  const handleCreateVehicle = (e) => {
-    e.preventDefault();
-    createVehicleMutation.mutate(vehicleForm);
-  };
-
-  // Handle vehicle update
-  const handleUpdateVehicle = (e) => {
-    e.preventDefault();
-    if (selectedVehicle) {
-      updateVehicleMutation.mutate({
-        id: selectedVehicle.id,
-        vehicleData: vehicleForm
-      });
-    }
-  };
-
-  // Handle vehicle deletion
-  const handleDeleteVehicle = () => {
-    if (selectedVehicle) {
-      deleteVehicleMutation.mutate(selectedVehicle.id);
-    }
-  };
-
-  // Handle adding a maintenance record
-  const handleAddMaintenanceRecord = (e) => {
-    e.preventDefault();
-    if (selectedVehicle) {
-      addMaintenanceMutation.mutate({
-        vehicleId: selectedVehicle.id,
-        maintenanceData: maintenanceForm
-      });
-    }
-  };
-
-  // Handle adding a booking
-  const handleAddBookingRecord = (e) => {
-    e.preventDefault();
-    if (selectedVehicle) {
-      addBookingMutation.mutate({
-        vehicleId: selectedVehicle.id,
-        bookingData: bookingForm
-      });
-    }
   };
 
   // Handle updating odometer
@@ -616,18 +466,6 @@ const Vehicles = () => {
     }, 0);
   };
 
-  // Calculate average fleet age
-  const calculateAverageFleetAge = () => {
-    if (!vehiclesData || !vehiclesData.data || vehiclesData.data.length === 0) return 0;
-    
-    const currentYear = new Date().getFullYear();
-    const totalAge = vehiclesData.data.reduce((total, vehicle) => {
-      return total + (currentYear - (vehicle.year || currentYear));
-    }, 0);
-    
-    return totalAge / vehiclesData.data.length;
-  };
-
   // Calculate maintenance costs
   const calculateMaintenanceCosts = () => {
     if (!vehiclesData || !vehiclesData.data) return 0;
@@ -803,7 +641,7 @@ const Vehicles = () => {
             {currentVehicles.map(vehicle => (
               <div 
                 key={vehicle.id} 
-                className={`vehicle-card glass-card ${getFuelTypeClass(vehicle.fuel_type)}`}
+                className={`vehicle-card glass-card ${getFuelTypeClass(vehicle.fuel_type)} ${selectedVehicle?.id === vehicle.id ? 'selected' : ''}`}
                 onClick={() => setSelectedVehicle(vehicle)}
               >
                 <div className="vehicle-header">
@@ -929,7 +767,7 @@ const Vehicles = () => {
             <div className="modal-header">
               <h3>Vehicle Details</h3>
               <button className="modal-close" onClick={() => setSelectedVehicle(null)}>
-                <FiXCircle />
+                <FiX />
               </button>
             </div>
             
@@ -962,37 +800,38 @@ const Vehicles = () => {
                   </button>
                   <button 
                     className="btn btn-secondary"
-                    onClick={() => handleAddBooking(selectedVehicle)}
+                    onClick={() => handleAddBooking()}
                   >
                     <FiCalendar /> Book Vehicle
                   </button>
                 </div>
               </div>
               
-              <div className="detail-tabs">
+              {/* Global tab bar */}
+              <div className="tab-bar">
                 <button 
-                  className={`detail-tab-btn ${selectedVehicleTab === 'overview' ? 'active' : ''}`}
+                  className={`tab-btn ${selectedVehicleTab === 'overview' ? 'active' : ''}`}
                   onClick={() => setSelectedVehicleTab('overview')}
                 >
                   <FiTruck />
                   <span>Overview</span>
                 </button>
                 <button 
-                  className={`detail-tab-btn ${selectedVehicleTab === 'maintenance' ? 'active' : ''}`}
+                  className={`tab-btn ${selectedVehicleTab === 'maintenance' ? 'active' : ''}`}
                   onClick={() => setSelectedVehicleTab('maintenance')}
                 >
                   <FiTool />
                   <span>Maintenance</span>
                 </button>
                 <button 
-                  className={`detail-tab-btn ${selectedVehicleTab === 'bookings' ? 'active' : ''}`}
+                  className={`tab-btn ${selectedVehicleTab === 'bookings' ? 'active' : ''}`}
                   onClick={() => setSelectedVehicleTab('bookings')}
                 >
                   <FiCalendar />
                   <span>Bookings</span>
                 </button>
                 <button 
-                  className={`detail-tab-btn ${selectedVehicleTab === 'costs' ? 'active' : ''}`}
+                  className={`tab-btn ${selectedVehicleTab === 'costs' ? 'active' : ''}`}
                   onClick={() => setSelectedVehicleTab('costs')}
                 >
                   <FiDollarSign />
@@ -1360,7 +1199,7 @@ const Vehicles = () => {
                         <h4>Upcoming Bookings</h4>
                         <button 
                           className="btn btn-primary btn-sm"
-                          onClick={() => handleAddBooking(selectedVehicle)}
+                          onClick={() => handleAddBooking()}
                         >
                           <FiPlus /> Add Booking
                         </button>
@@ -1409,7 +1248,6 @@ const Vehicles = () => {
                                             <span>{getDriverName(booking.driver_id)}</span>
                                           </div>
                                           <div className="booking-purpose">
-                                            <FiTag className="icon" />
                                             <span>{booking.purpose || 'No purpose specified'}</span>
                                           </div>
                                         </div>
@@ -1924,15 +1762,6 @@ const Vehicles = () => {
       </div>
     </div>
   );
-
-  // Render bookings tab content
-
-// Truncated modal/tab stubs
-const renderBookingsTab = () => (
-  <div className="bookings-tab">
-    <p>Bookings functionality coming soon.</p>
-  </div>
-);
 
 /* -------------------------------------------------------------------------- */
 /*                               Page Rendering                               */

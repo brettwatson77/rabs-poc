@@ -7,6 +7,9 @@ set -e
 # Store the repository root directory
 REPO_ROOT=$(git rev-parse --show-toplevel)
 
+# Ensure any subsequent commands run from the repo root to avoid UNC path issues
+cd "$REPO_ROOT"
+
 echo "🔍 Running pre-commit checks..."
 
 # Run custom guard script to check for file issues

@@ -1,4 +1,5 @@
 import React from 'react';
+import { FiX } from 'react-icons/fi';
 
 export default function ExportModal({ isOpen, onClose, exportOptions, setExportOptions, participantsData, onSubmit, isExporting }) {
   if (!isOpen) return null;
@@ -14,7 +15,9 @@ export default function ExportModal({ isOpen, onClose, exportOptions, setExportO
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>Export Billing Data</h3>
-          <button className="btn btn-icon" onClick={onClose}>×</button>
+          <button className="modal-close" onClick={onClose}>
+            <FiX />
+          </button>
         </div>
         <form onSubmit={onSubmit} className="modal-body">
           <div className="form-grid">

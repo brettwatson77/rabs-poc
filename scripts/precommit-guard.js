@@ -11,6 +11,9 @@ const { execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
+// Repository root (one level up from the scripts directory)
+const repoRoot = path.resolve(__dirname, '..');
+
 // Configuration
 const SUSPICIOUS_THRESHOLD = {
   DELETED_LINES: 200,
@@ -30,11 +33,12 @@ const MONITORED_PATHS = [
 /**
  * Safely execute a git command and return its output
  */
-function execGitCommand(command) {
+function execGit(command) {
   try {
-    return execSync(command, { encoding: 'utf8' }).trim();
+    // Ensure all git commands execute from the repo root to avoid UNC CWD issues
+    return execSync(`git -C "${repoRoot}" ${command}`, { encoding: 'utf8' }).trim();
   } catch (error) {
-    console.error(`Error executing git command: ${command}`);
+    console.error(`Error executing git command: git -C "${repoRoot}" ${command}`);
     console.error(error.message);
     return '';
   }
@@ -44,7 +48,7 @@ function execGitCommand(command) {
  * Get list of staged files
  */
 function getStagedFiles() {
-  return execGitCommand('git diff --cached --name-only --diff-filter=ACM')
+  return execGit('diff --cached --name-only --diff-filter=ACM')
     .split('\n')
     .filter(Boolean);
 }
@@ -76,7 +80,7 @@ function isMonitoredFile(filePath) {
  * Get diff stats for a file
  */
 function getDiffStats(filePath) {
-  const diffOutput = execGitCommand(`git diff --cached --numstat -- "${filePath}"`);
+  const diffOutput = execGit(`diff --cached --numstat -- "${filePath}"`);
   
   if (!diffOutput) {
     return { added: 0, deleted: 0 };
@@ -94,7 +98,7 @@ function getDiffStats(filePath) {
  */
 function getLineCount(filePath) {
   try {
-    const fileContent = execGitCommand(`git show :${filePath}`);
+    const fileContent = execGit(`show :${filePath}`);
     return fileContent.split('\n').length;
   } catch (error) {
     console.warn(`Could not get line count for ${filePath}: ${error.message}`);

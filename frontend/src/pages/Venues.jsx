@@ -1,92 +1,42 @@
-import React, { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
+import React, { useState } from 'react';
+import { useQuery } from 'react-query';
 import axios from 'axios';
-import { format, parseISO, addDays, isBefore, isAfter, eachDayOfInterval, startOfWeek, endOfWeek } from 'date-fns';
+import { format, startOfWeek, endOfWeek, eachDayOfInterval } from 'date-fns';
 import { 
   FiMapPin, 
   FiSearch, 
-  FiFilter, 
-  FiPlus, 
-  FiEdit2, 
-  FiTrash2,
-  FiCalendar,
-  FiDollarSign,
-  FiClipboard,
-  FiFileText,
-  FiBarChart2,
-  FiPhone,
-  FiMail,
-  FiTag,
-  FiAlertCircle,
-  FiCheckCircle,
-  FiXCircle,
-  FiArrowLeft,
-  FiArrowRight,
-  FiRefreshCw,
-  FiSave,
-  FiPrinter,
-  FiDownload,
-  FiUpload,
-  FiClock,
-  FiPercent,
-  FiUser,
-  FiUsers,
-  FiHome,
-  FiTool,
-  FiActivity,
-  FiShield,
-  FiDroplet,
-  FiCreditCard,
-  FiHash,
-  FiAward,
-  FiFlag,
-  FiThermometer,
-  FiSlash,
-  FiRotateCw,
-  FiList,
-  FiGlobe,
-  FiWifi,
-  FiMonitor,
-  FiSpeaker,
-  FiCoffee,
-  FiLock,
-  FiImage,
-  FiSettings,
-  FiInfo,
-  FiMaximize2,
-  FiStar,
-  FiTrendingUp,
-  FiChevronDown,
-  FiChevronUp,
-  FiLink,
-  FiGrid,
-  FiLayers,
-  FiMap,
-  FiNavigation,
-  FiHeart,
-  FiThumbsUp,
-  FiThumbsDown,
-  FiMessageSquare,
+  FiAlertCircle, 
+  FiArrowLeft, 
+  FiArrowRight, 
+  FiRefreshCw, 
+  FiX, 
+  FiUser, 
+  FiPhone, 
+  FiMail, 
+  FiSpeaker, 
+  FiEye, 
+  FiHome, 
+  FiArrowUp, 
+  FiCornerUpRight, 
+  FiWifi, 
+  FiMonitor, 
+  FiCoffee, 
+  FiThermometer, 
+  FiLayers, 
+  FiCheck, 
   FiAlertTriangle,
-  FiCheck,
-  FiX,
-  FiPlusCircle,
-  FiMinusCircle,
-  FiCornerUpRight,
-  FiCornerDownRight,
-  FiExternalLink,
-  /* FiWheelchair removed: swapped for Font-Awesome equivalent */
-  FiEye,
-  FiArrowUp
+  FiEdit2
 } from 'react-icons/fi';
 import { FaWheelchair } from 'react-icons/fa';
 
 // API base URL from environment
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3009';
 
+// Page-specific styles
+import '../styles/Venues.css';
+
 // Venues Page Component
 const Venues = () => {
-  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('directory');
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
@@ -94,20 +44,14 @@ const Venues = () => {
     accessibility: 'all',
     availability: 'all'
   });
-  const [showFilters, setShowFilters] = useState(false);
   const [selectedVenue, setSelectedVenue] = useState(null);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [isEquipmentModalOpen, setIsEquipmentModalOpen] = useState(false);
-  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [selectedVenueTab, setSelectedVenueTab] = useState('overview');
   const [currentPage, setCurrentPage] = useState(1);
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     const today = new Date();
     return startOfWeek(today, { weekStartsOn: 1 }); // Week starts on Monday
   });
-  const venuesPerPage = 12;
+  const venuesPerPage = 24;
 
   // Form state for creating/editing venue
   const [venueForm, setVenueForm] = useState({
@@ -179,35 +123,10 @@ const Venues = () => {
     }
   );
 
-  // Fetch programs data for booking assignment
-  const { 
-    data: programsData, 
-    isLoading: programsLoading 
-  } = useQuery(
-    ['programs'],
-    async () => {
-      const response = await axios.get(`${API_URL}/api/v1/programs`);
-      return response.data;
-    }
-  );
-
-  // Fetch staff data for booking assignment
-  const { 
-    data: staffData, 
-    isLoading: staffLoading 
-  } = useQuery(
-    ['staff'],
-    async () => {
-      const response = await axios.get(`${API_URL}/api/v1/staff`);
-      return response.data;
-    }
-  );
-
   // Fetch bookings data
   const { 
     data: bookingsData, 
-    isLoading: bookingsLoading,
-    refetch: refetchBookings
+    isLoading: bookingsLoading
   } = useQuery(
     ['venueBookings', currentWeekStart],
     async () => {
@@ -219,80 +138,6 @@ const Venues = () => {
         }
       });
       return response.data;
-    }
-  );
-
-  // Create venue mutation
-  const createVenueMutation = useMutation(
-    async (venueData) => {
-      const response = await axios.post(`${API_URL}/api/v1/venues`, venueData);
-      return response.data;
-    },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['venues']);
-        setIsCreateModalOpen(false);
-        resetVenueForm();
-      }
-    }
-  );
-
-  // Update venue mutation
-  const updateVenueMutation = useMutation(
-    async ({ id, venueData }) => {
-      const response = await axios.put(`${API_URL}/api/v1/venues/${id}`, venueData);
-      return response.data;
-    },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['venues']);
-        setIsEditModalOpen(false);
-      }
-    }
-  );
-
-  // Delete venue mutation
-  const deleteVenueMutation = useMutation(
-    async (id) => {
-      const response = await axios.delete(`${API_URL}/api/v1/venues/${id}`);
-      return response.data;
-    },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['venues']);
-        setIsDeleteModalOpen(false);
-        setSelectedVenue(null);
-      }
-    }
-  );
-
-  // Add equipment mutation
-  const addEquipmentMutation = useMutation(
-    async ({ venueId, equipmentData }) => {
-      const response = await axios.post(`${API_URL}/api/v1/venues/${venueId}/equipment`, equipmentData);
-      return response.data;
-    },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['venues']);
-        setIsEquipmentModalOpen(false);
-        resetEquipmentForm();
-      }
-    }
-  );
-
-  // Add booking mutation
-  const addBookingMutation = useMutation(
-    async ({ venueId, bookingData }) => {
-      const response = await axios.post(`${API_URL}/api/v1/venues/${venueId}/bookings`, bookingData);
-      return response.data;
-    },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['venueBookings']);
-        setIsBookingModalOpen(false);
-        resetBookingForm();
-      }
     }
   );
 
@@ -392,63 +237,6 @@ const Venues = () => {
       latitude: venue.latitude || null,
       longitude: venue.longitude || null
     });
-    setIsEditModalOpen(true);
-  };
-
-  // Handle opening equipment modal
-  const handleAddEquipment = (venue) => {
-    setIsEquipmentModalOpen(true);
-  };
-
-  // Handle opening booking modal
-  const handleAddBooking = (venue) => {
-    setIsBookingModalOpen(true);
-  };
-
-  // Handle venue creation
-  const handleCreateVenue = (e) => {
-    e.preventDefault();
-    createVenueMutation.mutate(venueForm);
-  };
-
-  // Handle venue update
-  const handleUpdateVenue = (e) => {
-    e.preventDefault();
-    if (selectedVenue) {
-      updateVenueMutation.mutate({
-        id: selectedVenue.id,
-        venueData: venueForm
-      });
-    }
-  };
-
-  // Handle venue deletion
-  const handleDeleteVenue = () => {
-    if (selectedVenue) {
-      deleteVenueMutation.mutate(selectedVenue.id);
-    }
-  };
-
-  // Handle adding equipment
-  const handleAddEquipmentItem = (e) => {
-    e.preventDefault();
-    if (selectedVenue) {
-      addEquipmentMutation.mutate({
-        venueId: selectedVenue.id,
-        equipmentData: equipmentForm
-      });
-    }
-  };
-
-  // Handle adding a booking
-  const handleAddBookingRecord = (e) => {
-    e.preventDefault();
-    if (selectedVenue) {
-      addBookingMutation.mutate({
-        venueId: selectedVenue.id,
-        bookingData: bookingForm
-      });
-    }
   };
 
   // Handle accessibility feature toggle
@@ -583,72 +371,6 @@ const Venues = () => {
     );
   };
 
-  // Get staff name from ID
-  const getStaffName = (staffId) => {
-    if (!staffData || !staffData.data) return 'Unknown';
-    
-    const staff = staffData.data.find(s => s.id === staffId);
-    return staff ? `${staff.first_name} ${staff.last_name}` : 'Unknown';
-  };
-
-  // Get program name from ID
-  const getProgramName = (programId) => {
-    if (!programsData || !programsData.data) return 'Unknown';
-    
-    const program = programsData.data.find(p => p.id === programId);
-    return program ? program.name : 'Unknown';
-  };
-
-  // Calculate total venue bookings
-  const calculateTotalBookings = (venueId) => {
-    if (!bookingsData || !bookingsData.data) return 0;
-    
-    return bookingsData.data.filter(booking => booking.venue_id === venueId).length;
-  };
-
-  // Calculate venue utilization percentage
-  const calculateUtilizationPercentage = (venueId) => {
-    if (!bookingsData || !bookingsData.data) return 0;
-    
-    const totalDays = 30; // Last 30 days
-    const bookingsInPeriod = bookingsData.data.filter(booking => {
-      if (booking.venue_id !== venueId) return false;
-      
-      const bookingDate = new Date(booking.start_date);
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      
-      return bookingDate >= thirtyDaysAgo;
-    }).length;
-    
-    return Math.round((bookingsInPeriod / totalDays) * 100);
-  };
-
-  // Calculate revenue from venue
-  const calculateVenueRevenue = (venueId) => {
-    if (!bookingsData || !bookingsData.data || !venuesData || !venuesData.data) return 0;
-    
-    const venue = venuesData.data.find(v => v.id === venueId);
-    if (!venue) return 0;
-    
-    return bookingsData.data
-      .filter(booking => booking.venue_id === venueId)
-      .reduce((total, booking) => {
-        // Calculate duration in hours
-        const startDate = new Date(booking.start_date + 'T' + booking.start_time);
-        const endDate = new Date(booking.end_date + 'T' + booking.end_time);
-        const durationHours = (endDate - startDate) / (1000 * 60 * 60);
-        
-        // If duration is more than 8 hours, use daily rate
-        if (durationHours > 8) {
-          const days = Math.ceil(durationHours / 24);
-          return total + (venue.daily_rate * days);
-        } else {
-          return total + (venue.hourly_rate * durationHours);
-        }
-      }, 0);
-  };
-
   // Pagination logic
   const indexOfLastVenue = currentPage * venuesPerPage;
   const indexOfFirstVenue = indexOfLastVenue - venuesPerPage;
@@ -666,23 +388,6 @@ const Venues = () => {
     if (currentPage > 1) {
       setCurrentPage(currentPage - 1);
     }
-  };
-
-  // Week navigation handlers
-  const handlePrevWeek = () => {
-    setCurrentWeekStart(prevDate => {
-      const newDate = new Date(prevDate);
-      newDate.setDate(newDate.getDate() - 7);
-      return newDate;
-    });
-  };
-
-  const handleNextWeek = () => {
-    setCurrentWeekStart(prevDate => {
-      const newDate = new Date(prevDate);
-      newDate.setDate(newDate.getDate() + 7);
-      return newDate;
-    });
   };
 
   // Get accessibility icon
@@ -731,34 +436,17 @@ const Venues = () => {
     }
   };
 
-  // Get equipment type icon
-  const getEquipmentIcon = (type) => {
-    switch (type) {
-      case 'audio':
-        return <FiSpeaker />;
-      case 'video':
-        return <FiMonitor />;
-      case 'computer':
-        return <FiMonitor />;
-      case 'furniture':
-        return <FiHome />;
-      case 'sports':
-        return <FiActivity />;
-      case 'art':
-        return <FiImage />;
-      case 'other':
-        return <FiTool />;
-      default:
-        return <FiTool />;
-    }
-  };
-
   // Render directory tab content
 const renderDirectoryTab = () => (
   <div className="directory-tab">
     {/* Page Header */}
     <header className="page-header">
       <h2>Venues</h2>
+    </header>
+
+    {/* Global search / filter bar */}
+    <div className="search-filter-bar glass-panel">
+      {/* Search */}
       <div className="search-container">
         <FiSearch className="search-icon" />
         <input
@@ -769,7 +457,63 @@ const renderDirectoryTab = () => (
           className="search-input"
         />
       </div>
-    </header>
+
+      {/* Filters */}
+      <div className="filter-container">
+        {/* Capacity */}
+        <div className="filter-item">
+          <label htmlFor="capacity-filter">Capacity:</label>
+          <select
+            id="capacity-filter"
+            value={filters.capacity}
+            onChange={(e) =>
+              setFilters({ ...filters, capacity: e.target.value })
+            }
+          >
+            <option value="all">All</option>
+            <option value="small">Small</option>
+            <option value="medium">Medium</option>
+            <option value="large">Large</option>
+          </select>
+        </div>
+
+        {/* Accessibility */}
+        <div className="filter-item">
+          <label htmlFor="access-filter">Accessibility:</label>
+          <select
+            id="access-filter"
+            value={filters.accessibility}
+            onChange={(e) =>
+              setFilters({ ...filters, accessibility: e.target.value })
+            }
+          >
+            <option value="all">All</option>
+            <option value="wheelchair">Wheelchair</option>
+            <option value="hearing">Hearing</option>
+            <option value="vision">Vision</option>
+          </select>
+        </div>
+
+        {/* Availability */}
+        <div className="filter-item">
+          <label htmlFor="availability-filter">Availability:</label>
+          <select
+            id="availability-filter"
+            value={filters.availability}
+            onChange={(e) =>
+              setFilters({ ...filters, availability: e.target.value })
+            }
+          >
+            <option value="all">All</option>
+            <option value="available">Available</option>
+            <option value="unavailable">Unavailable</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Placeholder for future right-side actions */}
+      <div></div>
+    </div>
 
     {/* Venues Grid */}
     {venuesLoading ? (
@@ -797,7 +541,8 @@ const renderDirectoryTab = () => (
           {currentVenues.map((venue) => (
             <div
               key={venue.id}
-              className="venue-card glass-card"
+              className={`venue-card glass-card ${selectedVenue?.id === venue.id ? 'selected' : ''}`}
+              onClick={() => setSelectedVenue(venue)}
             >
               <div className="venue-header">
                 <h3 className="venue-name">{venue.name}</h3>
@@ -842,6 +587,123 @@ const renderDirectoryTab = () => (
           </div>
         )}
       </>
+    )}
+
+    {/* Venue Detail Modal */}
+    {selectedVenue && (
+      <div className="modal-overlay" onClick={() => setSelectedVenue(null)}>
+        <div className="modal-content venue-detail-modal glass-panel" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-header">
+            <h3>{selectedVenue.name}</h3>
+            <button className="modal-close" onClick={() => setSelectedVenue(null)}>
+              <FiX />
+            </button>
+          </div>
+
+          {/* Address & Contact */}
+          <div className="detail-section glass-card">
+            <h4>Address & Contact</h4>
+            <p>
+              <FiMapPin /> {selectedVenue.address}, {selectedVenue.suburb} {selectedVenue.state}{' '}
+              {selectedVenue.postcode}
+            </p>
+            {selectedVenue.contact_name && (
+              <p>
+                <FiUser /> {selectedVenue.contact_name}
+              </p>
+            )}
+            {selectedVenue.contact_phone && (
+              <p>
+                <FiPhone /> <a href={`tel:${selectedVenue.contact_phone}`}>{selectedVenue.contact_phone}</a>
+              </p>
+            )}
+            {selectedVenue.contact_email && (
+              <p>
+                <FiMail />{' '}
+                <a href={`mailto:${selectedVenue.contact_email}`}>{selectedVenue.contact_email}</a>
+              </p>
+            )}
+          </div>
+
+          {/* Google Maps */}
+          <div className="detail-section glass-card">
+            <h4>Location Map</h4>
+            <div className="map-wrapper">
+              <iframe
+                title="venue-map"
+                src={`https://www.google.com/maps?q=${encodeURIComponent(
+                  `${selectedVenue.address}, ${selectedVenue.suburb} ${selectedVenue.state} ${selectedVenue.postcode}`
+                )}&output=embed`}
+                loading="lazy"
+              ></iframe>
+            </div>
+          </div>
+
+          {/* Facilities & Accessibility */}
+          <div className="detail-section glass-card">
+            <h4>Facilities & Accessibility</h4>
+            <div className="badge-list">
+              {selectedVenue.facilities?.map((f, i) => (
+                <span key={i} className="badge badge-blue">
+                  {getFacilityIcon(f)} {f.replace(/_/g, ' ')}
+                </span>
+              ))}
+              {selectedVenue.accessibility_features?.map((a, i) => (
+                <span key={i} className="badge badge-green">
+                  {getAccessibilityIcon(a)} {a.replace(/_/g, ' ')}
+                </span>
+              ))}
+              {(!selectedVenue.facilities || selectedVenue.facilities.length === 0) &&
+                (!selectedVenue.accessibility_features ||
+                  selectedVenue.accessibility_features.length === 0) && (
+                  <p className="text-muted">No facilities or accessibility features listed.</p>
+                )}
+            </div>
+          </div>
+
+          {/* Pricing */}
+          <div className="detail-section glass-card">
+            <h4>Pricing</h4>
+            <p>
+              Hourly Rate: <strong>{formatCurrency(selectedVenue.hourly_rate)}</strong>
+            </p>
+            <p>
+              Daily Rate: <strong>{formatCurrency(selectedVenue.daily_rate)}</strong>
+            </p>
+          </div>
+
+          {/* Hazards */}
+          <div className="detail-section glass-card">
+            <h4>Hazards</h4>
+            {selectedVenue.hazards && selectedVenue.hazards.length > 0 ? (
+              <ul className="hazard-list">
+                {selectedVenue.hazards.map((h, i) => (
+                  <li key={i}>
+                    <FiAlertTriangle /> {h}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-muted">No hazards recorded.</p>
+            )}
+          </div>
+
+          {/* Operating Hours */}
+          {selectedVenue.operating_hours && (
+            <div className="detail-section glass-card">
+              <h4>Operating Hours</h4>
+              <ul className="hours-list">
+                {Object.entries(selectedVenue.operating_hours).map(([day, info]) => (
+                  <li key={day}>
+                    <strong>{day.charAt(0).toUpperCase() + day.slice(1)}:</strong>{' '}
+                    {info.is_open ? `${info.open} – ${info.close}` : 'Closed'}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      </div>
     )}
   </div>
 );
