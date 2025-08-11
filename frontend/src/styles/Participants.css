@@ -65,6 +65,159 @@
 /* Search/filter tweaks inside page */
 .participants-page .search-filter-bar { margin-bottom: 12px; }
 
+/* ------------------------------------------------------------------
+ * NEW 1: Selected card “back-light / invert” effect
+ * ------------------------------------------------------------------ */
+.participants-page .participant-card.selected {
+  background: radial-gradient(ellipse at center, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.65) 60%, rgba(255,255,255,0.25) 100%);
+  border-color: rgba(255,255,255,0.9) !important;
+  box-shadow:
+    0 0 0 2px rgba(255,255,255,0.9),
+    0 12px 28px rgba(255,255,255,0.35),
+    0 0 20px rgba(124,124,249,0.45) inset;
+  color: #111;
+}
+.participants-page .participant-card.selected * { color:#111; }
+.participants-page .participant-card.selected .badge,
+.participants-page .participant-card.selected .support-flag-icon { 
+  background: rgba(0,0,0,0.08); 
+  border-color: rgba(0,0,0,0.1);
+  color:#111;
+}
+.participants-page .participant-card.selected .participant-actions .action-btn {
+  background: rgba(0,0,0,0.05);
+  border-color: rgba(0,0,0,0.1);
+}
+
+/* ------------------------------------------------------------------
+ * NEW 2: Footer contact typography tweaks
+ * ------------------------------------------------------------------ */
+.participants-page .participant-contact .contact-item span{
+  font-size: 13px;
+  line-height: 1.3;
+  word-break: break-word;
+}
+/* footer layout – give phone fixed no-wrap width & let address flex */
+.participants-page .participant-contact{
+  flex: 1 1 auto;
+  min-width: 0;           /* allow wrap inside flex container */
+}
+.participants-page .contact-item.phone span{ white-space: nowrap; }
+.participants-page .contact-item.address{ flex: 1 1 auto; min-width:0; }
+.participants-page .contact-item.address span{ white-space: normal; overflow-wrap:anywhere; }
+
+/* ------------------------------------------------------------------
+ * NEW 3: Action icon colours
+ * ------------------------------------------------------------------ */
+.participants-page .participant-actions .action-btn.edit svg { color:#ffffff; }
+.participants-page .participant-actions .action-btn.delete svg { color:#ff6b6b; }
+
+/* ------------------------------------------------------------------
+ * NEW 4: Toast notice
+ * ------------------------------------------------------------------ */
+.participants-page .toast-notice{
+  position:fixed;
+  bottom:24px;
+  right:24px;
+  z-index:9999;
+  padding:12px 18px;
+  border-radius:10px;
+  background:rgba(0,0,0,0.85);
+  color:#fff;
+  border:1px solid rgba(255,255,255,0.12);
+  animation: toastFade 0.4s ease-out;
+}
+@keyframes toastFade{
+  from{transform:translateY(20px); opacity:0;}
+  to{transform:translateY(0); opacity:1;}
+}
+
+/* ------------------------------------------------------------------
+ * NEW 5: Planning header & back-icon
+ * ------------------------------------------------------------------ */
+.participants-page .planning-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:20px;
+  margin-bottom:16px;
+}
+.participants-page .planning-title{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-size:20px;
+  font-weight:700;
+  line-height:1; /* vertical align with back icon */
+}
+.participants-page .icon-back{
+  width:36px;
+  height:36px;
+  border-radius:8px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(255,255,255,0.05);
+  border:1px solid var(--ui-border,rgba(255,255,255,0.08));
+  cursor:pointer;
+}
+.participants-page .icon-back:hover{background:rgba(255,255,255,0.08);}
+/* back icon arrow always white */
+.participants-page .icon-back svg{ color:#ffffff; }
+
+/* ------------------------------------------------------------------
+ * NEW 6: Summary stats
+ * ------------------------------------------------------------------ */
+.participants-page .summary-stats{
+  display:flex;
+  flex-wrap:wrap;
+  gap:16px;
+}
+.participants-page .stat-card{
+  flex:1 1 180px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:12px 14px;
+  border-radius:10px;
+  background:rgba(255,255,255,0.03);
+  border:1px solid rgba(255,255,255,0.06);
+}
+.participants-page .stat-icon{
+  width:40px;
+  height:40px;
+  border-radius:10px;
+  background:rgba(124,124,249,0.15);
+  color:rgba(124,124,249,0.9);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.participants-page .stat-content{display:flex;flex-direction:column;}
+.participants-page .stat-value{font-size:20px;font-weight:700;line-height:1;}
+.participants-page .stat-label{font-size:12px;opacity:0.8;}
+
+/* ------------------------------------------------------------------
+ * NEW 7: Modal sizing override (edit/create)
+ * ------------------------------------------------------------------ */
+.participants-page .modal-overlay{
+  position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,0.55);z-index:9998;
+}
+.participants-page .modal-content{
+  width:clamp(720px,80vw,960px);
+  max-height:90vh;
+  overflow-y:auto;
+  border-radius:12px;
+}
+.participants-page .modal-body{overflow-y:auto;}
+
+/* ------------------------------------------------------------------
+ * NEW 8: Reports tab bottom spacing
+ * ------------------------------------------------------------------ */
+.participants-page .reports-tab{padding-bottom:60px;}
+.participants-page .export-options{margin-top:24px;}
+
 /* Planning view tiles */
 .participants-page .participant-selection-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
 .participants-page .participant-selection-card { display:grid; grid-template-columns: 44px 1fr auto; align-items:center; column-gap:12px; }
@@ -79,6 +232,13 @@
 .participants-page .planning-tab-btn { display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius: 8px; color: rgba(255,255,255,0.7); border: 1px solid transparent; background: transparent; }
 .participants-page .planning-tab-btn.active { background: linear-gradient(180deg, rgba(124,124,249,0.22), rgba(124,124,249,0.14)); border-color: rgba(124,124,249,0.35); color: #fff; }
 
+/* Distinct colour for active planning sub-tabs (blue tint) */
+.participants-page .planning-tab-btn.active{
+  background: linear-gradient(180deg, rgba(86,163,255,0.24), rgba(86,163,255,0.16));
+  border-color: rgba(86,163,255,0.40);
+  color:#fff;
+}
+
 /* Planning content sections */
 .participants-page .planning-content { margin-top: 16px; }
 .participants-page .planning-section { margin-bottom: 16px; }
@@ -88,6 +248,18 @@
 .participants-page .detail-item { display: flex; flex-direction: column; gap: 2px; }
 .participants-page .detail-label { font-size: 12px; color: rgba(255,255,255,0.6); }
 .participants-page .detail-value { font-weight: 500; }
+
+/* ---------------------------------------------
+ * Two-column wrapper for supervision + support
+ * -------------------------------------------*/
+.participants-page .two-col-sections{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:16px;
+}
+@media (max-width: 920px){
+  .participants-page .two-col-sections{ grid-template-columns:1fr; }
+}
 
 /* Support flags form */
 .participants-page .support-flags-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-bottom: 16px; }
@@ -133,6 +305,40 @@
 .participants-page .report-icon svg { width: 24px; height: 24px; }
 .participants-page .report-content h4 { margin-top: 0; margin-bottom: 8px; }
 .participants-page .report-content p { margin-top: 0; margin-bottom: 12px; color: rgba(255,255,255,0.7); }
+
+/* export buttons spacing + header padding */
+.participants-page .reports-header{ margin-bottom:16px; }
+.participants-page .export-buttons{ display:flex; gap:10px; flex-wrap:wrap; }
+.participants-page .export-options{ margin-top:20px; }
+
+/* ---------------------------------------------
+ * Forms – unify dark glass inputs/selects
+ * -------------------------------------------*/
+.participants-page .modal-content input,
+.participants-page .modal-content select,
+.participants-page .modal-content textarea,
+.participants-page .planning-section input,
+.participants-page .planning-section select,
+.participants-page .planning-section textarea{
+  padding:8px 12px;
+  background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.10);
+  color:rgba(255,255,255,0.92);
+  border-radius:8px;
+}
+.participants-page .planning-section select{ appearance:none; }
+
+/* modal close icon visibility */
+.participants-page .modal-header .modal-close svg{ color:#ffffff; }
+
+/* form action button spacing */
+.participants-page .form-actions{ display:flex; gap:10px; justify-content:flex-end; padding-top:12px; }
+
+/* Week header alignment */
+.participants-page .planning-week-header{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+}
+.participants-page .planning-week-header .week-nav{ display:flex; gap:8px; }
 
 /* Responsive */
 @media (max-width: 920px) {
