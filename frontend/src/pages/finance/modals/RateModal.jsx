@@ -1,4 +1,5 @@
 import React from 'react';
+import { FiX } from 'react-icons/fi';
 
 export default function RateModal({ isOpen, onClose, newRate, setNewRate, onSubmit, isSaving }) {
   if (!isOpen) return null;
@@ -8,7 +9,9 @@ export default function RateModal({ isOpen, onClose, newRate, setNewRate, onSubm
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>Edit Rate</h3>
-          <button className="btn btn-icon" onClick={onClose}>×</button>
+          <button className="modal-close" onClick={onClose}>
+            <FiX />
+          </button>
         </div>
         <form onSubmit={onSubmit} className="modal-body">
           <div className="form-grid">

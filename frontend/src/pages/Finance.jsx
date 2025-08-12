@@ -12,6 +12,9 @@ import BillingModal from './finance/modals/BillingModal';
 import RateModal from './finance/modals/RateModal';
 import ExportModal from './finance/modals/ExportModal';
 
+// Page-specific styles
+import '../styles/Finance.css';
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3009';
 
 const Finance = () => {
@@ -154,14 +157,15 @@ const Finance = () => {
       <div className="page-header">
         <h2 className="page-title">Finance</h2>
         <div className="page-actions">
-          <button className="btn btn-icon" onClick={() => { refetchBilling(); refetchRates(); refetchReport(); }} title="Refresh All Data">
+          <button className="nav-button" onClick={() => { refetchBilling(); refetchRates(); refetchReport(); }} title="Refresh All Data">
             <FiRefreshCw />
           </button>
           <span className="date-display">{format(new Date(), 'EEEE, MMMM d, yyyy')}</span>
         </div>
       </div>
 
-      <div className="finance-tabs glass-card">
+      {/* Unified global tab bar */}
+      <div className="page-tabs">
         <button className={`tab-button ${selectedTab === 'billing' ? 'active' : ''}`} onClick={() => setSelectedTab('billing')}>
           <FiDollarSign /> Billing
         </button>

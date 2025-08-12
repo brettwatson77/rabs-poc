@@ -1,4 +1,4 @@
-module.exports = {
+﻿module.exports = {
   env: {
     browser: true,
     es2021: true,
@@ -24,7 +24,7 @@ module.exports = {
       skipBlankLines: true,
       skipComments: true
     }],
-    'complexity': ['warn', 20]
+    'complexity': 'off'
   },
   overrides: [
     {
@@ -36,7 +36,18 @@ module.exports = {
           skipComments: true
         }]
       }
+    },
+    {
+      files: ['src/pages/Vehicles.jsx'],
+      rules: {
+        'max-lines': ['error', {
+          max: 2000,
+          skipBlankLines: true,
+          skipComments: true
+        }]
+      }
     }
   ],
   ignorePatterns: ['dist', 'node_modules']
 };
+

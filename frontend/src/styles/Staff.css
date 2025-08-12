@@ -1,1 +1,265 @@
-/* placeholder */
+/* Staff page styles */
+.staff-page .tab-content { margin-top: 12px; }
+
+/* Staff grid */
+.staff-page .staff-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  gap: 14px;
+  margin-top: 12px; /* keep cards from touching the search bar */
+}
+
+/* Card layout */
+.staff-page .staff-card {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  grid-template-rows: auto auto auto;
+  column-gap: 14px;
+  row-gap: 8px;
+  align-items: center;
+}
+
+/* Avatar */
+.staff-page .staff-header { grid-column: 1; grid-row: 1 / span 2; display: flex; align-items: flex-start; gap: 8px; }
+.staff-page .staff-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.staff-page .staff-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.staff-page .staff-initials {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* Badges near name */
+.staff-page .staff-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+
+/* Name + meta */
+.staff-page .staff-info { grid-column: 2; grid-row: 1; align-self: center; }
+.staff-page .staff-name { margin: 0 0 2px 0; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+.staff-page .staff-employment { margin: 0; color: rgba(255,255,255,0.7); display: flex; gap: 8px; align-items: center; margin-bottom: 4px; }
+.staff-page .contract-hours { opacity: 0.8; margin-left: 6px; }
+.staff-page .staff-rate { margin: 0; color: rgba(255,255,255,0.7); display: flex; align-items: center; gap: 6px; }
+.staff-page .staff-rate .icon { opacity: 0.8; }
+
+/* Footer row */
+.staff-page .staff-footer {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(255,255,255,0.08);
+}
+
+.staff-page .staff-contact {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: rgba(255,255,255,0.78);
+}
+
+.staff-page .contact-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.staff-page .contact-icon {
+  width: 16px;
+  height: 16px;
+  opacity: 0.8;
+}
+
+/* Profile modal */
+.staff-profile-modal {
+  width: 90%;
+  max-width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.profile-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-initials {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.profile-info h2 {
+  margin: 0 0 8px 0;
+}
+
+.profile-badges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.profile-content {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.profile-section {
+  margin-bottom: 16px;
+}
+
+.profile-section h4 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding-bottom: 8px;
+}
+
+.profile-details {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detail-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.detail-icon {
+  color: rgba(255,255,255,0.6);
+  margin-top: 4px;
+}
+
+.detail-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.detail-label {
+  font-size: 12px;
+  color: rgba(255,255,255,0.6);
+}
+
+.detail-value {
+  font-weight: 500;
+}
+
+/* Form styles */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  color: rgba(255,255,255,0.8);
+}
+
+.form-grid input,
+.form-grid select {
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  color: rgba(255,255,255,0.9);
+}
+
+/* Responsive */
+@media (max-width: 920px) {
+  .staff-page .staff-card { grid-template-columns: 48px 1fr; grid-template-rows: auto auto auto auto; }
+  .staff-page .staff-footer { grid-row: 4; }
+
+/* ------------------------------------------------------------------
+ * Selected card “back-light / invert” effect
+ * ------------------------------------------------------------------*/
+.staff-page .staff-card.selected {
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 255, 255, 0.85) 0%,
+    rgba(255, 255, 255, 0.65) 60%,
+    rgba(255, 255, 255, 0.25) 100%
+  );
+  border-color: rgba(255, 255, 255, 0.9) !important;
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.9),
+    0 12px 28px rgba(255, 255, 255, 0.35),
+    0 0 20px rgba(124, 124, 249, 0.45) inset;
+  color: #111;
+}
+.staff-page .staff-card.selected * { color:#111; }
+.staff-page .staff-card.selected .badge {
+  background: rgba(0,0,0,0.08);
+  border-color: rgba(0,0,0,0.1);
+  color:#111;
+}
+
+/* ------------------------------------------------------------------
+ * Contact layout tweaks
+ * ------------------------------------------------------------------*/
+.staff-page .staff-contact .contact-item span {
+  font-size: 13px;
+  line-height: 1.3;
+}
+.staff-page .staff-contact {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.staff-page .contact-item.phone span { white-space: nowrap; }
+.staff-page .contact-item.email {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.staff-page .contact-item.email span {
+  white-space: normal;
+  overflow-wrap:anywhere;
+}
+  .profile-content { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+  .staff-page .staff-contact { flex-direction: column; align-items: flex-start; gap: 6px; }
+}

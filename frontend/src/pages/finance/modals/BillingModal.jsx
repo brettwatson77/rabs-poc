@@ -1,4 +1,5 @@
 import React from 'react';
+import { FiX } from 'react-icons/fi';
 
 export default function BillingModal({
   isOpen,
@@ -23,7 +24,9 @@ export default function BillingModal({
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>{selectedBilling ? 'Edit Billing Entry' : 'New Billing Entry'}</h3>
-          <button className="btn btn-icon" onClick={onClose}>×</button>
+          <button className="modal-close" onClick={onClose}>
+            <FiX />
+          </button>
         </div>
         <form onSubmit={onSubmit} className="modal-body">
           <div className="form-grid">
