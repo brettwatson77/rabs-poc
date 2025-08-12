@@ -10,17 +10,24 @@ const { protocol, hostname, port, origin } = window.location;
 
 let API_BASE_URL;
 
-// Local dev (Vite) or explicitly running on localhost/127.0.0.1
-const isLocalDev =
-  hostname === 'localhost' ||
-  hostname === '127.0.0.1' ||
-  port === '3008';
+// ---------------------------------------------------------------------------
+// 1) Explicit environment override via VITE_API_URL
+// 2) Vite dev server (port 3008) → talk to backend on localhost:3009
+// 3) Fallback: same-origin (prod / staging)
+// ---------------------------------------------------------------------------
+const envOverride = import.meta.env.VITE_API_URL;
 
-if (isLocalDev) {
-  // Use same host but backend port 3009
-  API_BASE_URL = `${protocol}//${hostname}:3009/api/v1`;
+if (envOverride) {
+  // Respect explicit override; make sure it ends with /api/v1 exactly once
+  const trimmed = envOverride.replace(/\\/$/, '');           // drop trailing slash
+  API_BASE_URL = trimmed.endsWith('/api/v1')
+    ? trimmed
+    : `${trimmed}/api/v1`;
+} else if (port === '3008') {
+  // Running under Vite dev server – always hit backend on localhost:3009
+  API_BASE_URL = `${protocol}//localhost:3009/api/v1`;
 } else {
-  // Same origin (handles prod domain + any TLS)
+  // Same-origin for deployed environments
   API_BASE_URL = `${origin}/api/v1`;
 }
 
