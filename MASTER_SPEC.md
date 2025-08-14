@@ -1,4 +1,4 @@
-# RP2 ‑ Master Specification  
+# the proof of concept RABS 3.5 ‑ Master Specification  
 _Single-source-of-truth contract for the clean rebuild_
 
 ---
@@ -109,10 +109,13 @@ The UI is split into four primary pages that map directly to the Workshed layers
 
 | Page | Primary Object(s) Shown | Origin Layer | Key Interactions | Down-stream Effect |
 |------|------------------------|--------------|------------------|--------------------|
-| **Master Schedule** | **Program / Event Cards** (one per *loom instance*) | Wall ⊕ Calendar | • Create / edit program templates<br>• Apply date exceptions<br>• Drag-drop to new date / venue | Re-threads loom instance and *regenerates* dashboard & roster time-slot breakdowns |
+| **Schedule** | **Program / Event Cards** (one per *loom instance*) | Wall ⊕ Calendar | • Create / edit program templates<br>• Apply date exceptions<br>• Drag-drop to new date / venue | Re-threads loom instance and *regenerates* dashboard & roster time-slot breakdowns |
 | **Dashboard** | **Time-Slot Cards** (Before / Now / Next / Later / After columns)<br>e.g. Pickup Run 1, Centre-Based, Lunch, Drop-off Run 2 | Loom-generated *time slots* | • Mark attendance / cancellation<br>• Re-assign staff / vehicles<br>• Quick “call sick” action | Writes **intentions** to Calendar → cascades back to roster & finance |
 | **Roster** | **Staff & Vehicle Allocations** | Derived from Dashboard selections | • Approve / swap / fill roster gaps<br>• Manage unavailability | Updates staff shifts & vehicle runs tables; triggers finance cost recompute |
 | **Finance** | **Billing Lines & CSV Exports** | Aggregated from Dashboard + Roster data | • Review NDIS codes & ratio splits<br>• Export PRODA CSV / invoices | Final immutable finance records |
+
+Supported by resource (filing cabinet) pages; vehicles, venues, staff, particpiants & a settings and home (splash) page.
+future pages for when the roster and system is in use cms with the following tabs; shift, chat and sil
 
 ### Loom Dependency Chain
 
@@ -208,5 +211,5 @@ Each migrations file **MUST** reference this spec header.
 
 ---
 
-**This document is the constitution of RP2.  
+**This document is the constitution of RP3.5.  
 If code, DB or tests disagree with this spec – the spec wins.**
