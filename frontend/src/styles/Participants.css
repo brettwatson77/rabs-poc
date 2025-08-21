@@ -110,7 +110,7 @@
  * NEW 3: Action icon colours
  * ------------------------------------------------------------------ */
 .participants-page .participant-actions .action-btn.edit svg { color:#ffffff; }
-.participants-page .participant-actions .action-btn.delete svg { color:#ff6b6b; }
+.participants-page .participant-actions .action-btn.delete svg { color:#ffffff; }
 
 /* ------------------------------------------------------------------
  * NEW 4: Toast notice

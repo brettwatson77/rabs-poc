@@ -42,6 +42,10 @@ import CreateParticipantModal from './participants/modals/CreateParticipantModal
 import EditParticipantModal from './participants/modals/EditParticipantModal';
 import DeleteParticipantModal from './participants/modals/DeleteParticipantModal';
 
+// Component imports
+import DirectoryHeader from './participants/components/Directory/DirectoryHeader';
+import ParticipantCard from './participants/components/Directory/ParticipantCard';
+
 // Page-specific styles
 import '../styles/Participants.css';
 
@@ -88,7 +92,8 @@ const Participants = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedPlanTab, setSelectedPlanTab] = useState('overview');
   const [currentPage, setCurrentPage] = useState(1);
-  const participantsPerPage = 12;
+  const participantsPerPage = 24;
+  const [toast, setToast] = useState({ visible: false, message: '' });
 
   // New state for enhanced features
   const [supervisionValue, setSupervisionValue] = useState(1.0);
@@ -555,6 +560,16 @@ const Participants = () => {
     }
   };
 
+  // Handle tab switching with gating
+  const handleTabSwitch = (tab) => {
+    if ((tab === 'planning' || tab === 'reports') && !selectedParticipant) {
+      setToast({ visible: true, message: 'Select a participant first to access this tab.' });
+      setTimeout(() => setToast({ visible: false, message: '' }), 2500);
+      return;
+    }
+    setActiveTab(tab);
+  };
+
   // Filter participants based on search term and filters
   const filteredParticipants = participantsData?.data?.filter(participant => {
     const matchesSearch = 
@@ -695,68 +710,15 @@ const Participants = () => {
   const renderDirectoryTab = () => (
     <div className="directory-tab">
       {/* Search and Filter Bar */}
-      <div className="search-filter-bar glass-panel">
-        <div className="search-container">
-          <FiSearch className="search-icon" />
-          <input
-            type="text"
-            placeholder="Search participants..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="search-input"
-          />
-        </div>
-        
-        <div className="filter-container">
-          <button 
-            className="filter-toggle-btn"
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            <FiFilter />
-            <span>Filters</span>
-          </button>
-          
-          {showFilters && (
-            <div className="filter-dropdown glass-panel">
-              <div className="filter-group">
-                <label>Status</label>
-                <select
-                  value={filters.status}
-                  onChange={(e) => setFilters({...filters, status: e.target.value})}
-                >
-                  <option value="all">All Statuses</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="pending">Pending</option>
-                  <option value="suspended">Suspended</option>
-                </select>
-              </div>
-              
-              <div className="filter-group">
-                <label>Support Level</label>
-                <select
-                  value={filters.supportLevel}
-                  onChange={(e) => setFilters({...filters, supportLevel: e.target.value})}
-                >
-                  <option value="all">All Levels</option>
-                  <option value="high">High</option>
-                  <option value="medium">Medium</option>
-                  <option value="standard">Standard</option>
-                  <option value="low">Low</option>
-                </select>
-              </div>
-            </div>
-          )}
-        </div>
-        
-        <button 
-          className="create-btn glass-button"
-          onClick={() => { resetParticipantForm(); setIsCreateModalOpen(true); }}
-        >
-          <FiPlus />
-          <span>New Participant</span>
-        </button>
-      </div>
+      <DirectoryHeader
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        showFilters={showFilters}
+        setShowFilters={setShowFilters}
+        filters={filters}
+        setFilters={setFilters}
+        onCreate={() => { resetParticipantForm(); setIsCreateModalOpen(true); }}
+      />
       
       {/* Participants Grid */}
       {participantsLoading ? (
@@ -787,113 +749,16 @@ const Participants = () => {
       ) : (
         <>
           <div className="participants-grid">
-            {currentParticipants.map(participant => {
-              // Calculate supervision multiplier color and width
-              const supervisionMultiplier = parseFloat(participant.supervision_multiplier || 1.0);
-              const supervisionColor = getSupervisionColor(supervisionMultiplier);
-              const supervisionWidth = Math.min((supervisionMultiplier / 2.5) * 100, 100);
-              
-              return (
-                <div 
-                  key={participant.id} 
-                  className="participant-card glass-card"
-                  onClick={() => setSelectedParticipant(participant)}
-                >
-                  <div className="participant-header">
-                    <div className="participant-avatar">
-                      {participant.first_name?.[0]}{participant.last_name?.[0]}
-                    </div>
-                    <div className="participant-badges">
-                      <span className={`badge ${getStatusBadge(participant.status)}`}>
-                        {participant.status}
-                      </span>
-                      <span className={`badge ${getSupportLevelBadge(participant.support_level)}`}>
-                        {participant.support_level}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="participant-info">
-                    <h3 className="participant-name">
-                      {participant.first_name} {participant.last_name}
-                    </h3>
-                    <p className="participant-ndis">
-                      <span>NDIS:</span> {participant.ndis_number || 'N/A'}
-                    </p>
-                    <p className="participant-age">
-                      <span>Age:</span> {calculateAge(participant.date_of_birth)}
-                    </p>
-                  </div>
-                  
-                  {/* Supervision Multiplier Indicator */}
-                  <div className="supervision-indicator">
-                    <div className="supervision-label">
-                      <span>Supervision:</span>
-                      <span style={{ color: supervisionColor }}>{supervisionMultiplier.toFixed(2)}×</span>
-                    </div>
-                    <div className="supervision-bar-bg">
-                      <div 
-                        className="supervision-bar-fg"
-                        style={{ 
-                          width: `${supervisionWidth}%`,
-                          backgroundColor: supervisionColor
-                        }}
-                      ></div>
-                    </div>
-                  </div>
-                  
-                  {/* Support Flags */}
-                  <div className="support-flags">
-                    {Object.entries(SUPPORT_FLAG_ICONS).map(([key, icon]) => (
-                      participant[key] && (
-                        <span 
-                          key={key} 
-                          className="support-flag-icon" 
-                          title={SUPPORT_FLAG_LABELS[key]}
-                        >
-                          {icon}
-                        </span>
-                      )
-                    ))}
-                  </div>
-                  
-                  <div className="participant-footer">
-                    <div className="participant-contact">
-                      {participant.phone && (
-                        <div className="contact-item">
-                          <FiPhone className="contact-icon" />
-                          <span>{participant.phone}</span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="participant-actions">
-                      <button 
-                        className="action-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEditParticipant(participant);
-                        }}
-                        title="Edit"
-                      >
-                        <FiEdit2 />
-                      </button>
-                      <button 
-                        className="action-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedParticipant(participant);
-                          setIsDeleteModalOpen(true);
-                        }}
-                        title="Delete"
-                      >
-                        <FiTrash2 />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            {currentParticipants.map(participant => (
+              <ParticipantCard
+                key={participant.id}
+                participant={participant}
+                selected={selectedParticipant?.id === participant.id}
+                onClick={(p) => setSelectedParticipant(p)}
+                onEdit={handleEditParticipant}
+                onDelete={(p) => { setSelectedParticipant(p); setIsDeleteModalOpen(true); }}
+              />
+            ))}
           </div>
           
           {/* Pagination */}
@@ -1619,6 +1484,46 @@ const Participants = () => {
                   )}
                 </div>
                 
+                {/* Billing History Table */}
+                <div className="planning-section glass-card">
+                  <h4>Billing History</h4>
+                  <div className="billing-history-table-container">
+                    <table className="billing-history-table">
+                      <thead>
+                        <tr>
+                          <th>NDIS Number</th>
+                          <th>Support From</th>
+                          <th>Support To</th>
+                          <th>NDIS Code</th>
+                          <th>Rate</th>
+                          <th>Quantity</th>
+                          <th>Program</th>
+                          <th>Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(selectedParticipant.billing_history || []).map((item, index) => (
+                          <tr key={index}>
+                            <td>{item.ndis_number || selectedParticipant.ndis_number || 'N/A'}</td>
+                            <td>{formatDate(item.support_from)}</td>
+                            <td>{formatDate(item.support_to)}</td>
+                            <td>{item.ndis_code || 'N/A'}</td>
+                            <td>${parseFloat(item.rate || 0).toFixed(2)}</td>
+                            <td>{parseFloat(item.quantity || 0).toFixed(2)}</td>
+                            <td>{item.program || 'N/A'}</td>
+                            <td>${parseFloat(item.total || 0).toFixed(2)}</td>
+                          </tr>
+                        ))}
+                        {(!selectedParticipant.billing_history || selectedParticipant.billing_history.length === 0) && (
+                          <tr>
+                            <td colSpan="8" className="empty-table-message">No billing history available</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                
                 <div className="planning-section glass-card">
                   <h4>Add Billing Code</h4>
                   <form className="billing-code-form" onSubmit={handleAddBillingCode}>
@@ -1851,7 +1756,7 @@ const Participants = () => {
             <FiCalendar />
           </div>
           <div className="report-content">
-            <h4>Program Attendance Report</h4>
+            <h4>Participation Report</h4>
             <p>Track participant attendance across all programs.</p>
             <button className="btn btn-primary">
               <FiFileText /> Generate Report
@@ -1891,14 +1796,14 @@ const Participants = () => {
           </button>
           <button 
             className={`tab-button ${activeTab === 'planning' ? 'active' : ''}`}
-            onClick={() => setActiveTab('planning')}
+            onClick={() => handleTabSwitch('planning')}
           >
             <FiTarget />
             <span>Planning</span>
           </button>
           <button 
             className={`tab-button ${activeTab === 'reports' ? 'active' : ''}`}
-            onClick={() => setActiveTab('reports')}
+            onClick={() => handleTabSwitch('reports')}
           >
             <FiBarChart2 />
             <span>Reports</span>
@@ -1944,6 +1849,9 @@ const Participants = () => {
           selectedParticipant={selectedParticipant}
         />
       )}
+      
+      {/* Toast Notification */}
+      {toast.visible && (<div className="toast-notice">{toast.message}</div>)}
     </div>
   );
 };
