@@ -681,6 +681,120 @@ const Participants = () => {
     }
   };
 
+  /* ------------------------------------------------------------------
+   * CSV Export Utilities + Handlers
+   * ------------------------------------------------------------------ */
+
+  // Generic CSV download helper
+  const downloadCSV = (filename, rows) => {
+    const process = (val) => {
+      if (val === null || val === undefined) return '';
+      const str = String(val).replaceAll('"', '""');
+      if (str.search(/[",\n]/) >= 0) return `"${str}"`;
+      return str;
+    };
+    const csv = rows.map((r) => r.map(process).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // Participant Summary
+  const handleExportParticipantSummary = () => {
+    if (!selectedParticipant) return;
+    const p = selectedParticipant;
+    const rows = [
+      [
+        'First Name',
+        'Last Name',
+        'NDIS Number',
+        'DOB',
+        'Age',
+        'Gender',
+        'Phone',
+        'Email',
+        'Support Level',
+        'Status'
+      ],
+      [
+        p.first_name,
+        p.last_name,
+        p.ndis_number,
+        formatDate(p.date_of_birth),
+        calculateAge(p.date_of_birth),
+        p.gender,
+        p.phone,
+        p.email,
+        p.support_level,
+        p.status
+      ]
+    ];
+    downloadCSV(`participant-summary-${p.id}.csv`, rows);
+  };
+
+  // Goals Progress
+  const handleExportGoalsProgress = () => {
+    if (!selectedParticipant) return;
+    const p = selectedParticipant;
+    const header = ['Title', 'Description', 'Category', 'Status', 'Target Date'];
+    const body =
+      (p.goals || []).map((g) => [
+        g.title,
+        g.description,
+        g.category,
+        g.status,
+        formatDate(g.target_date)
+      ]) || [];
+    downloadCSV(`goals-progress-${p.id}.csv`, [header, ...body]);
+  };
+
+  // Billing & Funding
+  const handleExportBillingFunding = () => {
+    if (!selectedParticipant) return;
+    const p = selectedParticipant;
+    const header = [
+      'NDIS Code',
+      'Description',
+      'Rate',
+      'Total Amount',
+      'Remaining Amount',
+      'Start Date',
+      'End Date'
+    ];
+    const body =
+      (p.billing_codes || []).map((b) => [
+        b.code,
+        b.description,
+        Number(b.rate || 0).toFixed(2),
+        Number(b.total_amount || 0).toFixed(2),
+        Number(b.remaining_amount || 0).toFixed(2),
+        formatDate(b.start_date),
+        formatDate(b.end_date)
+      ]) || [];
+    downloadCSV(`billing-funding-${p.id}.csv`, [header, ...body]);
+  };
+
+  // Participation (simple enrolled programs list)
+  const handleExportParticipation = () => {
+    if (!selectedParticipant) return;
+    const programNameById = Object.fromEntries(
+      (availablePrograms || []).map((pr) => [pr.id, pr.name])
+    );
+    const header = ['Program', 'Status'];
+    const body =
+      (enrollments || []).map((e) => [
+        programNameById[e.program_id] || `Program ${e.program_id}`,
+        'Enrolled'
+      ]) || [];
+    downloadCSV(`participation-${selectedParticipant.id}.csv`, [header, ...body]);
+  };
+
   // Render directory tab content
   const renderDirectoryTab = () => (
     <div className="directory-tab">
@@ -1694,7 +1808,7 @@ const Participants = () => {
           <div className="report-content">
             <h4>Participant Summary Report</h4>
             <p>Generate a summary report for all participants or filter by status.</p>
-            <button className="btn btn-primary">
+            <button className="btn btn-primary" onClick={handleExportParticipantSummary}>
               <FiFileText /> Generate Report
             </button>
           </div>
@@ -1707,7 +1821,7 @@ const Participants = () => {
           <div className="report-content">
             <h4>Goals Progress Report</h4>
             <p>Track progress on participant goals and outcomes.</p>
-            <button className="btn btn-primary">
+            <button className="btn btn-primary" onClick={handleExportGoalsProgress}>
               <FiFileText /> Generate Report
             </button>
           </div>
@@ -1720,7 +1834,7 @@ const Participants = () => {
           <div className="report-content">
             <h4>Billing & Funding Report</h4>
             <p>View NDIS billing codes and funding utilization.</p>
-            <button className="btn btn-primary">
+            <button className="btn btn-primary" onClick={handleExportBillingFunding}>
               <FiFileText /> Generate Report
             </button>
           </div>
@@ -1733,7 +1847,7 @@ const Participants = () => {
           <div className="report-content">
             <h4>Participation Report</h4>
             <p>Track participant attendance across all programs.</p>
-            <button className="btn btn-primary">
+            <button className="btn btn-primary" onClick={handleExportParticipation}>
               <FiFileText /> Generate Report
             </button>
           </div>
