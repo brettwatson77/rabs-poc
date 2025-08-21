@@ -225,4 +225,24 @@ router.post('/:id/enrollments', async (req, res, next) => {
   }
 });
 
+/**
+ * ---------------------------------------------------------------------------
+ * POST /api/v1/participants/:id/goals
+ * ---------------------------------------------------------------------------
+ * Placeholder – not yet implemented.
+ */
+router.post('/:id/goals', (req, res) => {
+  res.status(501).json({ success: false, error: 'Goal creation not implemented yet' });
+});
+
+/**
+ * ---------------------------------------------------------------------------
+ * POST /api/v1/participants/:id/billing-codes
+ * ---------------------------------------------------------------------------
+ * Placeholder – not yet implemented.
+ */
+router.post('/:id/billing-codes', (req, res) => {
+  res.status(501).json({ success: false, error: 'Billing code creation not implemented yet' });
+});
+
 module.exports = router;

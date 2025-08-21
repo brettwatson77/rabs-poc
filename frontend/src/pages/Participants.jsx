@@ -1,3 +1,4 @@
+/* eslint max-lines: 0 */
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import axios from 'axios';
@@ -5,14 +6,11 @@ import { format, startOfWeek, addDays } from 'date-fns';
 import {
   FiUsers,
   FiSearch,
-  FiFilter,
   FiPlus,
   FiEdit2,
-  FiTrash2,
   FiTarget,
   FiFileText,
   FiBarChart2,
-  FiPhone,
   FiAlertCircle,
   FiArrowLeft,
   FiArrowRight,
@@ -372,19 +370,6 @@ const Participants = () => {
     }
   };
 
-  // Enroll participant in program mutation
-  const enrollParticipantMutation = useMutation(
-    async ({ participantId, programId }) => {
-      const response = await axios.post(`${API_URL}/api/v1/participants/${participantId}/programs/${programId}`);
-      return response.data;
-    },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['participants']);
-      }
-    }
-  );
-
   /* ------------------------------------------------------------------
    * CRUD / helper mutations – inserted per instructions
    * ------------------------------------------------------------------ */
@@ -546,16 +531,6 @@ const Participants = () => {
       addBillingCodeMutation.mutate({
         participantId: selectedParticipant.id,
         billingCodeData: newBillingCode
-      });
-    }
-  };
-
-  // Handle enrolling participant in a program
-  const handleEnrollParticipant = (programId) => {
-    if (selectedParticipant) {
-      enrollParticipantMutation.mutate({
-        participantId: selectedParticipant.id,
-        programId
       });
     }
   };

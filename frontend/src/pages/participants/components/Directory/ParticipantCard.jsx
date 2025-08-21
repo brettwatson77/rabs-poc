@@ -4,7 +4,6 @@ import { FaWheelchair, FaBrain } from 'react-icons/fa';
 import { BsEar } from 'react-icons/bs';
 import { FiCoffee, FiHeart, FiBell, FiEye, FiMessageCircle } from 'react-icons/fi';
 import {
-  formatDate,
   calculateAge,
   getStatusBadge,
   getSupportLevelBadge,
