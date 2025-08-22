@@ -53,6 +53,12 @@
 .participants-page .contact-item { display:flex; align-items:center; gap:6px; }
 .participants-page .contact-icon { width: 16px; height: 16px; opacity: 0.8; }
 
+/* Slightly enlarge house icon so it appears visually balanced with phone icon */
+.participants-page .contact-item.address .contact-icon {
+  width: 18px;
+  height: 18px;
+}
+
 /* Footer actions */
 .participants-page .participant-actions { display:flex; gap:8px; }
 .participants-page .participant-actions .action-btn { 

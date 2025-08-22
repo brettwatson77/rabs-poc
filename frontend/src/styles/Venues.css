@@ -39,6 +39,40 @@
 .venues-page .map-wrapper { position: relative; width: 100%; padding-top: 56.25%; border-radius: 10px; overflow: hidden; }
 .venues-page .map-wrapper iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 
+/* ------------------------------------------------------------------*/
+/* Utilisation (middle row)                                           */
+/* ------------------------------------------------------------------*/
+
+.venues-page .venue-middle { margin: 8px 12px 10px; }
+.venues-page .util-stats { 
+  display: flex; 
+  gap: 12px; 
+  align-items: center; 
+  justify-content: space-between; 
+  font-size: 12px; 
+  opacity: 0.9; 
+}
+.venues-page .util-stats .feather,
+.venues-page .util-stats svg { 
+  width: 14px; 
+  height: 14px; 
+  vertical-align: middle; 
+  margin-right: 6px; 
+}
+.venues-page .util-bar { 
+  position: relative; 
+  height: 8px; 
+  border-radius: 999px; 
+  background: rgba(255,255,255,0.08); 
+  overflow: hidden; 
+  margin-top: 6px; 
+}
+.venues-page .util-fill { 
+  height: 100%; 
+  background: linear-gradient(90deg, rgba(124,124,249,0.85), rgba(76,201,240,0.85)); 
+  box-shadow: 0 0 10px rgba(124,124,249,0.45); 
+}
+
 /* Pagination */
 .venues-page .pagination-container { display:flex; align-items:center; justify-content:center; gap: 14px; margin: 16px 0; }
 

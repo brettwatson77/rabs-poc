@@ -92,6 +92,8 @@ const Participants = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const participantsPerPage = 24;
   const [toast, setToast] = useState({ visible: false, message: '' });
+  // Tracks which report tile is currently selected in the Reports tab
+  const [selectedReport, setSelectedReport] = useState(null);
 
   // New state for enhanced features
   const [supervisionValue, setSupervisionValue] = useState(1.0);
@@ -795,6 +797,112 @@ const Participants = () => {
     downloadCSV(`participation-${selectedParticipant.id}.csv`, [header, ...body]);
   };
 
+  /* ------------------------------------------------------------------
+   * Reports helpers
+   * ------------------------------------------------------------------ */
+  // ----- Reports helpers -----
+  const getReportPreview = (key) => {
+    if (!selectedParticipant) return { columns: [], rows: [] };
+    switch (key) {
+      case 'summary': {
+        const p = selectedParticipant;
+        return {
+          columns: [
+            'First Name',
+            'Last Name',
+            'NDIS Number',
+            'DOB',
+            'Age',
+            'Gender',
+            'Phone',
+            'Email',
+            'Support Level',
+            'Status'
+          ],
+          rows: [
+            [
+              p.first_name,
+              p.last_name,
+              p.ndis_number || 'N/A',
+              formatDate(p.date_of_birth),
+              calculateAge(p.date_of_birth),
+              p.gender || 'N/A',
+              p.phone || 'N/A',
+              p.email || 'N/A',
+              p.support_level || 'N/A',
+              p.status || 'N/A'
+            ]
+          ]
+        };
+      }
+      case 'goals':
+        return {
+          columns: ['Title', 'Description', 'Category', 'Status', 'Target Date'],
+          rows:
+            (selectedParticipant.goals || []).map((g) => [
+              g.title,
+              g.description,
+              g.category,
+              g.status,
+              formatDate(g.target_date)
+            ]) || []
+        };
+      case 'billing':
+        return {
+          columns: [
+            'NDIS Code',
+            'Description',
+            'Rate',
+            'Total Amount',
+            'Remaining Amount',
+            'Start Date',
+            'End Date'
+          ],
+          rows:
+            (selectedParticipant.billing_codes || []).map((b) => [
+              b.code,
+              b.description,
+              Number(b.rate || 0).toFixed(2),
+              Number(b.total_amount || 0).toFixed(2),
+              Number(b.remaining_amount || 0).toFixed(2),
+              formatDate(b.start_date),
+              formatDate(b.end_date)
+            ]) || []
+        };
+      case 'participation': {
+        const programNameById = Object.fromEntries(
+          (availablePrograms || []).map((pr) => [pr.id, pr.name])
+        );
+        return {
+          columns: ['Program', 'Status'],
+          rows:
+            (enrollments || []).map((e) => [
+              programNameById[e.program_id] || `Program ${e.program_id}`,
+              'Enrolled'
+            ]) || []
+        };
+      }
+      default:
+        return { columns: [], rows: [] };
+    }
+  };
+
+  const onExportSelected = () => {
+    if (!selectedReport || !selectedParticipant) return;
+    switch (selectedReport) {
+      case 'summary':
+        return handleExportParticipantSummary();
+      case 'goals':
+        return handleExportGoalsProgress();
+      case 'billing':
+        return handleExportBillingFunding();
+      case 'participation':
+        return handleExportParticipation();
+      default:
+        return;
+    }
+  };
+
   // Render directory tab content
   const renderDirectoryTab = () => (
     <div className="directory-tab">
@@ -957,14 +1065,6 @@ const Participants = () => {
       ) : (
         <div className="participant-planning">
           <div className="planning-nav glass-panel">
-            <button 
-              className="back-btn"
-              onClick={() => setSelectedParticipant(null)}
-            >
-              <FiArrowLeft />
-              <span>Back to Selection</span>
-            </button>
-            
             <div className="participant-planning-header">
               <h3>{selectedParticipant.first_name} {selectedParticipant.last_name}</h3>
               <span className={`badge ${getSupportLevelBadge(selectedParticipant.support_level)}`}>
@@ -1797,77 +1897,136 @@ const Participants = () => {
     <div className="reports-tab">
       <div className="reports-header glass-panel">
         <h3>Participant Reports</h3>
-        <p>Generate and view reports for participants.</p>
+        <p>Select a report type to preview and export.</p>
       </div>
-      
+
+      {/* Tiles */}
       <div className="reports-grid">
-        <div className="report-card glass-card">
+        <div
+          className={`report-card glass-card ${
+            selectedReport === 'summary' ? 'selected' : ''
+          }`}
+          onClick={() => setSelectedReport('summary')}
+        >
           <div className="report-icon">
             <FiBarChart2 />
           </div>
           <div className="report-content">
             <h4>Participant Summary Report</h4>
-            <p>Generate a summary report for all participants or filter by status.</p>
-            <button className="btn btn-primary" onClick={handleExportParticipantSummary}>
-              <FiFileText /> Generate Report
-            </button>
+            <p>Summary of key participant data.</p>
           </div>
         </div>
-        
-        <div className="report-card glass-card">
+
+        <div
+          className={`report-card glass-card ${
+            selectedReport === 'goals' ? 'selected' : ''
+          }`}
+          onClick={() => setSelectedReport('goals')}
+        >
           <div className="report-icon">
             <FiTarget />
           </div>
           <div className="report-content">
             <h4>Goals Progress Report</h4>
-            <p>Track progress on participant goals and outcomes.</p>
-            <button className="btn btn-primary" onClick={handleExportGoalsProgress}>
-              <FiFileText /> Generate Report
-            </button>
+            <p>Track progress on participant goals.</p>
           </div>
         </div>
-        
-        <div className="report-card glass-card">
+
+        <div
+          className={`report-card glass-card ${
+            selectedReport === 'billing' ? 'selected' : ''
+          }`}
+          onClick={() => setSelectedReport('billing')}
+        >
           <div className="report-icon">
             <FiDollarSign />
           </div>
           <div className="report-content">
             <h4>Billing & Funding Report</h4>
-            <p>View NDIS billing codes and funding utilization.</p>
-            <button className="btn btn-primary" onClick={handleExportBillingFunding}>
-              <FiFileText /> Generate Report
-            </button>
+            <p>NDIS codes and funding utilization.</p>
           </div>
         </div>
-        
-        <div className="report-card glass-card">
+
+        <div
+          className={`report-card glass-card ${
+            selectedReport === 'participation' ? 'selected' : ''
+          }`}
+          onClick={() => setSelectedReport('participation')}
+        >
           <div className="report-icon">
             <FiCalendar />
           </div>
           <div className="report-content">
             <h4>Participation Report</h4>
-            <p>Track participant attendance across all programs.</p>
-            <button className="btn btn-primary" onClick={handleExportParticipation}>
-              <FiFileText /> Generate Report
-            </button>
+            <p>Attendance across programs.</p>
           </div>
         </div>
       </div>
-      
-      <div className="export-options glass-panel">
-        <h4>Export Options</h4>
-        <div className="export-buttons">
-          <button className="btn btn-secondary">
-            <FiDownload /> Export to Excel
-          </button>
-          <button className="btn btn-secondary">
-            <FiDownload /> Export to PDF
-          </button>
-          <button className="btn btn-secondary">
-            <FiPrinter /> Print Reports
-          </button>
+
+      {/* Preview */}
+      {selectedReport && (
+        <div className="glass-panel" style={{ marginTop: 20 }}>
+          {(() => {
+            const preview = getReportPreview(selectedReport);
+            const titleMap = {
+              summary: 'Participant Summary',
+              goals: 'Goals Progress',
+              billing: 'Billing & Funding',
+              participation: 'Participation'
+            };
+            return (
+              <div>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    marginBottom: 12
+                  }}
+                >
+                  <h4 style={{ margin: 0 }}>{titleMap[selectedReport]} Preview</h4>
+                  <button
+                    className="btn btn-primary"
+                    onClick={onExportSelected}
+                    disabled={!selectedParticipant}
+                  >
+                    <FiDownload /> Export CSV
+                  </button>
+                </div>
+                <div className="report-preview-table-container">
+                  <table className="report-preview-table">
+                    <thead>
+                      <tr>
+                        {preview.columns.map((c) => (
+                          <th key={c}>{c}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {preview.rows.length === 0 ? (
+                        <tr>
+                          <td colSpan={preview.columns.length} style={{ opacity: 0.75 }}>
+                            No data to display.
+                          </td>
+                        </tr>
+                      ) : (
+                        preview.rows.map((r, idx) => (
+                          <tr key={idx}>
+                            {r.map((cell, i) => (
+                              <td key={i}>{cell}</td>
+                            ))}
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })()}
         </div>
-      </div>
+      )}
     </div>
   );
 

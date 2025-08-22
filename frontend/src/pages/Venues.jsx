@@ -25,7 +25,8 @@ import {
   FiLayers, 
   FiCheck, 
   FiAlertTriangle,
-  FiEdit2
+  FiEdit2,
+  FiCalendar
 } from 'react-icons/fi';
 import { FaWheelchair } from 'react-icons/fa';
 
@@ -81,6 +82,13 @@ const Venues = () => {
       return response.data;
     }
   );
+
+  // Helper function to get weekly bookings count for a venue
+  const getWeeklyBookingsCount = (venueId) => {
+    if (!bookingsData?.data) return 0;
+    
+    return bookingsData.data.filter(booking => booking.venue_id === venueId).length;
+  };
 
   // Filter venues based on search term and filters
   const filteredVenues = venuesData?.data?.filter(venue => {
@@ -318,30 +326,43 @@ const renderDirectoryTab = () => (
     ) : (
       <>
         <div className="venues-grid">
-          {currentVenues.map((venue) => (
-            <div
-              key={venue.id}
-              className={`venue-card glass-card ${selectedVenue?.id === venue.id ? 'selected' : ''}`}
-              onClick={() => setSelectedVenue(venue)}
-            >
-              <div className="venue-header">
-                <h3 className="venue-name">{venue.name}</h3>
-                <span className={`badge ${getStatusBadge(venue.status)}`}>
-                  {formatStatus(venue.status)}
-                </span>
-              </div>
-              <div className="venue-info">
-                <p className="venue-address">
-                  {venue.address}, {venue.suburb} {venue.state} {venue.postcode}
-                </p>
-                {venue.capacity ? (
-                  <p className="venue-capacity">
-                    Capacity: {venue.capacity}
+          {currentVenues.map((venue) => {
+            // Calculate booking stats
+            const weeklyBookings = getWeeklyBookingsCount(venue.id);
+            const capacity = venue.capacity || 0;
+            const utilPercentage = capacity > 0 ? Math.min(100, Math.max(0, (weeklyBookings / 7) * 100)) : 0;
+            
+            return (
+              <div
+                key={venue.id}
+                className={`venue-card glass-card ${selectedVenue?.id === venue.id ? 'selected' : ''}`}
+                onClick={() => setSelectedVenue(venue)}
+              >
+                <div className="venue-header">
+                  <h3 className="venue-name">{venue.name}</h3>
+                  <span className={`badge ${getStatusBadge(venue.status)}`}>
+                    {formatStatus(venue.status)}
+                  </span>
+                </div>
+                <div className="venue-info">
+                  <p className="venue-address">
+                    <FiMapPin className="icon" /> {venue.address}, {venue.suburb} {venue.state} {venue.postcode}
                   </p>
-                ) : null}
+                </div>
+                
+                {/* Middle row with utilisation bar */}
+                <div className="venue-middle">
+                  <div className="util-stats">
+                    <span><FiCalendar /> This week: {weeklyBookings} bookings</span>
+                    {capacity > 0 && <span>Capacity: {capacity}</span>}
+                  </div>
+                  <div className="util-bar">
+                    <div className="util-fill" style={{ width: `${utilPercentage}%` }}></div>
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Pagination */}
