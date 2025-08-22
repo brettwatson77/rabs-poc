@@ -61,6 +61,13 @@
 .staff-page .staff-rate { margin: 0; color: rgba(255,255,255,0.7); display: flex; align-items: center; gap: 6px; }
 .staff-page .staff-rate .icon { opacity: 0.8; }
 
+/* Utilisation indicator (middle row) */
+.staff-page .util-indicator { grid-column: 2; grid-row: 2; align-self: start; }
+.staff-page .util-label { display:flex; gap:8px; font-size:12px; color: rgba(255,255,255,0.68); margin-bottom:6px; }
+.staff-page .util-bar-bg { width:220px; height:6px; background: rgba(255,255,255,0.08); border-radius:999px; overflow:hidden; }
+.staff-page .util-bar-fg { height:100%; border-radius:999px; background: linear-gradient(90deg, rgba(86,163,255,0.65), rgba(124,124,249,0.9)); }
+.staff-page .util-bar-fg.over { background: linear-gradient(90deg, rgba(255,99,132,0.7), rgba(255,159,64,0.9)); }
+
 /* Footer row */
 .staff-page .staff-footer {
   grid-column: 1 / -1;
@@ -212,9 +219,15 @@
 @media (max-width: 920px) {
   .staff-page .staff-card { grid-template-columns: 48px 1fr; grid-template-rows: auto auto auto auto; }
   .staff-page .staff-footer { grid-row: 4; }
+  .profile-content { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+  .staff-page .staff-contact { flex-direction: column; align-items: flex-start; gap: 6px; }
+}
 
 /* ------------------------------------------------------------------
- * Selected card “back-light / invert” effect
+ * Selected card "back-light / invert" effect
  * ------------------------------------------------------------------*/
 .staff-page .staff-card.selected {
   /* same radial back-light used on Participants, force with !important for certainty */
@@ -262,17 +275,39 @@
   white-space: normal;
   overflow-wrap:anywhere;
 }
-  .profile-content { grid-template-columns: 1fr; }
-}
-
-@media (max-width: 480px) {
-  .staff-page .staff-contact { flex-direction: column; align-items: flex-start; gap: 6px; }
-}
 
 /* ------------------------------------------------------------------
  * Toast notice (match Participants)
  * ------------------------------------------------------------------*/
 .staff-page .toast-notice{
+  position:fixed;
+  bottom:24px;
+  right:24px;
+  z-index:9999;
+  padding:12px 18px;
+  border-radius:10px;
+  background:rgba(0,0,0,0.85);
+  color:#fff;
+  border:1px solid rgba(255,255,255,0.12);
+  animation:staffToastFade 0.4s ease-out;
+}
+@keyframes staffToastFade{
+  from{transform:translateY(20px);opacity:0;}
+  to{transform:translateY(0);opacity:1;}
+}
+
+/* ------------------------------------------------------------------
+ * Search / filter bar spacing
+ * ------------------------------------------------------------------*/
+.staff-page .search-filter-bar{ margin-bottom:12px; }
+
+/* ------------------------------------------------------------------
+ * Consistent spacing for glass blocks (match Participants)
+ * ------------------------------------------------------------------*/
+.staff-page .tab-content .glass-panel,
+.staff-page .tab-content .glass-card{
+  margin-bottom:12px;
+}
 
 /* Header bar with action button */
 .staff-page .leave-header{
@@ -351,47 +386,6 @@
 .staff-page .util-bar .fg.over{
   background:linear-gradient(90deg, rgba(255,99,132,0.7), rgba(255,159,64,0.9));
 }
-
-/* Under or normal hours keeps default blue gradient (fg.under) */
-
-  position:fixed;
-
-  bottom:24px;
-  right:24px;
-  z-index:9999;
-  padding:12px 18px;
-  border-radius:10px;
-  background:rgba(0,0,0,0.85);
-  color:#fff;
-  border:1px solid rgba(255,255,255,0.12);
-  animation:staffToastFade 0.4s ease-out;
-}
-@keyframes staffToastFade{
-  from{transform:translateY(20px);opacity:0;}
-  to{transform:translateY(0);opacity:1;}
-}
-
-/* ------------------------------------------------------------------
- * Search / filter bar spacing
- * ------------------------------------------------------------------*/
-.staff-page .search-filter-bar{ margin-bottom:12px; }
-
-/* ------------------------------------------------------------------
- * Consistent spacing for glass blocks (match Participants)
- * ------------------------------------------------------------------*/
-.staff-page .tab-content .glass-panel,
-.staff-page .tab-content .glass-card{
-  margin-bottom:12px;
-}
-
-/* ------------------------------------------------------------------
- * Mini utilisation bar inside staff card footer
- * ------------------------------------------------------------------*/
-.staff-page .staff-util-mini{ min-width:140px; display:flex; align-items:center; justify-content:flex-end; gap:8px; }
-.staff-page .util-casual-label{ font-size:12px; opacity:0.8; }
-.staff-page .util-mini-bg{ width:140px; height:8px; background:rgba(255,255,255,0.10); border-radius:999px; overflow:hidden; }
-.staff-page .util-mini-fg{ height:100%; background:linear-gradient(90deg, rgba(86,163,255,0.65), rgba(124,124,249,0.9)); }
-.staff-page .util-mini-fg.over{ background: linear-gradient(90deg, rgba(255,99,132,0.7), rgba(255,159,64,0.9)); }
 
 /* ------------------------------------------------------------------
  * Footer action buttons (edit / delete)

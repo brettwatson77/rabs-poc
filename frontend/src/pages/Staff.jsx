@@ -384,6 +384,24 @@ const Staff = () => {
                   </p>
                 </div>
                 
+                {/* Utilisation Indicator (middle row) */}
+                <div className="util-indicator">
+                  <div className="util-label">
+                    <span>Utilisation:</span>
+                    <span>{isCasual(staff) ? 'Casual' : `${utilisationPct(staff)}%`}</span>
+                  </div>
+                  {!isCasual(staff) && (
+                    <div className="util-bar-bg">
+                      <div
+                        className={`util-bar-fg ${
+                          currentFortnightHours(staff) > contractHours(staff) ? 'over' : 'under'
+                        }`}
+                        style={{ width: `${utilisationPct(staff)}%` }}
+                      ></div>
+                    </div>
+                  )}
+                </div>
+
                 <div className="staff-footer">
                   <div className="staff-contact">
                     {staff.phone && (
@@ -401,16 +419,6 @@ const Staff = () => {
                           {staff.state && `, ${staff.state}`}
                           {staff.postcode && ` ${staff.postcode}`}
                         </span>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="staff-util-mini">
-                    {isCasual(staff) ? (
-                      <span className="util-casual-label">Casual</span>
-                    ) : (
-                      <div className="util-mini-bg">
-                        <div className={`util-mini-fg ${currentFortnightHours(staff)>contractHours(staff)?'over':'under'}`} style={{width: `${utilisationPct(staff)}%`}}></div>
                       </div>
                     )}
                   </div>
