@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiEdit2, FiTrash2, FiPhone } from 'react-icons/fi';
+import { FiEdit2, FiTrash2, FiPhone, FiHome } from 'react-icons/fi';
 import { FaWheelchair, FaBrain } from 'react-icons/fa';
 import { BsEar } from 'react-icons/bs';
 import { FiCoffee, FiHeart, FiBell, FiEye, FiMessageCircle } from 'react-icons/fi';
@@ -113,6 +113,7 @@ const ParticipantCard = ({ participant, selected, onClick, onEdit, onDelete }) =
           )}
           {participant.address && (
             <div className="contact-item address">
+              <FiHome className="contact-icon" />
               <span>
                 {participant.address}
                 {participant.suburb && `, ${participant.suburb}`}

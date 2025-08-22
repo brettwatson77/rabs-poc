@@ -66,7 +66,7 @@
 .participants-page .search-filter-bar { margin-bottom: 12px; }
 
 /* ------------------------------------------------------------------
- * NEW 1: Selected card “back-light / invert” effect
+ * NEW 1: Selected card "back-light / invert" effect
  * ------------------------------------------------------------------ */
 .participants-page .participant-card.selected {
   background: radial-gradient(ellipse at center, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.65) 60%, rgba(255,255,255,0.25) 100%);
@@ -310,6 +310,96 @@
 .participants-page .reports-header{ margin-bottom:16px; }
 .participants-page .export-buttons{ display:flex; gap:10px; flex-wrap:wrap; }
 .participants-page .export-options{ margin-top:20px; }
+
+/* Selected report card styling */
+.participants-page .report-card.selected {
+  outline: 2px solid rgba(124,124,249,0.8);
+  box-shadow: 0 0 0 3px rgba(124,124,249,0.25);
+}
+
+.participants-page .report-card { cursor: pointer; }
+
+/* Report preview table styles */
+.participants-page .report-preview-table-container { overflow: auto; }
+.participants-page .report-preview-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.participants-page .report-preview-table th,
+.participants-page .report-preview-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.participants-page .report-preview-table thead th {
+  background: rgba(255,255,255,0.04);
+  text-align: left;
+}
+
+/* ------------------------------------------------------------------
+ * NEW 9: KPI cards, progress bars and mini-bar chart for report details
+ * ------------------------------------------------------------------ */
+.participants-page .kpi-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
+  gap:12px;
+  margin-top:8px;
+}
+.participants-page .kpi-card{
+  padding:12px;
+  border-radius:10px;
+  background:rgba(255,255,255,0.03);
+  border:1px solid rgba(255,255,255,0.06);
+}
+.participants-page .kpi-label{
+  font-size:12px;
+  opacity:0.75;
+  margin-bottom:6px;
+}
+.participants-page .kpi-value{
+  font-size:20px;
+  font-weight:700;
+}
+
+.participants-page .progress-block{ margin-top:8px; }
+.participants-page .progress-label{ font-size:12px; opacity:0.8; margin-bottom:6px; }
+.participants-page .progress-bar-bg{
+  height:10px;
+  background:rgba(255,255,255,0.08);
+  border-radius:999px;
+  overflow:hidden;
+}
+.participants-page .progress-bar-fg{
+  height:100%;
+  background:linear-gradient(90deg,rgba(86,163,255,0.65),rgba(124,124,249,0.9));
+  border-radius:999px;
+}
+
+.participants-page .mini-bars{ display:flex; flex-direction:column; gap:8px; }
+.participants-page .bar-row{
+  display:grid;
+  grid-template-columns:1fr auto 48px;
+  gap:10px;
+  align-items:center;
+}
+.participants-page .bar-label{
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.participants-page .bar-bg{
+  height:10px;
+  background:rgba(255,255,255,0.08);
+  border-radius:8px;
+  overflow:hidden;
+}
+.participants-page .bar-fg{
+  height:100%;
+  background:linear-gradient(90deg,rgba(124,124,249,0.6),rgba(86,163,255,0.9));
+}
+.participants-page .bar-value{
+  text-align:right;
+  font-weight:600;
+}
 
 /* ---------------------------------------------
  * Forms – unify dark glass inputs/selects
