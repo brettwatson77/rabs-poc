@@ -102,18 +102,6 @@ const Vehicles = () => {
     notes: ''
   });
 
-  // Form state for adding a new booking
-  const [bookingForm, setBookingForm] = useState({
-    start_date: format(new Date(), 'yyyy-MM-dd'),
-    end_date: format(new Date(), 'yyyy-MM-dd'),
-    start_time: '09:00',
-    end_time: '17:00',
-    driver_id: '',
-    purpose: '',
-    program_id: '',
-    notes: ''
-  });
-
   // Fetch vehicles data
   const { 
     data: vehiclesData, 
@@ -170,64 +158,10 @@ const Vehicles = () => {
     }
   );
 
-  // Reset vehicle form
-  const resetVehicleForm = () => {
-    setVehicleForm({
-      registration: '',
-      make: '',
-      model: '',
-      year: new Date().getFullYear(),
-      fuel_type: 'petrol',
-      capacity: 5,
-      odometer: 0,
-      status: 'active',
-      purchase_date: '',
-      purchase_price: 0,
-      vin: '',
-      color: '',
-      features: [],
-      notes: '',
-      insurance: {
-        provider: '',
-        policy_number: '',
-        expiry_date: '',
-        cost: 0
-      },
-      registration_expiry: '',
-      service_interval_km: 10000,
-      service_interval_months: 6,
-      next_service_date: '',
-      next_service_odometer: 0
-    });
-  };
-
-  // Reset maintenance form
-  const resetMaintenanceForm = () => {
-    setMaintenanceForm({
-      date: format(new Date(), 'yyyy-MM-dd'),
-      type: 'service',
-      description: '',
-      odometer: selectedVehicle?.odometer || 0,
-      cost: 0,
-      performed_by: '',
-      parts_replaced: '',
-      notes: ''
-    });
-  };
-
-  // Reset booking form
-  const resetBookingForm = () => {
-    setBookingForm({
-      start_date: format(new Date(), 'yyyy-MM-dd'),
-      end_date: format(new Date(), 'yyyy-MM-dd'),
-      start_time: '09:00',
-      end_time: '17:00',
-      driver_id: '',
-      purpose: '',
-      program_id: '',
-      notes: ''
-    });
-  };
+  /* ------------------------------------------------------------------
+   * Note: resetVehicleForm, resetMaintenanceForm, and resetBookingForm
+   * were removed because they were unused and caused lint errors.
+   * ----------------------------------------------------------------*/
 
   // Handle opening edit modal
   const handleEditVehicle = (vehicle) => {
@@ -421,6 +355,22 @@ const Vehicles = () => {
         return 'warning-tape-hybrid';
       default:
         return '';
+    }
+  };
+
+  // Get fuel label class & text for pill displayed on warning tape
+  const getFuelLabelClass = (fuelType) => {
+    switch ((fuelType || '').toLowerCase()) {
+      case 'petrol':
+        return { cls: 'fuel-petrol', text: 'PETROL' };
+      case 'diesel':
+        return { cls: 'fuel-diesel', text: 'DIESEL' };
+      case 'electric':
+        return { cls: 'fuel-electric', text: 'ELECTRIC' };
+      case 'hybrid':
+        return { cls: 'fuel-hybrid', text: 'HYBRID' };
+      default:
+        return { cls: '', text: '' };
     }
   };
 
@@ -641,9 +591,10 @@ const Vehicles = () => {
             {currentVehicles.map(vehicle => (
               <div 
                 key={vehicle.id} 
-                className={`vehicle-card glass-card ${getFuelTypeClass(vehicle.fuel_type)} ${selectedVehicle?.id === vehicle.id ? 'selected' : ''}`}
+                className={`vehicle-card glass-card ${getFuelTypeClass(vehicle.fuel_type)} ${getFuelLabelClass(vehicle.fuel_type).cls} ${selectedVehicle?.id === vehicle.id ? 'selected' : ''}`}
                 onClick={() => setSelectedVehicle(vehicle)}
               >
+                <div className="fuel-label">{getFuelLabelClass(vehicle.fuel_type).text}</div>
                 <div className="vehicle-header">
                   <div className="vehicle-registration">
                     {vehicle.registration}
@@ -703,17 +654,23 @@ const Vehicles = () => {
                     )}
                   </div>
                   
+                  {/* Compact meta icons bottom-right */}
+                  <div className="vehicle-meta-icons">
+                    <div className="meta-item" title={`Fuel: ${vehicle.fuel_type}`}>
+                      <FiDroplet />
+                      <span>{vehicle.fuel_type}</span>
+                    </div>
+                    <div className="meta-item" title={`Seats: ${vehicle.capacity}`}>
+                      <FiUsers />
+                      <span>{vehicle.capacity}</span>
+                    </div>
+                    <div className="meta-item" title={`Odometer: ${vehicle.odometer?.toLocaleString() || 0} km`}>
+                      <FiHash />
+                      <span>{vehicle.odometer?.toLocaleString() || 0} km</span>
+                    </div>
+                  </div>
+                  
                   <div className="vehicle-actions">
-                    <button 
-                      className="action-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEditVehicle(vehicle);
-                      }}
-                      title="Edit"
-                    >
-                      <FiEdit2 />
-                    </button>
                     <button 
                       className="action-btn"
                       onClick={(e) => {
@@ -1429,6 +1386,30 @@ const Vehicles = () => {
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* ------------------------------------------------------------------
+             * Modal footer actions (Close / Edit / Delete)
+             * ----------------------------------------------------------------*/}
+            <div className="modal-footer-actions">
+              <button
+                className="btn btn-secondary"
+                onClick={() => setSelectedVehicle(null)}
+              >
+                Close
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={() => handleEditVehicle(selectedVehicle)}
+              >
+                <FiEdit2 /> Edit
+              </button>
+              <button
+                className="btn btn-danger"
+                onClick={() => setIsDeleteModalOpen(true)}
+              >
+                <FiTrash2 /> Delete
+              </button>
             </div>
           </div>
         </div>
