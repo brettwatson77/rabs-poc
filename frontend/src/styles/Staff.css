@@ -263,3 +263,139 @@
 @media (max-width: 480px) {
   .staff-page .staff-contact { flex-direction: column; align-items: flex-start; gap: 6px; }
 }
+
+/* ------------------------------------------------------------------
+ * Toast notice (match Participants)
+ * ------------------------------------------------------------------*/
+.staff-page .toast-notice{
+
+/* Header bar with action button */
+.staff-page .leave-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:12px;
+}
+
+/* Two-column responsive grid (requests | utilisation) */
+.staff-page .two-col{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+@media (max-width:1000px){
+  .staff-page .two-col{ grid-template-columns:1fr; }
+}
+
+/* Leave requests table */
+.staff-page .table-responsive{ overflow:auto; }
+.staff-page .leave-table{
+  width:100%;
+  border-collapse:collapse;
+}
+.staff-page .leave-table th,
+.staff-page .leave-table td{
+  padding:8px 10px;
+  border-bottom:1px solid rgba(255,255,255,0.08);
+  text-align:left;
+}
+.staff-page .leave-table thead th{
+  background:rgba(255,255,255,0.04);
+}
+.staff-page .leave-table .actions-cell{ display:flex; gap:6px; }
+.staff-page .leave-table .reason-cell{
+  max-width:380px;
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
+
+/* Utilisation list */
+.staff-page .util-list{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.staff-page .util-row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  align-items:center;
+}
+.staff-page .util-meta .name{ font-weight:600; }
+.staff-page .util-meta .hours{ font-size:12px; opacity:0.8; }
+
+/* Bar container */
+.staff-page .util-bar .bg{
+  width:100%;
+  height:10px;
+  background:rgba(255,255,255,0.10);
+  border-radius:999px;
+  overflow:hidden;
+}
+.staff-page .util-bar .fg{
+  height:100%;
+  background:linear-gradient(90deg, rgba(86,163,255,0.65), rgba(124,124,249,0.9));
+}
+
+/* Casual staff = greyed-out bar */
+.staff-page .util-bar.casual .bg{ background:rgba(255,255,255,0.06); }
+.staff-page .util-bar.casual .fg{ background:rgba(255,255,255,0.25); }
+
+/* Over-hours highlight */
+.staff-page .util-bar .fg.over{
+  background:linear-gradient(90deg, rgba(255,99,132,0.7), rgba(255,159,64,0.9));
+}
+
+/* Under or normal hours keeps default blue gradient (fg.under) */
+
+  position:fixed;
+
+  bottom:24px;
+  right:24px;
+  z-index:9999;
+  padding:12px 18px;
+  border-radius:10px;
+  background:rgba(0,0,0,0.85);
+  color:#fff;
+  border:1px solid rgba(255,255,255,0.12);
+  animation:staffToastFade 0.4s ease-out;
+}
+@keyframes staffToastFade{
+  from{transform:translateY(20px);opacity:0;}
+  to{transform:translateY(0);opacity:1;}
+}
+
+/* ------------------------------------------------------------------
+ * Search / filter bar spacing
+ * ------------------------------------------------------------------*/
+.staff-page .search-filter-bar{ margin-bottom:12px; }
+
+/* ------------------------------------------------------------------
+ * Mini utilisation bar inside staff card footer
+ * ------------------------------------------------------------------*/
+.staff-page .staff-util-mini{ min-width:140px; display:flex; align-items:center; justify-content:flex-end; gap:8px; }
+.staff-page .util-casual-label{ font-size:12px; opacity:0.8; }
+.staff-page .util-mini-bg{ width:140px; height:8px; background:rgba(255,255,255,0.10); border-radius:999px; overflow:hidden; }
+.staff-page .util-mini-fg{ height:100%; background:linear-gradient(90deg, rgba(86,163,255,0.65), rgba(124,124,249,0.9)); }
+.staff-page .util-mini-fg.over{ background: linear-gradient(90deg, rgba(255,99,132,0.7), rgba(255,159,64,0.9)); }
+
+/* ------------------------------------------------------------------
+ * Footer action buttons (edit / delete)
+ * ------------------------------------------------------------------*/
+.staff-page .staff-actions{display:flex;gap:8px;}
+.staff-page .staff-actions .action-btn{
+  width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;
+  border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.05);
+}
+.staff-page .staff-actions .action-btn:hover{background:rgba(255,255,255,0.08);}
+.staff-page .staff-actions .action-btn svg{width:16px;height:16px;color:#ffffff;}
+
+/* Slightly enlarge house icon so it appears visually balanced with phone icon */
+.staff-page .contact-item.address .contact-icon{
+  width:18px;
+  height:18px;
+}
+
+/* Modal header close icon visibility */
+.staff-page .modal-header .modal-close svg{color:#ffffff;}

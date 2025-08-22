@@ -9,18 +9,19 @@ import {
   FiEdit,
   FiTrash,
   FiPhone,
-  FiMail,
   FiHome,
   FiXCircle,
   FiRefreshCw,
   FiDollarSign,
   FiBriefcase,
   FiCalendar,
-  FiClock,
-  FiUser,
   FiArrowLeft,
-  FiArrowRight
+  FiArrowRight,
+  FiBarChart2
 } from 'react-icons/fi';
+
+// Page-specific styles
+import '../styles/Staff.css';
 
 // API base URL from environment
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3009';
@@ -34,12 +35,36 @@ const Staff = () => {
   });
   const [showFilters, setShowFilters] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState(null);
+  const [selectedStaffId, setSelectedStaffId] = useState(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const queryClient = useQueryClient();
   const [currentPage, setCurrentPage] = useState(1);
   const staffPerPage = 12;
+  const [activeTab, setActiveTab] = useState('directory');
+  const [toast, setToast] = useState({ visible: false, message: '' });
+  const [leaveRequests, setLeaveRequests] = useState([]);
+  const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
+  const [editingLeave, setEditingLeave] = useState(null);
+  const emptyLeave = { id:null, staff_id:'', type:'AL', start_date:'', end_date:'', hours:0, status:'pending', reason:'' };
+  const [leaveForm, setLeaveForm] = useState(emptyLeave);
+
+  const openNewLeave = () => { setEditingLeave(null); setLeaveForm(emptyLeave); setIsLeaveModalOpen(true); };
+  const openEditLeave = (req) => { setEditingLeave(req); setLeaveForm(req); setIsLeaveModalOpen(true); };
+  const saveLeave = (e) => {
+    e.preventDefault();
+    if (editingLeave) {
+      setLeaveRequests(prev => prev.map(r => r.id===editingLeave.id ? {...leaveForm} : r));
+    } else {
+      const newId = Date.now();
+      setLeaveRequests(prev => [{...leaveForm, id:newId}, ...prev]);
+    }
+    setIsLeaveModalOpen(false);
+  };
+  const deleteLeave = (id) => setLeaveRequests(prev => prev.filter(r => r.id!==id));
+  const approveLeave = (id) => setLeaveRequests(prev => prev.map(r => r.id===id ? {...r, status:'approved'} : r));
+  const denyLeave = (id) => setLeaveRequests(prev => prev.map(r => r.id===id ? {...r, status:'denied'} : r));
 
   // Local draft for edit
   const [editStaff, setEditStaff] = useState(null);
@@ -187,9 +212,6 @@ const Staff = () => {
     }
   };
   
-  // SCHADS level badge
-  const getSchadsBadge = (level) => `badge-purple`;
-
   // Get status badge class
   const getStatusBadge = (status) => {
     switch (status) {
@@ -207,349 +229,249 @@ const Staff = () => {
     return role.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   };
 
-  return (
-    <>
-      <div className="staff-page">
-        {/* Search and Filter Bar */}
-        <div className="search-filter-bar glass-panel">
-          <div className="search-container">
-            <FiSearch className="search-icon" />
-            <input
-              type="text"
-              placeholder="Search staff..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="search-input"
-            />
-          </div>
-          
-          <div className="filter-container">
-            <button 
-              className="filter-toggle-btn"
-              onClick={() => setShowFilters(!showFilters)}
-            >
-              <FiFilter />
-              <span>Filters</span>
-            </button>
-            
-            {showFilters && (
-              <div className="filter-dropdown glass-panel">
-                <div className="filter-group">
-                  <label>Role</label>
-                  <select
-                    value={filters.role}
-                    onChange={(e) => setFilters({...filters, role: e.target.value})}
-                  >
-                    <option value="all">All Roles</option>
-                    <option value="manager">Manager</option>
-                    <option value="team_leader">Team Leader</option>
-                    <option value="support_worker">Support Worker</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                </div>
-                
-                <div className="filter-group">
-                  <label>Status</label>
-                  <select
-                    value={filters.status}
-                    onChange={(e) => setFilters({...filters, status: e.target.value})}
-                  >
-                    <option value="all">All Statuses</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="on_leave">On Leave</option>
-                    <option value="terminated">Terminated</option>
-                  </select>
-                </div>
-              </div>
-            )}
-          </div>
+  // Handle tab switching with gating
+  const handleTabSwitch = (tab) => {
+    if (tab === 'reports' && !selectedStaffId) {
+      setToast({ visible: true, message: 'Select a staff member first to access Reports.' });
+      setTimeout(() => setToast({ visible: false, message: '' }), 2500);
+      return;
+    }
+    setActiveTab(tab);
+  };
 
-          {/* NEW STAFF BUTTON */}
-          <button
-            className="create-btn glass-button"
-            onClick={() => setIsCreateModalOpen(true)}
-          >
-            <FiPlus /> New Staff
-          </button>
+  // Utilisation helpers
+  const isCasual = (s) => s?.employment_type === 'casual';
+  const contractHours = (s) => isCasual(s) ? 0 : (s?.contracted_hours ?? 0);
+  const currentFortnightHours = (s) => s?.current_fortnight_hours ?? 0; // placeholder until Xero integration
+  const utilisationPct = (s) => {
+    const ch = contractHours(s);
+    const cur = currentFortnightHours(s);
+    if (!ch) return 0;
+    return Math.min(100, Math.max(0, Math.round((cur/ch)*100)));
+  };
+
+  // Render directory tab content
+  const renderDirectoryTab = () => (
+    <div className="directory-tab">
+      {/* Search and Filter Bar */}
+      <div className="search-filter-bar glass-panel">
+        <div className="search-container">
+          <FiSearch className="search-icon" />
+          <input
+            type="text"
+            placeholder="Search staff..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="search-input"
+          />
         </div>
         
-        {/* Staff Grid */}
-        {staffLoading ? (
-          <div className="loading-container">
-            <div className="loading-spinner"></div>
-            <p>Loading staff...</p>
-          </div>
-        ) : staffError ? (
-          <div className="error-container glass-panel">
-            <FiRefreshCw className="error-icon" />
-            <p>Error loading staff: {staffError.message}</p>
-            <button className="btn btn-primary" onClick={() => refetchStaff()}>
-              Try Again
-            </button>
-          </div>
-        ) : filteredStaff.length === 0 ? (
-          <div className="empty-state glass-panel">
-            <FiUsers className="empty-icon" />
-            <h3>No staff found</h3>
-            <p>Try adjusting your search or filters.</p>
-          </div>
-        ) : (
-          <>
-            <div className="staff-grid">
-              {currentStaff.map(staff => (
-                <div 
-                  key={staff.id} 
-                  className="staff-card glass-card"
-                  onClick={() => setSelectedStaff(staff)}
+        <div className="filter-container">
+          <button 
+            className="filter-toggle-btn"
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            <FiFilter />
+            <span>Filters</span>
+          </button>
+          
+          {showFilters && (
+            <div className="filter-dropdown glass-panel">
+              <div className="filter-group">
+                <label>Role</label>
+                <select
+                  value={filters.role}
+                  onChange={(e) => setFilters({...filters, role: e.target.value})}
                 >
-                  <div className="staff-header">
-                    <div className="staff-avatar">
-                      {staff.photo_url ? (
-                        <img src={staff.photo_url} alt={`${staff.first_name} ${staff.last_name}`} />
-                      ) : (
-                        <div className="staff-initials">
-                          {staff.first_name?.[0]}{staff.last_name?.[0]}
-                        </div>
-                      )}
-                    </div>
-                    <div className="staff-badges">
-                      <span className={`badge ${getStatusBadge(staff.status)}`}>
-                        {staff.status}
-                      </span>
-                      <span className={`badge ${getRoleBadge(staff.position)}`}>
-                        {formatRole(staff.position)}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="staff-info">
-                    <h3 className="staff-name">
-                      {staff.first_name} {staff.last_name}
-                    </h3>
-                    <p className="staff-employment">
-                      <span className="badge badge-purple">
-                        SCHADS L{staff.schads_level || 2}
-                      </span>
-                      {staff.contracted_hours && (
-                        <span className="contract-hours">
-                          {staff.contracted_hours} hrs/week
-                        </span>
-                      )}
-                    </p>
-                    <p className="staff-rate">
-                      <FiDollarSign className="icon" />
-                      {formatCurrency(staff.base_pay_rate)}/hr
-                    </p>
-                  </div>
-                  
-                  <div className="staff-footer">
-                    <div className="staff-contact">
-                      {staff.phone && (
-                        <div className="contact-item">
-                          <FiPhone className="contact-icon" />
-                          <span>{staff.phone}</span>
-                        </div>
-                      )}
-                      {staff.email && (
-                        <div className="contact-item">
-                          <FiMail className="contact-icon" />
-                          <span>{staff.email}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="pagination-container">
-                <button 
-                  className="pagination-btn"
-                  onClick={handlePrevPage}
-                  disabled={currentPage === 1}
-                >
-                  <FiArrowLeft />
-                  <span>Previous</span>
-                </button>
-                
-                <div className="pagination-info">
-                  Page {currentPage} of {totalPages}
-                </div>
-                
-                <button 
-                  className="pagination-btn"
-                  onClick={handleNextPage}
-                  disabled={currentPage === totalPages}
-                >
-                  <span>Next</span>
-                  <FiArrowRight />
-                </button>
-              </div>
-            )}
-          </>
-        )}
-        
-        {/* Staff Profile Modal */}
-        {selectedStaff && (
-          <div className="modal-overlay" onClick={() => setSelectedStaff(null)}>
-            <div className="modal-content staff-profile-modal glass-panel" onClick={e => e.stopPropagation()}>
-              <div className="modal-header">
-                <h3>Staff Profile</h3>
-                <div className="modal-actions">
-                  <button
-                    className="icon-btn"
-                    title="Edit"
-                    onClick={() => {
-                      setEditStaff(selectedStaff);
-                      setIsEditModalOpen(true);
-                    }}
-                  >
-                    <FiEdit />
-                  </button>
-                  <button
-                    className="icon-btn danger"
-                    title="Delete"
-                    onClick={() => setIsDeleteConfirmOpen(true)}
-                  >
-                    <FiTrash />
-                  </button>
-                  <button className="modal-close" onClick={() => setSelectedStaff(null)}>
-                    <FiXCircle />
-                  </button>
-                </div>
+                  <option value="all">All Roles</option>
+                  <option value="manager">Manager</option>
+                  <option value="team_leader">Team Leader</option>
+                  <option value="support_worker">Support Worker</option>
+                  <option value="admin">Admin</option>
+                </select>
               </div>
               
-              <div className="staff-profile">
-                <div className="profile-header">
-                  <div className="profile-avatar">
-                    {selectedStaff.photo_url ? (
-                      <img src={selectedStaff.photo_url} alt={`${selectedStaff.first_name} ${selectedStaff.last_name}`} />
+              <div className="filter-group">
+                <label>Status</label>
+                <select
+                  value={filters.status}
+                  onChange={(e) => setFilters({...filters, status: e.target.value})}
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="on_leave">On Leave</option>
+                  <option value="terminated">Terminated</option>
+                </select>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* NEW STAFF BUTTON */}
+        <button
+          className="create-btn glass-button"
+          onClick={() => setIsCreateModalOpen(true)}
+        >
+          <FiPlus /> New Staff
+        </button>
+      </div>
+      
+      {/* Staff Grid */}
+      {staffLoading ? (
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>Loading staff...</p>
+        </div>
+      ) : staffError ? (
+        <div className="error-container glass-panel">
+          <FiRefreshCw className="error-icon" />
+          <p>Error loading staff: {staffError.message}</p>
+          <button className="btn btn-primary" onClick={() => refetchStaff()}>
+            Try Again
+          </button>
+        </div>
+      ) : filteredStaff.length === 0 ? (
+        <div className="empty-state glass-panel">
+          <FiUsers className="empty-icon" />
+          <h3>No staff found</h3>
+          <p>Try adjusting your search or filters.</p>
+        </div>
+      ) : (
+        <>
+          <div className="staff-grid">
+            {currentStaff.map(staff => (
+              <div 
+                key={staff.id} 
+                className={`staff-card glass-card ${selectedStaffId === staff.id ? 'selected' : ''}`}
+                onClick={() => setSelectedStaffId(staff.id)}
+              >
+                <div className="staff-header">
+                  <div className="staff-avatar">
+                    {staff.photo_url ? (
+                      <img src={staff.photo_url} alt={`${staff.first_name} ${staff.last_name}`} />
                     ) : (
-                      <div className="profile-initials">
-                        {selectedStaff.first_name?.[0]}{selectedStaff.last_name?.[0]}
+                      <div className="staff-initials">
+                        {staff.first_name?.[0]}{staff.last_name?.[0]}
+                      </div>
+                    )}
+                  </div>
+                  <div className="staff-badges">
+                    <span className={`badge ${getStatusBadge(staff.status)}`}>
+                      {staff.status}
+                    </span>
+                    <span className={`badge ${getRoleBadge(staff.position)}`}>
+                      {formatRole(staff.position)}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="staff-info">
+                  <h3 className="staff-name">{staff.first_name} {staff.last_name}</h3>
+                  <p className="staff-employment">
+                    <span className="badge badge-purple">
+                      SCHADS L{staff.schads_level || 2}
+                    </span>
+                    {staff.contracted_hours && (
+                      <span className="contract-hours">
+                        {staff.contracted_hours} hrs/week
+                      </span>
+                    )}
+                  </p>
+                  <p className="staff-rate">
+                    <FiDollarSign className="icon" />
+                    {formatCurrency(staff.base_pay_rate)}/hr
+                  </p>
+                </div>
+                
+                <div className="staff-footer">
+                  <div className="staff-contact">
+                    {staff.phone && (
+                      <div className="contact-item phone">
+                        <FiPhone className="contact-icon" />
+                        <span>{staff.phone}</span>
+                      </div>
+                    )}
+                    {staff.address && (
+                      <div className="contact-item address">
+                        <FiHome className="contact-icon" />
+                        <span>
+                          {staff.address}
+                          {staff.suburb && `, ${staff.suburb}`}
+                          {staff.state && `, ${staff.state}`}
+                          {staff.postcode && ` ${staff.postcode}`}
+                        </span>
                       </div>
                     )}
                   </div>
                   
-                  <div className="profile-info">
-                    <h2>{selectedStaff.first_name} {selectedStaff.last_name}</h2>
-                    <div className="profile-badges">
-                      <span className={`badge ${getRoleBadge(selectedStaff.position)}`}>
-                        {formatRole(selectedStaff.position)}
-                      </span>
-                      <span className={`badge ${getSchadsBadge(selectedStaff.schads_level)}`}>
-                        SCHADS L{selectedStaff.schads_level || 2}
-                      </span>
-                      <span className={`badge ${getStatusBadge(selectedStaff.status)}`}>
-                        {selectedStaff.status}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="profile-content">
-                  <div className="profile-section glass-card">
-                    <h4>Contact Information</h4>
-                    <div className="profile-details">
-                      <div className="detail-item">
-                        <FiMail className="detail-icon" />
-                        <div className="detail-content">
-                          <span className="detail-label">Email</span>
-                          <span className="detail-value">{selectedStaff.email || 'N/A'}</span>
-                        </div>
+                  <div className="staff-util-mini">
+                    {isCasual(staff) ? (
+                      <span className="util-casual-label">Casual</span>
+                    ) : (
+                      <div className="util-mini-bg">
+                        <div className={`util-mini-fg ${currentFortnightHours(staff)>contractHours(staff)?'over':'under'}`} style={{width: `${utilisationPct(staff)}%`}}></div>
                       </div>
-                      <div className="detail-item">
-                        <FiPhone className="detail-icon" />
-                        <div className="detail-content">
-                          <span className="detail-label">Phone</span>
-                          <span className="detail-value">{selectedStaff.phone || 'N/A'}</span>
-                        </div>
-                      </div>
-                      <div className="detail-item">
-                        <FiHome className="detail-icon" />
-                        <div className="detail-content">
-                          <span className="detail-label">Address</span>
-                          <span className="detail-value">
-                            {selectedStaff.address ? (
-                              <>
-                                {selectedStaff.address}, {selectedStaff.suburb}, {selectedStaff.state} {selectedStaff.postcode}
-                              </>
-                            ) : 'N/A'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+                    )}
                   </div>
                   
-                  <div className="profile-section glass-card">
-                    <h4>Employment Details</h4>
-                    <div className="profile-details">
-                      <div className="detail-item">
-                        <FiBriefcase className="detail-icon" />
-                        <div className="detail-content">
-                          <span className="detail-label">Position</span>
-                          <span className="detail-value">{formatRole(selectedStaff.position)}</span>
-                        </div>
-                      </div>
-                      <div className="detail-item">
-                        <FiBriefcase className="detail-icon" />
-                        <div className="detail-content">
-                          <span className="detail-label">SCHADS Level</span>
-                          <span className="detail-value">{selectedStaff.schads_level || 'N/A'}</span>
-                        </div>
-                      </div>
-                      <div className="detail-item">
-                        <FiCalendar className="detail-icon" />
-                        <div className="detail-content">
-                          <span className="detail-label">Start Date</span>
-                          <span className="detail-value">{formatDate(selectedStaff.start_date)}</span>
-                        </div>
-                      </div>
-                      <div className="detail-item">
-                        <FiClock className="detail-icon" />
-                        <div className="detail-content">
-                          <span className="detail-label">Contracted Hours</span>
-                          <span className="detail-value">{selectedStaff.contracted_hours || 0} hours/week</span>
-                        </div>
-                      </div>
-                      <div className="detail-item">
-                        <FiDollarSign className="detail-icon" />
-                        <div className="detail-content">
-                          <span className="detail-label">Base Pay Rate</span>
-                          <span className="detail-value">{formatCurrency(selectedStaff.base_pay_rate)}/hour</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="profile-section glass-card">
-                    <h4>Emergency Contact</h4>
-                    <div className="profile-details">
-                      <div className="detail-item">
-                        <FiUser className="detail-icon" />
-                        <div className="detail-content">
-                          <span className="detail-label">Name</span>
-                          <span className="detail-value">{selectedStaff.emergency_contact_name || 'N/A'}</span>
-                        </div>
-                      </div>
-                      <div className="detail-item">
-                        <FiPhone className="detail-icon" />
-                        <div className="detail-content">
-                          <span className="detail-label">Phone</span>
-                          <span className="detail-value">{selectedStaff.emergency_contact_phone || 'N/A'}</span>
-                        </div>
-                      </div>
-                    </div>
+                  <div className="staff-actions">
+                    <button
+                      className="action-btn edit"
+                      title="Edit"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditStaff(staff);
+                        setIsEditModalOpen(true);
+                      }}
+                    >
+                      <FiEdit />
+                    </button>
+                    <button
+                      className="action-btn delete"
+                      title="Delete"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedStaff(staff);
+                        setIsDeleteConfirmOpen(true);
+                      }}
+                    >
+                      <FiTrash />
+                    </button>
                   </div>
                 </div>
               </div>
-            </div>
+            ))}
           </div>
-        )}
-      </div>
+          
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="pagination-container">
+              <button 
+                className="pagination-btn"
+                onClick={handlePrevPage}
+                disabled={currentPage === 1}
+              >
+                <FiArrowLeft />
+                <span>Previous</span>
+              </button>
+              
+              <div className="pagination-info">
+                Page {currentPage} of {totalPages}
+              </div>
+              
+              <button 
+                className="pagination-btn"
+                onClick={handleNextPage}
+                disabled={currentPage === totalPages}
+              >
+                <span>Next</span>
+                <FiArrowRight />
+              </button>
+            </div>
+          )}
+        </>
+      )}
 
       {/* ---------------- New-Staff Modal ---------------- */}
       {isCreateModalOpen && (
@@ -560,9 +482,6 @@ const Staff = () => {
           >
             <div className="modal-header">
               <h3>Create Staff</h3>
-              <button className="modal-close" onClick={() => setIsCreateModalOpen(false)}>
-                <FiXCircle />
-              </button>
             </div>
 
             <form
@@ -692,12 +611,6 @@ const Staff = () => {
           >
             <div className="modal-header">
               <h3>Edit Staff</h3>
-              <button
-                className="modal-close"
-                onClick={() => setIsEditModalOpen(false)}
-              >
-                <FiXCircle />
-              </button>
             </div>
 
             <form
@@ -875,7 +788,178 @@ const Staff = () => {
           </div>
         </div>
       )}
-    </>
+    </div>
+  );
+
+  // Render leave tab content
+  const renderLeaveTab = () => (
+    <div className="leave-tab">
+      <div className="glass-panel leave-header">
+        <h3>Leave Management</h3>
+        <div className="actions">
+          <button className="btn btn-primary" onClick={openNewLeave}><FiPlus/> New Leave Request</button>
+        </div>
+      </div>
+
+      <div className="two-col">
+        <div className="col">
+          <div className="glass-card">
+            <h4>Requests</h4>
+            <div className="table-responsive">
+              <table className="leave-table">
+                <thead>
+                  <tr>
+                    <th>Staff</th><th>Type</th><th>Start</th><th>End</th><th>Hours</th><th>Status</th><th>Reason</th><th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {leaveRequests.length === 0 ? (
+                    <tr><td colSpan="8" className="empty-table-message">No leave requests</td></tr>
+                  ) : leaveRequests.map(req => {
+                    const s = (staffData?.data || []).find(x=>x.id===req.staff_id) || {};
+                    return (
+                      <tr key={req.id} className={`status-${req.status}`}>
+                        <td>{s.first_name} {s.last_name}</td>
+                        <td>{req.type}</td>
+                        <td>{formatDate(req.start_date)}</td>
+                        <td>{formatDate(req.end_date)}</td>
+                        <td>{req.hours}</td>
+                        <td><span className={`badge ${req.status==='approved'?'badge-green':req.status==='denied'?'badge-red':'badge-yellow'}`}>{req.status}</span></td>
+                        <td className="reason-cell">{req.reason}</td>
+                        <td className="actions-cell">
+                          <button className="btn btn-secondary btn-sm" onClick={()=>openEditLeave(req)}>Modify</button>
+                          <button className="btn btn-success btn-sm" onClick={()=>approveLeave(req.id)} disabled={req.status==='approved'}>Approve</button>
+                          <button className="btn btn-warning btn-sm" onClick={()=>denyLeave(req.id)} disabled={req.status==='denied'}>Deny</button>
+                          <button className="btn btn-danger btn-sm" onClick={()=>deleteLeave(req.id)}>Delete</button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div className="col">
+          <div className="glass-card">
+            <h4>Fortnight Utilisation</h4>
+            <div className="util-list">
+              {(staffData?.data || []).map(s => (
+                <div key={s.id} className="util-row">
+                  <div className="util-meta">
+                    <div className="name">{s.first_name} {s.last_name}</div>
+                    <div className="hours">
+                      {isCasual(s) ? 'Casual' : `${currentFortnightHours(s)} / ${contractHours(s)} hrs`}
+                    </div>
+                  </div>
+                  <div className={`util-bar ${isCasual(s)?'casual':''}`}>
+                    <div className="bg">
+                      <div className={`fg ${currentFortnightHours(s)>contractHours(s)?'over':'under'}`} style={{width: `${utilisationPct(s)}%`}}></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {isLeaveModalOpen && (
+        <div className="modal-overlay" onClick={()=>setIsLeaveModalOpen(false)}>
+          <div className="modal-content glass-panel" onClick={(e)=>e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>{editingLeave? 'Modify Leave' : 'New Leave Request'}</h3>
+              <button className="modal-close" onClick={()=>setIsLeaveModalOpen(false)}><FiXCircle/></button>
+            </div>
+            <form className="modal-body" onSubmit={saveLeave}>
+              <div className="form-grid">
+                <label>Staff
+                  <select required value={leaveForm.staff_id} onChange={(e)=>setLeaveForm({...leaveForm, staff_id: parseInt(e.target.value) })}>
+                    <option value="">Select staff</option>
+                    {(staffData?.data||[]).map(s=>(<option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>))}
+                  </select>
+                </label>
+                <label>Type
+                  <select value={leaveForm.type} onChange={(e)=>setLeaveForm({...leaveForm, type:e.target.value})}>
+                    <option value="AL">Annual Leave</option>
+                    <option value="SL">Sick Leave</option>
+                    <option value="LSL">Long Service Leave</option>
+                    <option value="LWOP">Leave Without Pay</option>
+                  </select>
+                </label>
+                <label>Start Date
+                  <input type="date" required value={leaveForm.start_date} onChange={(e)=>setLeaveForm({...leaveForm, start_date:e.target.value})}/>
+                </label>
+                <label>End Date
+                  <input type="date" required value={leaveForm.end_date} onChange={(e)=>setLeaveForm({...leaveForm, end_date:e.target.value})}/>
+                </label>
+                <label>Hours
+                  <input type="number" min="0" step="0.25" value={leaveForm.hours} onChange={(e)=>setLeaveForm({...leaveForm, hours: parseFloat(e.target.value)})}/>
+                </label>
+                <label>Reason
+                  <input value={leaveForm.reason} onChange={(e)=>setLeaveForm({...leaveForm, reason:e.target.value})}/>
+                </label>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={()=>setIsLeaveModalOpen(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary">{editingLeave? 'Save' : 'Create'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  // Render HR tab content
+  const renderHRTab = () => (
+    <div className="hr-tab">
+      <div className="glass-panel"><h3>HR Tools & Procedures</h3><p>Run HR workflows and view HR reports.</p></div>
+      <div className="glass-card"><p>Coming soon: onboarding, compliance, training, and HR reports.</p></div>
+    </div>
+  );
+
+  // Render reports tab content
+  const renderReportsTab = () => (
+    <div className="reports-tab">
+      <div className="glass-panel"><h3>Staff Reports</h3><p>Generate staff-specific reports.</p></div>
+      {!selectedStaffId ? (
+        <div className="glass-card"><p>Select a staff member from the Directory to view reports.</p></div>
+      ) : (
+        <div className="glass-card">
+          {(() => {
+            const staff = staffData?.data?.find(s => s.id === selectedStaffId);
+            return (
+              <p>Coming soon: staff report tiles and preview for {staff?.first_name} {staff?.last_name}.</p>
+            );
+          })()}
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="staff-page">
+      <div className="page-header">
+        <h2 className="page-title">Staff</h2>
+        <div className="page-tabs">
+          <button className={`tab-button ${activeTab==='directory'?'active':''}`} onClick={() => setActiveTab('directory')}><FiUsers /><span>Directory</span></button>
+          <button className={`tab-button ${activeTab==='leave'?'active':''}`} onClick={() => handleTabSwitch('leave')}><FiCalendar /><span>Leave</span></button>
+          <button className={`tab-button ${activeTab==='hr'?'active':''}`} onClick={() => handleTabSwitch('hr')}><FiBriefcase /><span>HR</span></button>
+          <button className={`tab-button ${activeTab==='reports'?'active':''}`} onClick={() => handleTabSwitch('reports')}><FiBarChart2 /><span>Reports</span></button>
+        </div>
+      </div>
+
+      <div className="tab-content">
+        {activeTab==='directory' && renderDirectoryTab()}
+        {activeTab==='leave' && renderLeaveTab()}
+        {activeTab==='hr' && renderHRTab()}
+        {activeTab==='reports' && renderReportsTab()}
+      </div>
+
+      {toast.visible && (<div className="toast-notice">{toast.message}</div>)}
+    </div>
   );
 };
 
