@@ -358,22 +358,6 @@ const Vehicles = () => {
     }
   };
 
-  // Get fuel label class & text for pill displayed on warning tape
-  const getFuelLabelClass = (fuelType) => {
-    switch ((fuelType || '').toLowerCase()) {
-      case 'petrol':
-        return { cls: 'fuel-petrol', text: 'PETROL' };
-      case 'diesel':
-        return { cls: 'fuel-diesel', text: 'DIESEL' };
-      case 'electric':
-        return { cls: 'fuel-electric', text: 'ELECTRIC' };
-      case 'hybrid':
-        return { cls: 'fuel-hybrid', text: 'HYBRID' };
-      default:
-        return { cls: '', text: '' };
-    }
-  };
-
   // Format status for display
   const formatStatus = (status) => {
     if (!status) return 'Unknown';
@@ -591,10 +575,9 @@ const Vehicles = () => {
             {currentVehicles.map(vehicle => (
               <div 
                 key={vehicle.id} 
-                className={`vehicle-card glass-card ${getFuelTypeClass(vehicle.fuel_type)} ${getFuelLabelClass(vehicle.fuel_type).cls} ${selectedVehicle?.id === vehicle.id ? 'selected' : ''}`}
+                className={`vehicle-card glass-card ${getFuelTypeClass(vehicle.fuel_type)} ${selectedVehicle?.id === vehicle.id ? 'selected' : ''}`}
                 onClick={() => setSelectedVehicle(vehicle)}
               >
-                <div className="fuel-label">{getFuelLabelClass(vehicle.fuel_type).text}</div>
                 <div className="vehicle-header">
                   <div className="vehicle-registration">
                     {vehicle.registration}
@@ -672,7 +655,7 @@ const Vehicles = () => {
                   
                   <div className="vehicle-actions">
                     <button 
-                      className="action-btn"
+                      className="action-btn delete"
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedVehicle(vehicle);

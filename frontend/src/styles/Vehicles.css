@@ -24,6 +24,15 @@
 .vehicles-page .vehicle-actions .action-btn:hover { background: rgba(255,255,255,0.08); }
 .vehicles-page .vehicle-actions .action-btn svg { width:16px; height:16px; }
 
+/* Make delete icon red and give its button a red-tinted hover */
+.vehicles-page .vehicle-actions .action-btn.delete svg{
+  color:#ff6b6b;
+}
+.vehicles-page .vehicle-actions .action-btn.delete:hover{
+  background:rgba(255,107,107,0.18);
+  border-color:rgba(255,107,107,0.3);
+}
+
 /* Modal sizing & overlay */
 .vehicles-page .modal-overlay{ position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:9998; display:flex; align-items:center; justify-content:center; }
 .vehicles-page .modal-content{ width: clamp(820px, 85vw, 1100px); max-height: 92vh; overflow-y:auto; border-radius:12px; }
