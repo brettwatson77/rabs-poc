@@ -247,3 +247,38 @@
   border-color:rgba(0,0,0,0.12);
   color:#111;
 }
+
+/* ------------------------------------------------------------------
+ * Header layout & badge styling
+ * ------------------------------------------------------------------*/
+
+.vehicles-page .vehicle-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.vehicles-page .vehicle-badges{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.vehicles-page .vehicle-badges .badge{
+  padding:4px 8px;
+  border-radius:8px;
+  background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.10);
+  color:#ffffff;
+  font-size:12px;
+  text-transform:capitalize;
+}
+.vehicles-page .vehicle-card.selected .vehicle-badges .badge{
+  background:rgba(0,0,0,0.06);
+  border-color:rgba(0,0,0,0.12);
+  color:#111;
+}
+
+/* ensure delete icon stays red even if overridden elsewhere */
+.vehicles-page .vehicle-actions .action-btn.delete svg{
+  color:#ff6b6b !important;
+}
