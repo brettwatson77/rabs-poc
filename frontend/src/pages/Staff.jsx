@@ -801,67 +801,40 @@ const Staff = () => {
         </div>
       </div>
 
-      <div className="two-col">
-        <div className="col">
-          <div className="glass-card">
-            <h4>Requests</h4>
-            <div className="table-responsive">
-              <table className="leave-table">
-                <thead>
-                  <tr>
-                    <th>Staff</th><th>Type</th><th>Start</th><th>End</th><th>Hours</th><th>Status</th><th>Reason</th><th></th>
+      <div className="glass-card">
+        <h4>Requests</h4>
+        <div className="table-responsive">
+          <table className="leave-table">
+            <thead>
+              <tr>
+                <th>Staff</th><th>Type</th><th>Start</th><th>End</th><th>Hours</th><th>Status</th><th>Reason</th><th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {leaveRequests.length === 0 ? (
+                <tr><td colSpan="8" className="empty-table-message">No leave requests</td></tr>
+              ) : leaveRequests.map(req => {
+                const s = (staffData?.data || []).find(x=>x.id===req.staff_id) || {};
+                return (
+                  <tr key={req.id} className={`status-${req.status}`}>
+                    <td>{s.first_name} {s.last_name}</td>
+                    <td>{req.type}</td>
+                    <td>{formatDate(req.start_date)}</td>
+                    <td>{formatDate(req.end_date)}</td>
+                    <td>{req.hours}</td>
+                    <td><span className={`badge ${req.status==='approved'?'badge-green':req.status==='denied'?'badge-red':'badge-yellow'}`}>{req.status}</span></td>
+                    <td className="reason-cell">{req.reason}</td>
+                    <td className="actions-cell">
+                      <button className="btn btn-secondary btn-sm" onClick={()=>openEditLeave(req)}>Modify</button>
+                      <button className="btn btn-success btn-sm" onClick={()=>approveLeave(req.id)} disabled={req.status==='approved'}>Approve</button>
+                      <button className="btn btn-warning btn-sm" onClick={()=>denyLeave(req.id)} disabled={req.status==='denied'}>Deny</button>
+                      <button className="btn btn-danger btn-sm" onClick={()=>deleteLeave(req.id)}>Delete</button>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {leaveRequests.length === 0 ? (
-                    <tr><td colSpan="8" className="empty-table-message">No leave requests</td></tr>
-                  ) : leaveRequests.map(req => {
-                    const s = (staffData?.data || []).find(x=>x.id===req.staff_id) || {};
-                    return (
-                      <tr key={req.id} className={`status-${req.status}`}>
-                        <td>{s.first_name} {s.last_name}</td>
-                        <td>{req.type}</td>
-                        <td>{formatDate(req.start_date)}</td>
-                        <td>{formatDate(req.end_date)}</td>
-                        <td>{req.hours}</td>
-                        <td><span className={`badge ${req.status==='approved'?'badge-green':req.status==='denied'?'badge-red':'badge-yellow'}`}>{req.status}</span></td>
-                        <td className="reason-cell">{req.reason}</td>
-                        <td className="actions-cell">
-                          <button className="btn btn-secondary btn-sm" onClick={()=>openEditLeave(req)}>Modify</button>
-                          <button className="btn btn-success btn-sm" onClick={()=>approveLeave(req.id)} disabled={req.status==='approved'}>Approve</button>
-                          <button className="btn btn-warning btn-sm" onClick={()=>denyLeave(req.id)} disabled={req.status==='denied'}>Deny</button>
-                          <button className="btn btn-danger btn-sm" onClick={()=>deleteLeave(req.id)}>Delete</button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        <div className="col">
-          <div className="glass-card">
-            <h4>Fortnight Utilisation</h4>
-            <div className="util-list">
-              {(staffData?.data || []).map(s => (
-                <div key={s.id} className="util-row">
-                  <div className="util-meta">
-                    <div className="name">{s.first_name} {s.last_name}</div>
-                    <div className="hours">
-                      {isCasual(s) ? 'Casual' : `${currentFortnightHours(s)} / ${contractHours(s)} hrs`}
-                    </div>
-                  </div>
-                  <div className={`util-bar ${isCasual(s)?'casual':''}`}>
-                    <div className="bg">
-                      <div className={`fg ${currentFortnightHours(s)>contractHours(s)?'over':'under'}`} style={{width: `${utilisationPct(s)}%`}}></div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
 
