@@ -586,6 +586,10 @@ const Vehicles = () => {
                     <span className={`badge ${getStatusBadge(vehicle.status)}`}>
                       {formatStatus(vehicle.status)}
                     </span>
+                    {/* fuel type chip */}
+                    <span className="badge fuel-tag">
+                      {vehicle.fuel_type}
+                    </span>
                   </div>
                 </div>
                 

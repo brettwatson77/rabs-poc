@@ -228,3 +228,22 @@
 .vehicles-page .modal-header .modal-close:hover{
   background:rgba(255,255,255,0.12);
 }
+
+/* ------------------------------------------------------------------
+ * Fuel type chip inside card header
+ * ------------------------------------------------------------------*/
+.vehicles-page .badge.fuel-tag{
+  margin-left:8px;
+  padding:4px 8px;
+  font-size:12px;
+  border-radius:8px;
+  background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.10);
+  color:#fff;
+  text-transform:capitalize;
+}
+.vehicles-page .vehicle-card.selected .badge.fuel-tag{
+  background:rgba(0,0,0,0.06);
+  border-color:rgba(0,0,0,0.12);
+  color:#111;
+}
