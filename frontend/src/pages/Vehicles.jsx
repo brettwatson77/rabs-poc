@@ -342,22 +342,6 @@ const Vehicles = () => {
     }
   };
 
-  // Get fuel type class for warning tape
-  const getFuelTypeClass = (fuelType) => {
-    switch (fuelType?.toLowerCase()) {
-      case 'petrol':
-        return 'warning-tape-petrol';
-      case 'diesel':
-        return 'warning-tape-diesel';
-      case 'electric':
-        return 'warning-tape-electric';
-      case 'hybrid':
-        return 'warning-tape-hybrid';
-      default:
-        return '';
-    }
-  };
-
   // Format status for display
   const formatStatus = (status) => {
     if (!status) return 'Unknown';
@@ -575,7 +559,7 @@ const Vehicles = () => {
             {currentVehicles.map(vehicle => (
               <div 
                 key={vehicle.id} 
-                className={`vehicle-card glass-card ${getFuelTypeClass(vehicle.fuel_type)} ${selectedVehicle?.id === vehicle.id ? 'selected' : ''}`}
+                className={`vehicle-card glass-card ${selectedVehicle?.id === vehicle.id ? 'selected' : ''}`}
                 onClick={() => setSelectedVehicle(vehicle)}
               >
                 <div className="vehicle-header">
@@ -643,10 +627,6 @@ const Vehicles = () => {
                   
                   {/* Compact meta icons bottom-right */}
                   <div className="vehicle-meta-icons">
-                    <div className="meta-item" title={`Fuel: ${vehicle.fuel_type}`}>
-                      <FiDroplet />
-                      <span>{vehicle.fuel_type}</span>
-                    </div>
                     <div className="meta-item" title={`Seats: ${vehicle.capacity}`}>
                       <FiUsers />
                       <span>{vehicle.capacity}</span>
@@ -717,7 +697,7 @@ const Vehicles = () => {
             
             <div className="vehicle-detail">
               <div className="detail-header">
-                <div className={`vehicle-banner ${getFuelTypeClass(selectedVehicle.fuel_type)}`}>
+                <div className={`vehicle-banner`}>
                   <div className="vehicle-title">
                     <h2>{selectedVehicle.year} {selectedVehicle.make} {selectedVehicle.model}</h2>
                     <div className="vehicle-registration-display">{selectedVehicle.registration}</div>
