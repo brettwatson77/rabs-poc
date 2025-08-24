@@ -16,10 +16,24 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    // Thin list per spec – only id & name
+    // Restore rich field selection expected by Filing Cabinet UI
     const query = `
-      SELECT id, name
-        FROM venues
+      SELECT
+        id,
+        name,
+        address,
+        suburb,
+        state,
+        postcode,
+        capacity,
+        facilities,
+        active,
+        created_at,
+        updated_at,
+        location_lat,
+        location_lng,
+        status
+      FROM venues
     ORDER BY name ASC
     `;
     

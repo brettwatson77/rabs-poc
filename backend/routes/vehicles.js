@@ -26,16 +26,11 @@ const pool = new Pool({
  */
 router.get('/', async (req, res, next) => {
   try {
-    // Thin list per spec – only id, name, capacity totals and active flag
+    // Restore full field set expected by Filing Cabinet UI
     const result = await pool.query(
-      `SELECT 
-         id, 
-         name, 
-         capacity               AS capacity_total,
-         wheelchair_capacity    AS capacity_wheelchair,
-         active
-       FROM vehicles
-       ORDER BY name`
+      `SELECT *
+         FROM vehicles
+     ORDER BY name`
     );
     res.json({
       success: true,

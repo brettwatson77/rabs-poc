@@ -26,9 +26,9 @@ const pool = new Pool({
  */
 router.get('/', async (req, res, next) => {
   try {
-    // Return thin list per spec – id, first_name, last_name, active only
+    // Restore full field set expected by Filing Cabinet UI
     const result = await pool.query(
-      `SELECT id, first_name, last_name, active
+      `SELECT * 
          FROM participants
      ORDER BY last_name, first_name`
     );

@@ -40,9 +40,9 @@ const aliasMap = {
  */
 router.get('/', async (req, res, next) => {
   try {
-    // Thin list per spec – only id, first_name, last_name, active
+    // Restore rich field set for Filing Cabinet UI
     const result = await pool.query(
-      `SELECT id, first_name, last_name, active
+      `SELECT * 
          FROM staff
      ORDER BY last_name, first_name`
     );
