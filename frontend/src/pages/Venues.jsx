@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery } from 'react-query';
-import axios from 'axios';
+import api from '../api/api';
 import { format, startOfWeek, endOfWeek } from 'date-fns';
 import { 
   FiMapPin, 
@@ -30,9 +30,6 @@ import {
 } from 'react-icons/fi';
 import { FaWheelchair } from 'react-icons/fa';
 
-// API base URL from environment
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3009';
-
 // Page-specific styles
 import '../styles/Venues.css';
 
@@ -61,7 +58,7 @@ const Venues = () => {
   } = useQuery(
     ['venues'],
     async () => {
-      const response = await axios.get(`${API_URL}/api/v1/venues`);
+      const response = await api.get('/venues');
       return response.data;
     }
   );
@@ -73,7 +70,7 @@ const Venues = () => {
     ['venueBookings', currentWeekStart],
     async () => {
       const endDate = format(endOfWeek(currentWeekStart, { weekStartsOn: 1 }), 'yyyy-MM-dd');
-      const response = await axios.get(`${API_URL}/api/v1/venues/bookings`, {
+      const response = await api.get('/venues/bookings', {
         params: {
           start_date: format(currentWeekStart, 'yyyy-MM-dd'),
           end_date: endDate

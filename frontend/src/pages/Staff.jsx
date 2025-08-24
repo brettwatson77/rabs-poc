@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import axios from 'axios';
+import api from '../api/api';
 import { 
   FiUsers, 
   FiSearch, 
@@ -22,9 +22,6 @@ import {
 
 // Page-specific styles
 import '../styles/Staff.css';
-
-// API base URL from environment
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3009';
 
 // Staff Page Component
 const Staff = () => {
@@ -86,7 +83,7 @@ const Staff = () => {
 
   const createStaffMutation = useMutation(
     async (body) => {
-      const res = await axios.post(`${API_URL}/api/v1/staff`, body);
+      const res = await api.post('/staff', body);
       return res.data;
     },
     {
@@ -113,7 +110,7 @@ const Staff = () => {
   // ------------------------------------------------------------------ //
   const updateStaffMutation = useMutation(
     async (body) => {
-      const res = await axios.put(`${API_URL}/api/v1/staff/${body.id}`, body);
+      const res = await api.put(`/staff/${body.id}`, body);
       return res.data;
     },
     {
@@ -127,7 +124,7 @@ const Staff = () => {
 
   const deleteStaffMutation = useMutation(
     async (id) => {
-      await axios.delete(`${API_URL}/api/v1/staff/${id}`);
+      await api.delete(`/staff/${id}`);
     },
     {
       onSuccess: () => {
@@ -147,7 +144,7 @@ const Staff = () => {
   } = useQuery(
     ['staff'],
     async () => {
-      const response = await axios.get(`${API_URL}/api/v1/staff`);
+      const response = await api.get('/staff');
       return response.data;
     }
   );

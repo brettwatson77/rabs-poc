@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import axios from 'axios';
+import api from '../api/api';
 import { format, addDays } from 'date-fns';
 import { 
   FiTruck, 
@@ -27,9 +27,6 @@ import {
   FiDroplet,
   FiHash
 } from 'react-icons/fi';
-
-// API base URL from environment
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3009';
 
 // Page-specific styles
 import '../styles/Vehicles.css';
@@ -111,7 +108,7 @@ const Vehicles = () => {
   } = useQuery(
     ['vehicles'],
     async () => {
-      const response = await axios.get(`${API_URL}/api/v1/vehicles`);
+      const response = await api.get('/vehicles');
       return response.data;
     }
   );
@@ -122,7 +119,7 @@ const Vehicles = () => {
   } = useQuery(
     ['staff'],
     async () => {
-      const response = await axios.get(`${API_URL}/api/v1/staff`);
+      const response = await api.get('/staff');
       return response.data;
     }
   );
@@ -135,7 +132,7 @@ const Vehicles = () => {
     ['vehicleBookings', currentWeekStart],
     async () => {
       const endDate = format(addDays(currentWeekStart, 6), 'yyyy-MM-dd');
-      const response = await axios.get(`${API_URL}/api/v1/vehicles/bookings`, {
+      const response = await api.get('/vehicles/bookings', {
         params: {
           start_date: format(currentWeekStart, 'yyyy-MM-dd'),
           end_date: endDate
@@ -148,7 +145,7 @@ const Vehicles = () => {
   // Update odometer mutation
   const updateOdometerMutation = useMutation(
     async ({ vehicleId, odometer }) => {
-      const response = await axios.patch(`${API_URL}/api/v1/vehicles/${vehicleId}`, { odometer });
+      const response = await api.patch(`/vehicles/${vehicleId}`, { odometer });
       return response.data;
     },
     {
