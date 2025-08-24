@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/api';
 import { format, startOfWeek, addDays } from 'date-fns';
-
-// Relative path only – honours proxy / production deploy config
-const API_URL = import.meta.env.VITE_API_URL || '';
 
 const Roster = () => {
   // View toggle state: 'day' or 'staff'
@@ -29,11 +26,11 @@ const Roster = () => {
       setError('');
       try {
         const promises = dates.map((d) =>
-          axios
-            .get(`${API_URL}/api/v1/roster/day`, { params: { date: d } })
+          api
+            .get('/roster/day', { params: { date: d } })
             .catch((err) => {
               // log and return null so other requests continue
-              console.error(`GET /api/v1/roster/day?date=${d}`, err?.response?.status);
+              console.error(`GET /roster/day?date=${d}`, err?.response?.status);
               return null;
             })
         );
@@ -60,12 +57,12 @@ const Roster = () => {
         // If we didn't get staff from any day response, fetch staff directly
         if (!staffSet) {
           try {
-            const staffRes = await axios.get(`${API_URL}/api/v1/staff`);
+            const staffRes = await api.get('/staff');
             if (staffRes.data?.success) {
               setStaffDirectory(staffRes.data.data || []);
             }
           } catch (staffErr) {
-            console.error(`Failed GET ${API_URL}/api/v1/staff`, staffErr?.response?.status);
+            console.error('Failed GET /staff', staffErr?.response?.status);
           }
         }
       } catch (e) {
