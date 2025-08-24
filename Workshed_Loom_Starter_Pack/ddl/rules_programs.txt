@@ -1,0 +1,28 @@
+                                                          Table "public.rules_programs"
+       Column       |           Type           | Collation | Nullable |      Default       | Storage  | Compression | Stats target | Description 
+--------------------+--------------------------+-----------+----------+--------------------+----------+-------------+--------------+-------------
+ id                 | uuid                     |           | not null | uuid_generate_v4() | plain    |             |              | 
+ name               | text                     |           | not null |                    | extended |             |              | 
+ description        | text                     |           |          |                    | extended |             |              | 
+ day_of_week        | integer                  |           | not null |                    | plain    |             |              | 
+ start_time         | time without time zone   |           | not null |                    | plain    |             |              | 
+ end_time           | time without time zone   |           | not null |                    | plain    |             |              | 
+ venue_id           | uuid                     |           |          |                    | plain    |             |              | 
+ is_recurring       | boolean                  |           |          | true               | plain    |             |              | 
+ recurrence_pattern | text                     |           |          | 'weekly'::text     | extended |             |              | 
+ transport_required | boolean                  |           |          | true               | plain    |             |              | 
+ staffing_ratio     | text                     |           |          | '1:4'::text        | extended |             |              | 
+ active             | boolean                  |           |          | true               | plain    |             |              | 
+ created_at         | timestamp with time zone |           |          | CURRENT_TIMESTAMP  | plain    |             |              | 
+ updated_at         | timestamp with time zone |           |          | CURRENT_TIMESTAMP  | plain    |             |              | 
+Indexes:
+    "rules_programs_pkey" PRIMARY KEY, btree (id)
+Referenced by:
+    TABLE "loom_instances" CONSTRAINT "loom_instances_source_rule_id_fkey" FOREIGN KEY (source_rule_id) REFERENCES rules_programs(id)
+    TABLE "rules_participant_schedule" CONSTRAINT "rules_participant_schedule_program_id_fkey" FOREIGN KEY (program_id) REFERENCES rules_programs(id) ON DELETE CASCADE
+    TABLE "rules_program_exceptions" CONSTRAINT "rules_program_exceptions_program_id_fkey" FOREIGN KEY (program_id) REFERENCES rules_programs(id) ON DELETE CASCADE
+    TABLE "rules_staff_roster" CONSTRAINT "rules_staff_roster_program_id_fkey" FOREIGN KEY (program_id) REFERENCES rules_programs(id) ON DELETE CASCADE
+Triggers:
+    update_rules_programs_timestamp BEFORE UPDATE ON rules_programs FOR EACH ROW EXECUTE FUNCTION update_timestamp()
+Access method: heap
+

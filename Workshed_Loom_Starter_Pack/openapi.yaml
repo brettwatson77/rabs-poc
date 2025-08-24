@@ -1,0 +1,257 @@
+openapi: 3.1.0
+info:
+  title: RABS-POC Workshed + Loom API
+  version: 0.1.0
+servers:
+  - url: http://localhost:3009/api
+paths:
+  /templates/programs:
+    post:
+      summary: Start a draft program template (assigns UUID immediately)
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProgramTemplateCreate'
+      responses:
+        '201':
+          description: Draft created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgramTemplate'
+  /templates/programs/{id}:
+    patch:
+      summary: Update any subset of template fields
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProgramTemplatePatch'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgramTemplate'
+  /templates/programs/{id}/slots:
+    post:
+      summary: Add slots (bulk or single)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items: { $ref: '#/components/schemas/TemplateSlotCreate' }
+      responses:
+        '201':
+          description: Slots added
+  /templates/programs/{id}/participants:
+    post:
+      summary: Add a participant to the template
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                participant_id: { type: string, format: uuid }
+              required: [participant_id]
+      responses:
+        '201': { description: Added }
+  /templates/programs/{id}/participants/{ppId}/billing:
+    post:
+      summary: Add per-participant billing line
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+        - in: path
+          name: ppId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ParticipantBillingCreate'
+      responses:
+        '201': { description: Added }
+  /templates/programs/{id}/requirements:
+    get:
+      summary: Read live counters (participants, WPU, staff, vehicles)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Counters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateRequirements'
+  /templates/programs/{id}/finalize:
+    post:
+      summary: Finalize template and enqueue rethread
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Finalized }
+  /calendar/intents:
+    post:
+      summary: Create a calendar intent (temporary or permanent)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalendarIntentCreate'
+      responses:
+        '201': { description: Intent created }
+  /loom/instances:
+    get:
+      summary: Read loom instances by date range
+      parameters:
+        - in: query
+          name: startDate
+          required: true
+          schema: { type: string, format: date }
+        - in: query
+          name: endDate
+          required: true
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Instances
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/LoomInstance' }
+  /dashboard/slots:
+    get:
+      summary: Read slot cards for a date
+      parameters:
+        - in: query
+          name: date
+          required: true
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Slot cards
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/LoomInstanceSlot' }
+components:
+  schemas:
+    ProgramTemplateCreate:
+      type: object
+      properties:
+        name: { type: string }
+        venue_id: { type: string, format: uuid }
+        recurrence_period_weeks: { type: integer, enum: [1,2], default: 2 }
+        day_of_week: { type: integer, minimum: 0, maximum: 6 }
+        week_in_cycle: { type: integer, enum: [1,2] }
+        start_time: { type: string, pattern: "^[0-2][0-9]:[0-5][0-9](:[0-5][0-9])?$" }
+        end_time: { type: string, pattern: "^[0-2][0-9]:[0-5][0-9](:[0-5][0-9])?$" }
+      additionalProperties: false
+    ProgramTemplatePatch:
+      allOf:
+        - $ref: '#/components/schemas/ProgramTemplateCreate'
+    ProgramTemplate:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+      additionalProperties: true
+    TemplateSlotCreate:
+      type: object
+      properties:
+        seq: { type: integer }
+        slot_type: { type: string, enum: [pickup,activity,meal,other,dropoff] }
+        start_time: { type: string }
+        end_time: { type: string }
+        route_run_number: { type: integer, nullable: true }
+        label: { type: string, nullable: true }
+      required: [seq, slot_type, start_time, end_time]
+      additionalProperties: false
+    ParticipantBillingCreate:
+      type: object
+      properties:
+        billing_code_id: { type: string, format: uuid }
+        hours: { type: number }
+      required: [billing_code_id, hours]
+      additionalProperties: false
+    TemplateRequirements:
+      type: object
+      properties:
+        participant_count: { type: integer }
+        wpu_total: { type: number }
+        staff_required: { type: integer }
+        vehicles_required: { type: integer }
+    CalendarIntentCreate:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [participant_absence,staff_absence,venue_change,time_change,program_cancellation,program_reschedule,participant_transfer,billing_exception,vehicle_maintenance]
+        date: { type: string, format: date }
+        end_date: { type: string, format: date, nullable: true }
+        template_id: { type: string, format: uuid, nullable: true }
+        participant_id: { type: string, format: uuid, nullable: true }
+        staff_id: { type: string, format: uuid, nullable: true }
+        vehicle_id: { type: string, format: uuid, nullable: true }
+        permanent: { type: boolean, default: false }
+        metadata: { type: object, additionalProperties: true }
+      required: [type, date]
+      additionalProperties: false
+    LoomInstance:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        template_id: { type: string, format: uuid }
+        date: { type: string, format: date }
+        status: { type: string }
+        instance_staff_required: { type: integer }
+        instance_vehicles_required: { type: integer }
+    LoomInstanceSlot:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        instance_id: { type: string, format: uuid }
+        seq: { type: integer }
+        slot_type: { type: string }
+        start_time: { type: string, format: date-time }
+        end_time: { type: string, format: date-time }
+        route_run_number: { type: integer, nullable: true }

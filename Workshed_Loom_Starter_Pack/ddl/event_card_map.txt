@@ -1,0 +1,21 @@
+                                                          Table "public.event_card_map"
+       Column       |           Type           | Collation | Nullable |      Default       | Storage  | Compression | Stats target | Description 
+--------------------+--------------------------+-----------+----------+--------------------+----------+-------------+--------------+-------------
+ id                 | uuid                     |           | not null | uuid_generate_v4() | plain    |             |              | 
+ loom_instance_id   | uuid                     |           | not null |                    | plain    |             |              | 
+ card_type          | text                     |           | not null |                    | extended |             |              | 
+ card_order         | integer                  |           | not null |                    | plain    |             |              | 
+ display_title      | text                     |           | not null |                    | extended |             |              | 
+ display_subtitle   | text                     |           |          |                    | extended |             |              | 
+ display_time_start | timestamp with time zone |           | not null |                    | plain    |             |              | 
+ display_time_end   | timestamp with time zone |           | not null |                    | plain    |             |              | 
+ card_color         | text                     |           |          |                    | extended |             |              | 
+ card_icon          | text                     |           |          |                    | extended |             |              | 
+ created_at         | timestamp with time zone |           |          | CURRENT_TIMESTAMP  | plain    |             |              | 
+Indexes:
+    "event_card_map_pkey" PRIMARY KEY, btree (id)
+    "idx_event_card_map_loom" btree (loom_instance_id)
+Foreign-key constraints:
+    "event_card_map_loom_instance_id_fkey" FOREIGN KEY (loom_instance_id) REFERENCES loom_instances(id) ON DELETE CASCADE
+Access method: heap
+

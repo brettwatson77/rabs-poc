@@ -1,0 +1,22 @@
+                                                   Table "public.rules_program_exceptions"
+     Column     |           Type           | Collation | Nullable |      Default       | Storage  | Compression | Stats target | Description 
+----------------+--------------------------+-----------+----------+--------------------+----------+-------------+--------------+-------------
+ id             | uuid                     |           | not null | uuid_generate_v4() | plain    |             |              | 
+ program_id     | uuid                     |           | not null |                    | plain    |             |              | 
+ exception_date | date                     |           | not null |                    | plain    |             |              | 
+ exception_type | text                     |           | not null |                    | extended |             |              | 
+ start_time     | time without time zone   |           |          |                    | plain    |             |              | 
+ end_time       | time without time zone   |           |          |                    | plain    |             |              | 
+ venue_id       | uuid                     |           |          |                    | plain    |             |              | 
+ reason         | text                     |           |          |                    | extended |             |              | 
+ created_at     | timestamp with time zone |           |          | CURRENT_TIMESTAMP  | plain    |             |              | 
+ updated_at     | timestamp with time zone |           |          | CURRENT_TIMESTAMP  | plain    |             |              | 
+Indexes:
+    "rules_program_exceptions_pkey" PRIMARY KEY, btree (id)
+    "rules_program_exceptions_program_id_exception_date_key" UNIQUE CONSTRAINT, btree (program_id, exception_date)
+Foreign-key constraints:
+    "rules_program_exceptions_program_id_fkey" FOREIGN KEY (program_id) REFERENCES rules_programs(id) ON DELETE CASCADE
+Triggers:
+    update_rules_program_exceptions_timestamp BEFORE UPDATE ON rules_program_exceptions FOR EACH ROW EXECUTE FUNCTION update_timestamp()
+Access method: heap
+

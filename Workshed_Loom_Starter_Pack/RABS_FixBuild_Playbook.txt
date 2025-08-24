@@ -1,0 +1,74 @@
+RABS‑POC — FIX & BUILD PLAYBOOK
+Workshed (Wall + Calendar) → Loom → Dashboard → Roster → Finance
+Author: ChatGPT (for Brett)   Date: 2025‑08‑24
+
+Scope
+- Pages are NOT assumed functional. This playbook is a DB‑first rebuild plan with concrete acceptance checks.
+- Persist‑as‑you‑build: Program Template wizard writes to DB on every edit; counters update live; Loom rethreads on finalize or intent changes.
+- Goal: deliver a working vertical slice (Schedule/Wall → Loom → Dashboard → Roster) that Finance can read later.
+
+ORDER OF WORK (implementation)
+1) DB SNAPSHOT (Windows)
+   - Run snapshot.ps1 to capture current DB state into a folder: schema.sql, enums/constraints, table list + row counts, top‑5 samples per table.
+   - Review the output; mark existing entities as Wall, Calendar, Filing Cabinet, Loom, Finance, Aux.
+
+2) MIGRATION 0001 (core schema + triggers)
+   - Apply migrations/0001_core_schema.sql (idempotent). It adds missing tables (templates, slots, participants join, requirements, intents, loom instances/slots, queue, org_settings) and creates a recompute function + triggers to maintain requirement counters.
+   - Re‑run snapshot.ps1. Confirm the new tables exist.
+
+3) API ENDPOINTS (Factory.ai, minimal surface)
+   - Implement endpoints from openapi.yaml (templates wizard, requirements read, finalize, calendar intents, read loom instances, dashboard slots). Keep payloads minimal and stable.
+   - Reject unknown/extra fields. Everything returns UUIDs and audit timestamps.
+
+4) LOOM WORKER (deterministic regeneration)
+   - Run rethreadWorker.js continuously (pm2 or node) to process loom_rethread_queue.
+   - On template finalize or intent change, enqueue a job. Worker upserts loom_instances + loom_instance_slots for affected dates only (window days).
+
+5) PAGES (rebuild)
+5.1 Schedule (Wall + Calendar) — Program Template wizard (persist‑as‑you‑type)
+   - Start draft (POST /templates/programs) → obtains UUID immediately.
+   - On each edit, PATCH template. On adding participants, POST join row then POST per‑participant billing lines. On each write, GET /templates/programs/{id}/requirements to refresh counters panel.
+   - Slots: POST in bulk or one‑by‑one. Include pickup/activity/meal/other/dropoff and route_run_number for multi‑run pickups/dropoffs.
+   - Finalize sets status=active and enqueues rethread from tomorrow→window_end.
+   Acceptance:
+     A1: Adding/removing participants changes participant_count and WPU immediately (live counters panel).
+     A2: Staff_required and vehicles_required recompute per org_settings (threshold) and pickup/dropoff runs.
+     A3: Finalize creates instances for the correct fortnightly cycle days in the current window.
+     A4: Permanent calendar change updates templates and future instances only; temporary change affects only the specified date(s).
+     A5: Abandoned drafts autoprune after N days if empty.
+
+5.2 Dashboard — slot cards timeline (5 columns: earlier, before, now, next, later)
+   - Read from loom_instance_slots for the selected date(s). The timeline is a pure UI grouping by comparing slot start/end with now.
+   - Actions (mark attendance, short‑notice cancel, remove from run, swap run) write calendar_intents (temporary) and enqueue a rethread for that date only.
+   Acceptance:
+     D1: Each template slot produces exactly one or more cards (multi‑run pickup/dropoff → N cards) in correct order.
+     D2: Marking attendance updates the instance’s attendance table (MVP: keep as metadata on slot or a separate table if you prefer).
+     D3: Short‑notice cancel removes from transport but leaves billing flag set true for Finance preview.
+     D4: Dashboard updates after rethread without page reload (poll or SSE acceptable).
+
+5.3 Roster — staff shifts and vehicle runs
+   - Staff_required from requirements determines how many shift placeholders to show. UI assigns staff to shift placeholders and vehicles to runs.
+   - Assign/unassign writes to simple roster tables (not included in 0001; add later or keep MVP in loom_instances metadata).
+   Acceptance:
+     R1: Adding a participant that increases WPU across threshold N automatically raises required staff in UI within one refresh.
+     R2: Vehicle assignment respects run counts and shows capacity warnings for wheelchair counts (MVP: display only).
+
+5.4 Finance — provisional (read‑only, MVP)
+   - View computed totals from template participant billing lines × attendance flags. Export can come later.
+   Acceptance:
+     F1: For a test instance day, the provisional total equals sum(hours × rate) for attended participants plus short‑notice cancels as per rule.
+
+6) TESTS (must have)
+   - Unit: trigger recompute; WPU/participants/staff/vehicles math.
+   - Contract: endpoints adhere to openapi.yaml; reject extra fields.
+   - Engine: template edit → rethread future only; temporary intent → single date; permanent → template + future.
+   - E2E: create fortnightly program, add 7 participants incl. one 1.25 WPU, finalize, confirm correct slots/cards and staff_required math.
+
+7) LOGGING/OBSERVABILITY
+   - Worker logs each job id, date range, templates touched, counts created/updated, duration.
+   - API logs per endpoint with correlation id = template_id or instance_id when available.
+
+8) ROLLBACK
+   - Migrations are additive/idempotent. To back out a broken feature, disable the worker and revert API routes; leave new tables in place for inspection.
+
+That’s the whole vertical slice. Use snapshot.ps1 first, then 0001_core_schema.sql, then openapi + worker + pages in order.

@@ -1,0 +1,44 @@
+                                                                                                  Table "public.staff"
+      Column      |           Type           | Collation | Nullable |           Default           | Storage  | Compression | Stats target |                                 Description                                  
+------------------+--------------------------+-----------+----------+-----------------------------+----------+-------------+--------------+------------------------------------------------------------------------------
+ id               | uuid                     |           | not null | gen_random_uuid()           | plain    |             |              | 
+ first_name       | character varying(100)   |           | not null |                             | extended |             |              | 
+ last_name        | character varying(100)   |           | not null |                             | extended |             |              | 
+ position         | character varying(100)   |           |          |                             | extended |             |              | 
+ email            | character varying(100)   |           |          |                             | extended |             |              | 
+ phone            | character varying(20)    |           |          |                             | extended |             |              | 
+ address          | text                     |           |          |                             | extended |             |              | 
+ suburb           | character varying(100)   |           |          |                             | extended |             |              | 
+ state            | character varying(50)    |           |          |                             | extended |             |              | 
+ postcode         | character varying(10)    |           |          |                             | extended |             |              | 
+ qualifications   | text                     |           |          |                             | extended |             |              | 
+ active           | boolean                  |           | not null | true                        | plain    |             |              | 
+ created_at       | timestamp with time zone |           | not null | now()                       | plain    |             |              | 
+ updated_at       | timestamp with time zone |           | not null | now()                       | plain    |             |              | 
+ photo_url        | text                     |           |          |                             | extended |             |              | 
+ location_lat     | numeric(10,8)            |           |          |                             | main     |             |              | 
+ location_lng     | numeric(11,8)            |           |          |                             | main     |             |              | 
+ status           | character varying(50)    |           | not null | 'active'::character varying | extended |             |              | 
+ contracted_hours | numeric(5,2)             |           |          |                             | main     |             |              | Number of hours per week a staff member is contracted for (e.g., 38.0, 20.5)
+ base_pay_rate    | numeric(8,2)             |           |          |                             | main     |             |              | Hourly pay rate in dollars for the staff member (e.g., 28.50, 42.75)
+ schads_level     | integer                  |           |          | 2                           | plain    |             |              | 
+Indexes:
+    "staff_pkey" PRIMARY KEY, btree (id)
+    "idx_staff_contracted_hours" btree (contracted_hours)
+    "idx_staff_financial" btree (base_pay_rate, contracted_hours)
+    "idx_staff_location" btree (location_lat, location_lng)
+    "idx_staff_name" btree (last_name, first_name)
+    "idx_staff_pay_rate" btree (base_pay_rate)
+    "idx_staff_status" btree (status)
+Check constraints:
+    "staff_status_check" CHECK (status::text = ANY (ARRAY['active'::character varying::text, 'leave'::character varying::text, 'inactive'::character varying::text, 'terminated'::character varying::text, 'pending'::character varying::text]))
+Referenced by:
+    TABLE "staff_unavailabilities" CONSTRAINT "staff_unavailabilities_staff_id_fkey" FOREIGN KEY (staff_id) REFERENCES staff(id) ON DELETE CASCADE
+    TABLE "tgl_loom_staff_shifts" CONSTRAINT "tgl_loom_staff_shifts_staff_id_fkey" FOREIGN KEY (staff_id) REFERENCES staff(id) ON DELETE CASCADE
+    TABLE "tgl_loom_vehicle_runs" CONSTRAINT "tgl_loom_vehicle_runs_driver_id_fkey" FOREIGN KEY (driver_id) REFERENCES staff(id) ON DELETE SET NULL
+    TABLE "tgl_operator_intents" CONSTRAINT "tgl_operator_intents_staff_id_fkey" FOREIGN KEY (staff_id) REFERENCES staff(id) ON DELETE SET NULL
+    TABLE "tgl_temporal_exceptions" CONSTRAINT "tgl_temporal_exceptions_staff_id_fkey" FOREIGN KEY (staff_id) REFERENCES staff(id) ON DELETE SET NULL
+Triggers:
+    update_staff_modtime BEFORE UPDATE ON staff FOR EACH ROW EXECUTE FUNCTION update_modified_column()
+Access method: heap
+

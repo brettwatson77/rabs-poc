@@ -1,0 +1,10 @@
+                                          Table "public.settings"
+   Column    | Type | Collation | Nullable | Default | Storage  | Compression | Stats target | Description 
+-------------+------+-----------+----------+---------+----------+-------------+--------------+-------------
+ key         | text |           | not null |         | extended |             |              | 
+ value       | text |           | not null |         | extended |             |              | 
+ description | text |           |          |         | extended |             |              | 
+Indexes:
+    "settings_pkey" PRIMARY KEY, btree (key)
+Access method: heap
+

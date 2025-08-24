@@ -1,0 +1,20 @@
+                                                  Table "public.participant_billing_codes"
+     Column     |           Type           | Collation | Nullable |      Default      | Storage  | Compression | Stats target | Description 
+----------------+--------------------------+-----------+----------+-------------------+----------+-------------+--------------+-------------
+ id             | uuid                     |           | not null | gen_random_uuid() | plain    |             |              | 
+ program_id     | uuid                     |           | not null |                   | plain    |             |              | 
+ participant_id | uuid                     |           | not null |                   | plain    |             |              | 
+ billing_code   | text                     |           | not null |                   | extended |             |              | 
+ hours          | numeric(5,2)             |           | not null | 0                 | main     |             |              | 
+ start_date     | date                     |           | not null |                   | plain    |             |              | 
+ end_date       | date                     |           |          |                   | plain    |             |              | 
+ is_active      | boolean                  |           | not null | true              | plain    |             |              | 
+ created_at     | timestamp with time zone |           | not null | now()             | plain    |             |              | 
+ updated_at     | timestamp with time zone |           | not null | now()             | plain    |             |              | 
+Indexes:
+    "participant_billing_codes_pkey" PRIMARY KEY, btree (id)
+Foreign-key constraints:
+    "participant_billing_codes_participant_id_fkey" FOREIGN KEY (participant_id) REFERENCES participants(id) ON DELETE CASCADE
+    "participant_billing_codes_program_id_fkey" FOREIGN KEY (program_id) REFERENCES programs(id) ON DELETE CASCADE
+Access method: heap
+

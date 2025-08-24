@@ -1,0 +1,24 @@
+                                                   Table "public.rules_participant_schedule"
+      Column      |           Type           | Collation | Nullable |      Default       | Storage  | Compression | Stats target | Description 
+------------------+--------------------------+-----------+----------+--------------------+----------+-------------+--------------+-------------
+ id               | uuid                     |           | not null | uuid_generate_v4() | plain    |             |              | 
+ participant_id   | uuid                     |           | not null |                    | plain    |             |              | 
+ program_id       | uuid                     |           | not null |                    | plain    |             |              | 
+ start_date       | date                     |           | not null |                    | plain    |             |              | 
+ end_date         | date                     |           |          |                    | plain    |             |              | 
+ pickup_required  | boolean                  |           |          | true               | plain    |             |              | 
+ dropoff_required | boolean                  |           |          | true               | plain    |             |              | 
+ notes            | text                     |           |          |                    | extended |             |              | 
+ created_at       | timestamp with time zone |           |          | CURRENT_TIMESTAMP  | plain    |             |              | 
+ updated_at       | timestamp with time zone |           |          | CURRENT_TIMESTAMP  | plain    |             |              | 
+Indexes:
+    "rules_participant_schedule_pkey" PRIMARY KEY, btree (id)
+    "rules_participant_schedule_participant_id_program_id_start__key" UNIQUE CONSTRAINT, btree (participant_id, program_id, start_date)
+Foreign-key constraints:
+    "rules_participant_schedule_program_id_fkey" FOREIGN KEY (program_id) REFERENCES rules_programs(id) ON DELETE CASCADE
+Referenced by:
+    TABLE "loom_participant_attendance" CONSTRAINT "loom_participant_attendance_source_rule_id_fkey" FOREIGN KEY (source_rule_id) REFERENCES rules_participant_schedule(id)
+Triggers:
+    update_rules_participant_schedule_timestamp BEFORE UPDATE ON rules_participant_schedule FOR EACH ROW EXECUTE FUNCTION update_timestamp()
+Access method: heap
+

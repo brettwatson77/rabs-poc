@@ -1,0 +1,32 @@
+                                                          Table "public.loom_instances"
+       Column       |           Type           | Collation | Nullable |      Default       | Storage  | Compression | Stats target | Description 
+--------------------+--------------------------+-----------+----------+--------------------+----------+-------------+--------------+-------------
+ id                 | uuid                     |           | not null | uuid_generate_v4() | plain    |             |              | 
+ source_rule_id     | uuid                     |           | not null |                    | plain    |             |              | 
+ instance_date      | date                     |           | not null |                    | plain    |             |              | 
+ start_time         | time without time zone   |           | not null |                    | plain    |             |              | 
+ end_time           | time without time zone   |           | not null |                    | plain    |             |              | 
+ venue_id           | uuid                     |           |          |                    | plain    |             |              | 
+ transport_required | boolean                  |           |          | true               | plain    |             |              | 
+ staffing_ratio     | text                     |           |          | '1:4'::text        | extended |             |              | 
+ is_overridden      | boolean                  |           |          | false              | plain    |             |              | 
+ override_source    | text                     |           |          |                    | extended |             |              | 
+ override_reason    | text                     |           |          |                    | extended |             |              | 
+ quality_audit_flag | boolean                  |           |          | false              | plain    |             |              | 
+ projection_hash    | text                     |           |          |                    | extended |             |              | 
+ projected_at       | timestamp with time zone |           |          | CURRENT_TIMESTAMP  | plain    |             |              | 
+ updated_at         | timestamp with time zone |           |          | CURRENT_TIMESTAMP  | plain    |             |              | 
+Indexes:
+    "loom_instances_pkey" PRIMARY KEY, btree (id)
+    "loom_instances_source_rule_id_instance_date_key" UNIQUE CONSTRAINT, btree (source_rule_id, instance_date)
+Foreign-key constraints:
+    "loom_instances_source_rule_id_fkey" FOREIGN KEY (source_rule_id) REFERENCES rules_programs(id)
+Referenced by:
+    TABLE "event_card_map" CONSTRAINT "event_card_map_loom_instance_id_fkey" FOREIGN KEY (loom_instance_id) REFERENCES loom_instances(id) ON DELETE CASCADE
+    TABLE "loom_participant_attendance" CONSTRAINT "loom_participant_attendance_loom_instance_id_fkey" FOREIGN KEY (loom_instance_id) REFERENCES loom_instances(id) ON DELETE CASCADE
+    TABLE "loom_staff_assignments" CONSTRAINT "loom_staff_assignments_loom_instance_id_fkey" FOREIGN KEY (loom_instance_id) REFERENCES loom_instances(id) ON DELETE CASCADE
+    TABLE "loom_vehicle_assignments" CONSTRAINT "loom_vehicle_assignments_loom_instance_id_fkey" FOREIGN KEY (loom_instance_id) REFERENCES loom_instances(id) ON DELETE CASCADE
+Triggers:
+    update_loom_instances_timestamp BEFORE UPDATE ON loom_instances FOR EACH ROW EXECUTE FUNCTION update_timestamp()
+Access method: heap
+

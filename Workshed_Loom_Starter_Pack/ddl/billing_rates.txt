@@ -1,0 +1,21 @@
+                                                      Table "public.billing_rates"
+   Column    |           Type           | Collation | Nullable |      Default      | Storage  | Compression | Stats target | Description 
+-------------+--------------------------+-----------+----------+-------------------+----------+-------------+--------------+-------------
+ id          | uuid                     |           | not null | gen_random_uuid() | plain    |             |              | 
+ code        | character varying(50)    |           | not null |                   | extended |             |              | 
+ description | text                     |           | not null |                   | extended |             |              | 
+ base_rate   | numeric(10,2)            |           | not null |                   | main     |             |              | 
+ ratio_1_1   | numeric(10,2)            |           | not null |                   | main     |             |              | 
+ ratio_1_2   | numeric(10,2)            |           | not null |                   | main     |             |              | 
+ ratio_1_3   | numeric(10,2)            |           | not null |                   | main     |             |              | 
+ ratio_1_4   | numeric(10,2)            |           | not null |                   | main     |             |              | 
+ active      | boolean                  |           | not null | true              | plain    |             |              | 
+ created_at  | timestamp with time zone |           | not null | now()             | plain    |             |              | 
+ updated_at  | timestamp with time zone |           | not null | now()             | plain    |             |              | 
+Indexes:
+    "billing_rates_pkey" PRIMARY KEY, btree (id)
+    "billing_rates_code_key" UNIQUE CONSTRAINT, btree (code)
+Triggers:
+    update_billing_rates_modtime BEFORE UPDATE ON billing_rates FOR EACH ROW EXECUTE FUNCTION update_modified_column()
+Access method: heap
+

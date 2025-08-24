@@ -1,0 +1,75 @@
+                                                                                                                   Table "public.participants"
+          Column           |           Type           | Collation | Nullable |                Default                 | Storage  | Compression | Stats target |                                           Description                                            
+---------------------------+--------------------------+-----------+----------+----------------------------------------+----------+-------------+--------------+--------------------------------------------------------------------------------------------------
+ id                        | uuid                     |           | not null | gen_random_uuid()                      | plain    |             |              | 
+ first_name                | character varying(100)   |           | not null |                                        | extended |             |              | 
+ last_name                 | character varying(100)   |           | not null |                                        | extended |             |              | 
+ date_of_birth             | date                     |           |          |                                        | plain    |             |              | 
+ ndis_number               | character varying(50)    |           |          |                                        | extended |             |              | 
+ address                   | text                     |           |          |                                        | extended |             |              | 
+ suburb                    | character varying(100)   |           |          |                                        | extended |             |              | 
+ state                     | character varying(50)    |           |          |                                        | extended |             |              | 
+ postcode                  | character varying(10)    |           |          |                                        | extended |             |              | 
+ phone                     | character varying(20)    |           |          |                                        | extended |             |              | 
+ email                     | character varying(100)   |           |          |                                        | extended |             |              | 
+ emergency_contact_name    | character varying(100)   |           |          |                                        | extended |             |              | 
+ emergency_contact_phone   | character varying(20)    |           |          |                                        | extended |             |              | 
+ notes                     | text                     |           |          |                                        | extended |             |              | 
+ active                    | boolean                  |           | not null | true                                   | plain    |             |              | 
+ created_at                | timestamp with time zone |           | not null | now()                                  | plain    |             |              | 
+ updated_at                | timestamp with time zone |           | not null | now()                                  | plain    |             |              | 
+ photo_url                 | text                     |           |          |                                        | extended |             |              | 
+ location_lat              | numeric(10,8)            |           |          |                                        | main     |             |              | 
+ location_lng              | numeric(11,8)            |           |          |                                        | main     |             |              | 
+ supervision_multiplier    | numeric(3,2)             |           | not null | 1.0                                    | main     |             |              | 
+ ndis_plan_start           | date                     |           |          |                                        | plain    |             |              | 
+ ndis_plan_end             | date                     |           |          |                                        | plain    |             |              | 
+ ndis_plan_budget          | numeric(10,2)            |           |          |                                        | main     |             |              | 
+ requires_wheelchair       | boolean                  |           |          | false                                  | plain    |             |              | 
+ requires_transport        | boolean                  |           |          | false                                  | plain    |             |              | 
+ gender                    | character varying(20)    |           |          |                                        | extended |             |              | 
+ plan_management_type      | plan_management_enum     |           | not null | 'agency_managed'::plan_management_enum | plain    |             |              | 
+ plan_manager_name         | character varying(100)   |           |          |                                        | extended |             |              | 
+ plan_manager_email        | character varying(100)   |           |          |                                        | extended |             |              | 
+ plan_manager_phone        | character varying(20)    |           |          |                                        | extended |             |              | 
+ support_coordinator_name  | character varying(100)   |           |          |                                        | extended |             |              | 
+ support_coordinator_email | character varying(100)   |           |          |                                        | extended |             |              | 
+ support_coordinator_phone | character varying(20)    |           |          |                                        | extended |             |              | 
+ guardian_name             | character varying(100)   |           |          |                                        | extended |             |              | 
+ guardian_relationship     | character varying(50)    |           |          |                                        | extended |             |              | 
+ guardian_contact          | character varying(100)   |           |          |                                        | extended |             |              | 
+ has_behavior_support_plan | boolean                  |           |          | false                                  | plain    |             |              | 
+ has_medical_plan          | boolean                  |           |          | false                                  | plain    |             |              | 
+ allergies                 | text                     |           |          |                                        | extended |             |              | 
+ medication_needs          | text                     |           |          |                                        | extended |             |              | 
+ mobility_needs            | text                     |           |          |                                        | extended |             |              | 
+ communication_needs       | text                     |           |          |                                        | extended |             |              | 
+ photo_consent             | boolean                  |           |          | false                                  | plain    |             |              | 
+ transport_consent         | boolean                  |           |          | false                                  | plain    |             |              | 
+ medication_consent        | boolean                  |           |          | false                                  | plain    |             |              | 
+ has_wheelchair_access     | boolean                  |           | not null | false                                  | plain    |             |              | Boolean flag for wheelchair access needs. Use with mobility_requirements text field for details.
+ has_dietary_requirements  | boolean                  |           | not null | false                                  | plain    |             |              | Boolean flag for any dietary requirements. Use with dietary_requirements text field for details.
+ has_medical_requirements  | boolean                  |           | not null | false                                  | plain    |             |              | Boolean flag for medical requirements. Use with medical_requirements text field for details.
+ has_behavioral_support    | boolean                  |           | not null | false                                  | plain    |             |              | Boolean flag for behavioral support needs. Corresponds to behavior_support_plan field.
+ has_visual_impairment     | boolean                  |           | not null | false                                  | plain    |             |              | Boolean flag for visual impairment support needs.
+ has_hearing_impairment    | boolean                  |           | not null | false                                  | plain    |             |              | Boolean flag for hearing impairment support needs.
+ has_cognitive_support     | boolean                  |           | not null | false                                  | plain    |             |              | Boolean flag for cognitive support needs.
+ has_communication_needs   | boolean                  |           | not null | false                                  | plain    |             |              | Boolean flag for communication support needs.
+Indexes:
+    "participants_pkey" PRIMARY KEY, btree (id)
+    "idx_participant_ndis_number" btree (ndis_number)
+    "idx_participant_plan_management" btree (plan_management_type)
+    "idx_participant_support_flags" btree (has_wheelchair_access, has_dietary_requirements, has_medical_requirements, has_behavioral_support, has_visual_impairment, has_hearing_impairment, has_cognitive_support, has_communication_needs)
+    "idx_participants_location" btree (location_lat, location_lng)
+    "idx_participants_name" btree (last_name, first_name)
+    "idx_participants_ndis" btree (ndis_number)
+Referenced by:
+    TABLE "participant_billing_codes" CONSTRAINT "participant_billing_codes_participant_id_fkey" FOREIGN KEY (participant_id) REFERENCES participants(id) ON DELETE CASCADE
+    TABLE "program_participants" CONSTRAINT "program_participants_participant_id_fkey" FOREIGN KEY (participant_id) REFERENCES participants(id) ON DELETE CASCADE
+    TABLE "tgl_loom_participant_allocations" CONSTRAINT "tgl_loom_participant_allocations_participant_id_fkey" FOREIGN KEY (participant_id) REFERENCES participants(id) ON DELETE CASCADE
+    TABLE "tgl_operator_intents" CONSTRAINT "tgl_operator_intents_participant_id_fkey" FOREIGN KEY (participant_id) REFERENCES participants(id) ON DELETE SET NULL
+    TABLE "tgl_temporal_exceptions" CONSTRAINT "tgl_temporal_exceptions_participant_id_fkey" FOREIGN KEY (participant_id) REFERENCES participants(id) ON DELETE SET NULL
+Triggers:
+    update_participants_modtime BEFORE UPDATE ON participants FOR EACH ROW EXECUTE FUNCTION update_modified_column()
+Access method: heap
+

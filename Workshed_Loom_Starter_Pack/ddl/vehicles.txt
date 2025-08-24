@@ -1,0 +1,43 @@
+                                                                                       Table "public.vehicles"
+        Column         |           Type           | Collation | Nullable |           Default           | Storage  | Compression | Stats target |                     Description                      
+-----------------------+--------------------------+-----------+----------+-----------------------------+----------+-------------+--------------+------------------------------------------------------
+ id                    | uuid                     |           | not null | gen_random_uuid()           | plain    |             |              | 
+ name                  | character varying(100)   |           | not null |                             | extended |             |              | 
+ registration          | character varying(20)    |           | not null |                             | extended |             |              | 
+ capacity              | integer                  |           | not null |                             | plain    |             |              | 
+ wheelchair_capacity   | integer                  |           | not null | 0                           | plain    |             |              | 
+ make                  | character varying(50)    |           |          |                             | extended |             |              | Vehicle manufacturer (e.g., Toyota, Renault)
+ model                 | character varying(50)    |           |          |                             | extended |             |              | Vehicle model (e.g., Hiace, Koleos)
+ year                  | integer                  |           |          |                             | plain    |             |              | Year the vehicle was manufactured
+ active                | boolean                  |           | not null | true                        | plain    |             |              | 
+ notes                 | text                     |           |          |                             | extended |             |              | 
+ created_at            | timestamp with time zone |           | not null | now()                       | plain    |             |              | 
+ updated_at            | timestamp with time zone |           | not null | now()                       | plain    |             |              | 
+ location_lat          | numeric(10,8)            |           |          |                             | main     |             |              | 
+ location_lng          | numeric(11,8)            |           |          |                             | main     |             |              | 
+ status                | character varying(50)    |           | not null | 'active'::character varying | extended |             |              | 
+ vin_number            | text                     |           |          |                             | extended |             |              | Vehicle Identification Number
+ engine_number         | text                     |           |          |                             | extended |             |              | Engine serial number
+ registration_expiry   | date                     |           |          |                             | plain    |             |              | Date when vehicle registration expires
+ fuel_type             | text                     |           |          |                             | extended |             |              | Type of fuel: Diesel, Petrol, Electric, Hybrid, etc.
+ location              | text                     |           |          |                             | extended |             |              | Where the vehicle is typically parked/stored
+ max_height            | numeric(3,1)             |           |          |                             | main     |             |              | Maximum vehicle height in meters
+ wheelchair_accessible | boolean                  |           |          | false                       | plain    |             |              | Whether the vehicle has wheelchair access
+Indexes:
+    "vehicles_pkey" PRIMARY KEY, btree (id)
+    "idx_vehicles_fuel_type" btree (fuel_type)
+    "idx_vehicles_location" btree (location_lat, location_lng)
+    "idx_vehicles_make_model" btree (make, model)
+    "idx_vehicles_registration" btree (registration)
+    "idx_vehicles_status" btree (status)
+Check constraints:
+    "vehicles_status_check" CHECK (status::text = ANY (ARRAY['active'::character varying::text, 'maintenance'::character varying::text, 'inactive'::character varying::text, 'retired'::character varying::text, 'pending'::character varying::text]))
+Referenced by:
+    TABLE "tgl_loom_vehicle_runs" CONSTRAINT "tgl_loom_vehicle_runs_vehicle_id_fkey" FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
+    TABLE "tgl_operator_intents" CONSTRAINT "tgl_operator_intents_vehicle_id_fkey" FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE SET NULL
+    TABLE "tgl_temporal_exceptions" CONSTRAINT "tgl_temporal_exceptions_vehicle_id_fkey" FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE SET NULL
+    TABLE "vehicle_blackouts" CONSTRAINT "vehicle_blackouts_vehicle_id_fkey" FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
+Triggers:
+    update_vehicles_modtime BEFORE UPDATE ON vehicles FOR EACH ROW EXECUTE FUNCTION update_modified_column()
+Access method: heap
+

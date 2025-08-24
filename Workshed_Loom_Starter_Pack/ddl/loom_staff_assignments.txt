@@ -1,0 +1,24 @@
+                                                     Table "public.loom_staff_assignments"
+      Column      |           Type           | Collation | Nullable |      Default       | Storage  | Compression | Stats target | Description 
+------------------+--------------------------+-----------+----------+--------------------+----------+-------------+--------------+-------------
+ id               | uuid                     |           | not null | uuid_generate_v4() | plain    |             |              | 
+ loom_instance_id | uuid                     |           | not null |                    | plain    |             |              | 
+ staff_id         | uuid                     |           | not null |                    | plain    |             |              | 
+ source_rule_id   | uuid                     |           |          |                    | plain    |             |              | 
+ role             | text                     |           | not null | 'support'::text    | extended |             |              | 
+ is_overridden    | boolean                  |           |          | false              | plain    |             |              | 
+ override_source  | text                     |           |          |                    | extended |             |              | 
+ override_reason  | text                     |           |          |                    | extended |             |              | 
+ notes            | text                     |           |          |                    | extended |             |              | 
+ created_at       | timestamp with time zone |           |          | CURRENT_TIMESTAMP  | plain    |             |              | 
+ updated_at       | timestamp with time zone |           |          | CURRENT_TIMESTAMP  | plain    |             |              | 
+Indexes:
+    "loom_staff_assignments_pkey" PRIMARY KEY, btree (id)
+    "loom_staff_assignments_loom_instance_id_staff_id_key" UNIQUE CONSTRAINT, btree (loom_instance_id, staff_id)
+Foreign-key constraints:
+    "loom_staff_assignments_loom_instance_id_fkey" FOREIGN KEY (loom_instance_id) REFERENCES loom_instances(id) ON DELETE CASCADE
+    "loom_staff_assignments_source_rule_id_fkey" FOREIGN KEY (source_rule_id) REFERENCES rules_staff_roster(id)
+Triggers:
+    update_loom_staff_assignments_timestamp BEFORE UPDATE ON loom_staff_assignments FOR EACH ROW EXECUTE FUNCTION update_timestamp()
+Access method: heap
+

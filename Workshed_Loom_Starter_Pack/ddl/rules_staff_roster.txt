@@ -1,0 +1,23 @@
+                                                    Table "public.rules_staff_roster"
+   Column   |           Type           | Collation | Nullable |      Default       | Storage  | Compression | Stats target | Description 
+------------+--------------------------+-----------+----------+--------------------+----------+-------------+--------------+-------------
+ id         | uuid                     |           | not null | uuid_generate_v4() | plain    |             |              | 
+ staff_id   | uuid                     |           | not null |                    | plain    |             |              | 
+ program_id | uuid                     |           | not null |                    | plain    |             |              | 
+ role       | text                     |           | not null | 'support'::text    | extended |             |              | 
+ start_date | date                     |           | not null |                    | plain    |             |              | 
+ end_date   | date                     |           |          |                    | plain    |             |              | 
+ notes      | text                     |           |          |                    | extended |             |              | 
+ created_at | timestamp with time zone |           |          | CURRENT_TIMESTAMP  | plain    |             |              | 
+ updated_at | timestamp with time zone |           |          | CURRENT_TIMESTAMP  | plain    |             |              | 
+Indexes:
+    "rules_staff_roster_pkey" PRIMARY KEY, btree (id)
+    "rules_staff_roster_staff_id_program_id_start_date_key" UNIQUE CONSTRAINT, btree (staff_id, program_id, start_date)
+Foreign-key constraints:
+    "rules_staff_roster_program_id_fkey" FOREIGN KEY (program_id) REFERENCES rules_programs(id) ON DELETE CASCADE
+Referenced by:
+    TABLE "loom_staff_assignments" CONSTRAINT "loom_staff_assignments_source_rule_id_fkey" FOREIGN KEY (source_rule_id) REFERENCES rules_staff_roster(id)
+Triggers:
+    update_rules_staff_roster_timestamp BEFORE UPDATE ON rules_staff_roster FOR EACH ROW EXECUTE FUNCTION update_timestamp()
+Access method: heap
+

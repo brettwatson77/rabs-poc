@@ -1,0 +1,52 @@
+                                                                                                        Table "public.programs"
+         Column         |           Type           | Collation | Nullable |                Default                | Storage  | Compression | Stats target |                                 Description                                 
+------------------------+--------------------------+-----------+----------+---------------------------------------+----------+-------------+--------------+-----------------------------------------------------------------------------
+ id                     | uuid                     |           | not null | gen_random_uuid()                     | plain    |             |              | 
+ name                   | character varying(100)   |           | not null |                                       | extended |             |              | 
+ description            | text                     |           |          |                                       | extended |             |              | 
+ day_of_week            | integer                  |           |          |                                       | plain    |             |              | DEPRECATED: Use days_of_week JSONB array instead
+ start_time             | time without time zone   |           | not null |                                       | plain    |             |              | 
+ end_time               | time without time zone   |           | not null |                                       | plain    |             |              | 
+ venue_id               | uuid                     |           |          |                                       | plain    |             |              | 
+ capacity               | integer                  |           |          |                                       | plain    |             |              | 
+ recurring              | boolean                  |           | not null | true                                  | plain    |             |              | DEPRECATED: Use repeat_pattern instead (none = false, anything else = true)
+ active                 | boolean                  |           | not null | true                                  | plain    |             |              | 
+ created_at             | timestamp with time zone |           | not null | now()                                 | plain    |             |              | 
+ updated_at             | timestamp with time zone |           | not null | now()                                 | plain    |             |              | 
+ status                 | character varying(50)    |           | not null | 'active'::character varying           | extended |             |              | 
+ program_type           | character varying(50)    |           |          | 'community_access'::character varying | extended |             |              | Type of program (community_access, training, etc.)
+ start_date             | date                     |           | not null | CURRENT_DATE                          | plain    |             |              | Date when program starts
+ end_date               | date                     |           |          |                                       | plain    |             |              | Date when program ends (NULL = no end date)
+ repeat_pattern         | character varying(20)    |           |          | 'weekly'::character varying           | extended |             |              | How program repeats: none (one-off), weekly, fortnightly, monthly
+ time_slots             | jsonb                    |           |          | '[]'::jsonb                           | extended |             |              | Array of time slots with activities for dashboard cards
+ notes                  | text                     |           |          |                                       | extended |             |              | 
+ staff_assignment_mode  | character varying(20)    |           |          | 'auto'::character varying             | extended |             |              | How staff are assigned: auto (by loom) or manual (fixed)
+ additional_staff_count | integer                  |           |          | 0                                     | plain    |             |              | Extra staff beyond the 1:4 ratio
+ created_by             | text                     |           |          |                                       | extended |             |              | 
+ days_of_week           | jsonb                    |           |          | '[]'::jsonb                           | extended |             |              | Array of days this program runs on (0=Sunday, 1=Monday, etc.)
+Indexes:
+    "programs_pkey" PRIMARY KEY, btree (id)
+    "idx_programs_active" btree (active)
+    "idx_programs_dates" btree (start_date, end_date)
+    "idx_programs_day_time" btree (day_of_week, start_time)
+    "idx_programs_status" btree (status)
+    "idx_programs_venue" btree (venue_id)
+Check constraints:
+    "programs_status_check" CHECK (status::text = ANY (ARRAY['active'::character varying::text, 'cancelled'::character varying::text, 'completed'::character varying::text, 'draft'::character varying::text, 'pending'::character varying::text]))
+    "valid_program_dates" CHECK (end_date IS NULL OR end_date >= start_date)
+    "valid_repeat_pattern" CHECK (repeat_pattern::text = ANY (ARRAY['none'::character varying::text, 'weekly'::character varying::text, 'fortnightly'::character varying::text, 'monthly'::character varying::text]))
+    "valid_staff_assignment_mode" CHECK (staff_assignment_mode::text = ANY (ARRAY['auto'::character varying::text, 'manual'::character varying::text]))
+Foreign-key constraints:
+    "programs_venue_id_fkey" FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE SET NULL
+Referenced by:
+    TABLE "participant_billing_codes" CONSTRAINT "participant_billing_codes_program_id_fkey" FOREIGN KEY (program_id) REFERENCES programs(id) ON DELETE CASCADE
+    TABLE "program_participants" CONSTRAINT "program_participants_program_id_fkey" FOREIGN KEY (program_id) REFERENCES programs(id) ON DELETE CASCADE
+    TABLE "schedule" CONSTRAINT "schedule_program_id_fkey" FOREIGN KEY (program_id) REFERENCES programs(id) ON DELETE CASCADE
+    TABLE "tgl_loom_instances" CONSTRAINT "tgl_loom_instances_program_id_fkey" FOREIGN KEY (program_id) REFERENCES programs(id) ON DELETE CASCADE
+    TABLE "tgl_loom_time_slots" CONSTRAINT "tgl_loom_time_slots_program_id_fkey" FOREIGN KEY (program_id) REFERENCES programs(id) ON DELETE CASCADE
+    TABLE "tgl_operator_intents" CONSTRAINT "tgl_operator_intents_program_id_fkey" FOREIGN KEY (program_id) REFERENCES programs(id) ON DELETE SET NULL
+    TABLE "tgl_temporal_exceptions" CONSTRAINT "tgl_temporal_exceptions_program_id_fkey" FOREIGN KEY (program_id) REFERENCES programs(id) ON DELETE SET NULL
+Triggers:
+    update_programs_modtime BEFORE UPDATE ON programs FOR EACH ROW EXECUTE FUNCTION update_modified_column()
+Access method: heap
+

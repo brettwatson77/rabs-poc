@@ -1,0 +1,14 @@
+{
+  "name": "factoryai-code-stubs",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "dayjs": "^1.11.11",
+    "express": "^4.19.2",
+    "pg": "^8.12.0"
+  }
+}

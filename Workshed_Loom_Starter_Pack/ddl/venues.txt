@@ -1,0 +1,37 @@
+                                                               Table "public.venues"
+    Column    |           Type           | Collation | Nullable |           Default           | Storage  | Compression | Stats target | Description 
+--------------+--------------------------+-----------+----------+-----------------------------+----------+-------------+--------------+-------------
+ id           | uuid                     |           | not null | gen_random_uuid()           | plain    |             |              | 
+ name         | character varying(100)   |           | not null |                             | extended |             |              | 
+ address      | text                     |           | not null |                             | extended |             |              | 
+ suburb       | character varying(100)   |           |          |                             | extended |             |              | 
+ state        | character varying(50)    |           |          |                             | extended |             |              | 
+ postcode     | character varying(10)    |           |          |                             | extended |             |              | 
+ capacity     | integer                  |           |          |                             | plain    |             |              | 
+ facilities   | text                     |           |          |                             | extended |             |              | 
+ active       | boolean                  |           | not null | true                        | plain    |             |              | 
+ created_at   | timestamp with time zone |           | not null | now()                       | plain    |             |              | 
+ updated_at   | timestamp with time zone |           | not null | now()                       | plain    |             |              | 
+ location_lat | numeric(10,8)            |           |          |                             | main     |             |              | 
+ location_lng | numeric(11,8)            |           |          |                             | main     |             |              | 
+ status       | character varying(50)    |           | not null | 'active'::character varying | extended |             |              | 
+ notes        | text                     |           |          |                             | extended |             |              | 
+ website      | text                     |           |          |                             | extended |             |              | 
+ image_url    | text                     |           |          |                             | extended |             |              | 
+Indexes:
+    "venues_pkey" PRIMARY KEY, btree (id)
+    "idx_venues_location" btree (location_lat, location_lng)
+    "idx_venues_name" btree (name)
+    "idx_venues_status" btree (status)
+Check constraints:
+    "venues_status_check" CHECK (status::text = ANY (ARRAY['active'::character varying::text, 'inactive'::character varying::text, 'maintenance'::character varying::text, 'closed'::character varying::text]))
+Referenced by:
+    TABLE "programs" CONSTRAINT "programs_venue_id_fkey" FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE SET NULL
+    TABLE "schedule" CONSTRAINT "schedule_venue_id_fkey" FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE SET NULL
+    TABLE "tgl_loom_instances" CONSTRAINT "tgl_loom_instances_venue_id_fkey" FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE SET NULL
+    TABLE "tgl_operator_intents" CONSTRAINT "tgl_operator_intents_venue_id_fkey" FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE SET NULL
+    TABLE "tgl_temporal_exceptions" CONSTRAINT "tgl_temporal_exceptions_venue_id_fkey" FOREIGN KEY (venue_id) REFERENCES venues(id) ON DELETE SET NULL
+Triggers:
+    update_venues_modtime BEFORE UPDATE ON venues FOR EACH ROW EXECUTE FUNCTION update_modified_column()
+Access method: heap
+

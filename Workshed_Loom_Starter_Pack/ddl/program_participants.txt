@@ -1,0 +1,27 @@
+                                                     Table "public.program_participants"
+     Column      |           Type           | Collation | Nullable |      Default      | Storage  | Compression | Stats target | Description 
+-----------------+--------------------------+-----------+----------+-------------------+----------+-------------+--------------+-------------
+ id              | uuid                     |           | not null | gen_random_uuid() | plain    |             |              | 
+ program_id      | uuid                     |           | not null |                   | plain    |             |              | 
+ participant_id  | uuid                     |           | not null |                   | plain    |             |              | 
+ billing_code_id | uuid                     |           |          |                   | plain    |             |              | 
+ start_date      | date                     |           |          |                   | plain    |             |              | 
+ end_date        | date                     |           |          |                   | plain    |             |              | 
+ created_at      | timestamp with time zone |           | not null | now()             | plain    |             |              | 
+ updated_at      | timestamp with time zone |           | not null | now()             | plain    |             |              | 
+ status          | text                     |           | not null | 'active'::text    | extended |             |              | 
+Indexes:
+    "program_participants_pkey" PRIMARY KEY, btree (id)
+    "idx_program_participants_dates" btree (start_date, end_date)
+    "idx_program_participants_participant" btree (participant_id)
+    "idx_program_participants_program" btree (program_id)
+    "idx_program_participants_status" btree (status)
+    "program_participants_program_id_participant_id_key" UNIQUE CONSTRAINT, btree (program_id, participant_id)
+Foreign-key constraints:
+    "program_participants_billing_code_id_fkey" FOREIGN KEY (billing_code_id) REFERENCES billing_codes(id) ON DELETE SET NULL
+    "program_participants_participant_id_fkey" FOREIGN KEY (participant_id) REFERENCES participants(id) ON DELETE CASCADE
+    "program_participants_program_id_fkey" FOREIGN KEY (program_id) REFERENCES programs(id) ON DELETE CASCADE
+Triggers:
+    update_program_participants_modtime BEFORE UPDATE ON program_participants FOR EACH ROW EXECUTE FUNCTION update_modified_column()
+Access method: heap
+

@@ -1,0 +1,17 @@
+                                                     Table "public.program_enrollments"
+     Column     |           Type           | Collation | Nullable |      Default       | Storage | Compression | Stats target | Description 
+----------------+--------------------------+-----------+----------+--------------------+---------+-------------+--------------+-------------
+ id             | uuid                     |           | not null | uuid_generate_v4() | plain   |             |              | 
+ participant_id | uuid                     |           | not null |                    | plain   |             |              | 
+ program_id     | uuid                     |           | not null |                    | plain   |             |              | 
+ start_date     | date                     |           | not null |                    | plain   |             |              | 
+ end_date       | date                     |           |          |                    | plain   |             |              | 
+ created_at     | timestamp with time zone |           |          | CURRENT_TIMESTAMP  | plain   |             |              | 
+Indexes:
+    "program_enrollments_pkey" PRIMARY KEY, btree (id)
+    "idx_program_enrollments_dates" btree (start_date, end_date)
+    "idx_program_enrollments_participant" btree (participant_id)
+    "idx_program_enrollments_program" btree (program_id)
+    "program_enrollments_participant_id_program_id_start_date_key" UNIQUE CONSTRAINT, btree (participant_id, program_id, start_date)
+Access method: heap
+

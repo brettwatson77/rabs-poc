@@ -1,0 +1,22 @@
+                                                    Table "public.loom_vehicle_assignments"
+      Column      |           Type           | Collation | Nullable |      Default       | Storage  | Compression | Stats target | Description 
+------------------+--------------------------+-----------+----------+--------------------+----------+-------------+--------------+-------------
+ id               | uuid                     |           | not null | uuid_generate_v4() | plain    |             |              | 
+ loom_instance_id | uuid                     |           | not null |                    | plain    |             |              | 
+ vehicle_id       | uuid                     |           | not null |                    | plain    |             |              | 
+ driver_staff_id  | uuid                     |           |          |                    | plain    |             |              | 
+ is_overridden    | boolean                  |           |          | false              | plain    |             |              | 
+ override_source  | text                     |           |          |                    | extended |             |              | 
+ override_reason  | text                     |           |          |                    | extended |             |              | 
+ notes            | text                     |           |          |                    | extended |             |              | 
+ created_at       | timestamp with time zone |           |          | CURRENT_TIMESTAMP  | plain    |             |              | 
+ updated_at       | timestamp with time zone |           |          | CURRENT_TIMESTAMP  | plain    |             |              | 
+Indexes:
+    "loom_vehicle_assignments_pkey" PRIMARY KEY, btree (id)
+    "loom_vehicle_assignments_loom_instance_id_vehicle_id_key" UNIQUE CONSTRAINT, btree (loom_instance_id, vehicle_id)
+Foreign-key constraints:
+    "loom_vehicle_assignments_loom_instance_id_fkey" FOREIGN KEY (loom_instance_id) REFERENCES loom_instances(id) ON DELETE CASCADE
+Triggers:
+    update_loom_vehicle_assignments_timestamp BEFORE UPDATE ON loom_vehicle_assignments FOR EACH ROW EXECUTE FUNCTION update_timestamp()
+Access method: heap
+
