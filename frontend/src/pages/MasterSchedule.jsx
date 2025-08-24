@@ -14,12 +14,9 @@ const API_URL = import.meta.env.VITE_API_URL || '';
 const MasterSchedule = () => {
   // State for window and instances
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [windowDays, setWindowDays] = useState(14); // Default window size
   const [windowDates, setWindowDates] = useState([]);
   const [instances, setInstances] = useState([]);
-  // error banner only when loom/window fails
-  const [windowError, setWindowError] = useState(false);
+  // No error banner state (was unused)
   
   // Fetch organization settings and window dates
   useEffect(() => {
@@ -28,7 +25,6 @@ const MasterSchedule = () => {
         // First get org settings for window days
         const settingsResponse = await axios.get(`${API_URL}/api/v1/settings/org`);
         const days = settingsResponse.data?.data?.loom_window_days || 14;
-        setWindowDays(days);
         
         // Build date strip starting from Monday of current week
         const monday = startOfWeek(new Date(), { weekStartsOn: 1 });
@@ -44,7 +40,6 @@ const MasterSchedule = () => {
           await axios.get(`${API_URL}/api/v1/loom/window`, { params: { days } });
         } catch (wErr) {
           console.error(`Failed GET ${API_URL}/api/v1/loom/window`, wErr?.response?.status);
-          setWindowError(true);
         }
 
         // Always attempt to fetch instances
@@ -54,7 +49,6 @@ const MasterSchedule = () => {
         console.error(`Failed GET ${API_URL}/api/v1/settings/org`, err?.response?.status);
         // Fallback dates so page still renders
         generateWindowDates(14);
-        // Do not raise banner – spec: banner only from loom/window
       }
     };
     

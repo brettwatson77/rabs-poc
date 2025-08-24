@@ -13,10 +13,10 @@ import {
   FiRefreshCw,
   FiList,
   FiTrash2,
-  FiEdit,
   FiArrowUp,
   FiArrowDown,
-  FiLink
+  FiLink,
+  FiX
 } from 'react-icons/fi';
 
 // API base URL from environment
@@ -55,17 +55,24 @@ const ProgramTemplateWizard = () => {
 
   // State for new venue form
   const [showNewVenueForm, setShowNewVenueForm] = useState(false);
-  const [newVenueName, setNewVenueName] = useState('');
-  const [newVenueAddress, setNewVenueAddress] = useState('');
+  const [newVenue, setNewVenue] = useState({
+    name: '',
+    address: '',
+    postcode: '',
+    contact_phone: '',
+    contact_email: '',
+    capacity: '',
+    accessibility_features: '',
+    venue_type: '',
+    is_active: true
+  });
 
   // State for time slots
   const [slots, setSlots] = useState([]);
-  const [editingSlotId, setEditingSlotId] = useState(null);
   const [newSlot, setNewSlot] = useState({
     slot_type: 'activity',
     start_time: '09:00',
     end_time: '15:00',
-    route_run_number: '',
     label: ''
   });
 
@@ -73,6 +80,12 @@ const ProgramTemplateWizard = () => {
   const [billingCodes, setBillingCodes] = useState([]);
   const [participantBilling, setParticipantBilling] = useState({});
   const [addedParticipants, setAddedParticipants] = useState([]);
+  
+  // State for staff and vehicles
+  const [staffList, setStaffList] = useState([]);
+  const [vehiclesList, setVehiclesList] = useState([]);
+  const [staffPlaceholders, setStaffPlaceholders] = useState([]);
+  const [vehiclePlaceholders, setVehiclePlaceholders] = useState([]);
   
   // Create draft rule on component mount
   useEffect(() => {
@@ -87,10 +100,15 @@ const ProgramTemplateWizard = () => {
           fetchParticipants();
           fetchVenues();
           fetchBillingCodes();
+          fetchStaff();
+          fetchVehicles();
           // Start polling requirements
           fetchRequirements(ruleId);
           // Fetch slots if any
           fetchSlots(ruleId);
+          // Fetch placeholders
+          fetchStaffPlaceholders(ruleId);
+          fetchVehiclePlaceholders(ruleId);
         } else {
           throw new Error('Failed to create draft rule');
         }
@@ -132,6 +150,60 @@ const ProgramTemplateWizard = () => {
     } catch (err) {
       console.error('Error fetching venues:', err);
       toast.error('Failed to load venues');
+    }
+  };
+
+  // Fetch staff list
+  const fetchStaff = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/api/v1/staff`);
+      if (response.data.success && response.data.data) {
+        setStaffList(response.data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching staff:', err);
+      toast.error('Failed to load staff');
+    }
+  };
+
+  // Fetch vehicles list
+  const fetchVehicles = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/api/v1/vehicles`);
+      if (response.data.success && response.data.data) {
+        setVehiclesList(response.data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching vehicles:', err);
+      toast.error('Failed to load vehicles');
+    }
+  };
+
+  // Fetch staff placeholders
+  const fetchStaffPlaceholders = async (id) => {
+    if (!id) return;
+    try {
+      const response = await axios.get(`${API_URL}/api/v1/templates/rules/${id}/staff-placeholders`);
+      if (response.data.success && response.data.data) {
+        setStaffPlaceholders(response.data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching staff placeholders:', err);
+      // Don't show toast for initial fetch
+    }
+  };
+
+  // Fetch vehicle placeholders
+  const fetchVehiclePlaceholders = async (id) => {
+    if (!id) return;
+    try {
+      const response = await axios.get(`${API_URL}/api/v1/templates/rules/${id}/vehicle-placeholders`);
+      if (response.data.success && response.data.data) {
+        setVehiclePlaceholders(response.data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching vehicle placeholders:', err);
+      // Don't show toast for initial fetch
     }
   };
 
@@ -212,25 +284,31 @@ const ProgramTemplateWizard = () => {
 
   // Create new venue
   const createVenue = async () => {
-    if (!newVenueName.trim()) {
-      toast.error('Venue name is required');
+    if (!newVenue.name.trim() || !newVenue.address.trim()) {
+      toast.error('Venue name and address are required');
       return;
     }
 
     try {
       setSaving(true);
-      const response = await axios.post(`${API_URL}/api/v1/venues`, {
-        name: newVenueName.trim(),
-        address: newVenueAddress.trim() || null
-      });
+      const response = await axios.post(`${API_URL}/api/v1/venues`, newVenue);
 
       if (response.data.success && response.data.data) {
-        const newVenue = response.data.data;
-        setVenues([...venues, newVenue]);
-        setVenueId(newVenue.id);
+        const createdVenue = response.data.data;
+        setVenues([...venues, createdVenue]);
+        setVenueId(createdVenue.id);
         setShowNewVenueForm(false);
-        setNewVenueName('');
-        setNewVenueAddress('');
+        setNewVenue({
+          name: '',
+          address: '',
+          postcode: '',
+          contact_phone: '',
+          contact_email: '',
+          capacity: '',
+          accessibility_features: '',
+          venue_type: '',
+          is_active: true
+        });
         toast.success('New venue created');
       } else {
         throw new Error('Failed to create venue');
@@ -254,8 +332,7 @@ const ProgramTemplateWizard = () => {
       
       const slotToAdd = {
         ...newSlot,
-        seq,
-        route_run_number: newSlot.route_run_number ? parseInt(newSlot.route_run_number) : null
+        seq
       };
       
       const response = await axios.post(`${API_URL}/api/v1/templates/rules/${ruleId}/slots`, slotToAdd);
@@ -267,7 +344,6 @@ const ProgramTemplateWizard = () => {
           slot_type: 'activity',
           start_time: '09:00',
           end_time: '15:00',
-          route_run_number: '',
           label: ''
         });
         fetchSlots(ruleId);
@@ -341,6 +417,144 @@ const ProgramTemplateWizard = () => {
     } catch (err) {
       console.error('Error reordering slots:', err);
       toast.error('Failed to reorder time slots');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Add staff placeholder
+  const addStaffPlaceholder = async (mode = 'auto', staffId = null) => {
+    if (!ruleId) return;
+    
+    try {
+      setSaving(true);
+      const response = await axios.post(`${API_URL}/api/v1/templates/rules/${ruleId}/staff-placeholders`, {
+        mode,
+        staff_id: mode === 'manual' ? staffId : null
+      });
+      
+      if (response.data.success) {
+        fetchStaffPlaceholders(ruleId);
+      } else {
+        throw new Error('Failed to add staff placeholder');
+      }
+    } catch (err) {
+      console.error('Error adding staff placeholder:', err);
+      toast.error('Failed to add staff placeholder');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Update staff placeholder
+  const updateStaffPlaceholder = async (placeholderId, mode, staffId = null) => {
+    if (!ruleId) return;
+    
+    try {
+      setSaving(true);
+      // Delete existing placeholder
+      await axios.delete(`${API_URL}/api/v1/templates/rules/${ruleId}/staff-placeholders/${placeholderId}`);
+      
+      // Create new placeholder with updated values
+      await axios.post(`${API_URL}/api/v1/templates/rules/${ruleId}/staff-placeholders`, {
+        mode,
+        staff_id: mode === 'manual' ? staffId : null
+      });
+      
+      fetchStaffPlaceholders(ruleId);
+    } catch (err) {
+      console.error('Error updating staff placeholder:', err);
+      toast.error('Failed to update staff assignment');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Delete staff placeholder
+  const deleteStaffPlaceholder = async (placeholderId) => {
+    if (!ruleId) return;
+    
+    try {
+      setSaving(true);
+      const response = await axios.delete(`${API_URL}/api/v1/templates/rules/${ruleId}/staff-placeholders/${placeholderId}`);
+      
+      if (response.data.success) {
+        fetchStaffPlaceholders(ruleId);
+      } else {
+        throw new Error('Failed to delete staff placeholder');
+      }
+    } catch (err) {
+      console.error('Error deleting staff placeholder:', err);
+      toast.error('Failed to remove staff placeholder');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Add vehicle placeholder
+  const addVehiclePlaceholder = async (mode = 'auto', vehicleId = null) => {
+    if (!ruleId) return;
+    
+    try {
+      setSaving(true);
+      const response = await axios.post(`${API_URL}/api/v1/templates/rules/${ruleId}/vehicle-placeholders`, {
+        mode,
+        vehicle_id: mode === 'manual' ? vehicleId : null
+      });
+      
+      if (response.data.success) {
+        fetchVehiclePlaceholders(ruleId);
+      } else {
+        throw new Error('Failed to add vehicle placeholder');
+      }
+    } catch (err) {
+      console.error('Error adding vehicle placeholder:', err);
+      toast.error('Failed to add vehicle placeholder');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Update vehicle placeholder
+  const updateVehiclePlaceholder = async (placeholderId, mode, vehicleId = null) => {
+    if (!ruleId) return;
+    
+    try {
+      setSaving(true);
+      // Delete existing placeholder
+      await axios.delete(`${API_URL}/api/v1/templates/rules/${ruleId}/vehicle-placeholders/${placeholderId}`);
+      
+      // Create new placeholder with updated values
+      await axios.post(`${API_URL}/api/v1/templates/rules/${ruleId}/vehicle-placeholders`, {
+        mode,
+        vehicle_id: mode === 'manual' ? vehicleId : null
+      });
+      
+      fetchVehiclePlaceholders(ruleId);
+    } catch (err) {
+      console.error('Error updating vehicle placeholder:', err);
+      toast.error('Failed to update vehicle assignment');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Delete vehicle placeholder
+  const deleteVehiclePlaceholder = async (placeholderId) => {
+    if (!ruleId) return;
+    
+    try {
+      setSaving(true);
+      const response = await axios.delete(`${API_URL}/api/v1/templates/rules/${ruleId}/vehicle-placeholders/${placeholderId}`);
+      
+      if (response.data.success) {
+        fetchVehiclePlaceholders(ruleId);
+      } else {
+        throw new Error('Failed to delete vehicle placeholder');
+      }
+    } catch (err) {
+      console.error('Error deleting vehicle placeholder:', err);
+      toast.error('Failed to remove vehicle placeholder');
     } finally {
       setSaving(false);
     }
@@ -545,11 +759,6 @@ const ProgramTemplateWizard = () => {
     return participant ? `${participant.first_name} ${participant.last_name}` : 'Unknown';
   };
 
-  // Get billing code description
-  const getBillingCodeDescription = (code) => {
-    const billingCode = billingCodes.find(bc => bc.code === code);
-    return billingCode ? billingCode.description : '';
-  };
   
   if (loading) {
     return (
@@ -630,20 +839,6 @@ const ProgramTemplateWizard = () => {
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="recurrencePattern">Repeat Pattern</label>
-              <select
-                id="recurrencePattern"
-                value={recurrencePattern}
-                onChange={(e) => setRecurrencePattern(e.target.value)}
-                className="form-control"
-              >
-                {patternOptions.map(p => (
-                  <option key={p.value} value={p.value}>{p.label}</option>
-                ))}
-              </select>
-            </div>
-
             {(recurrencePattern === 'weekly' || recurrencePattern === 'fortnightly') && (
               <div className="form-group">
                 <label htmlFor="dayOfWeek">Day of Week</label>
@@ -659,6 +854,20 @@ const ProgramTemplateWizard = () => {
                 </select>
               </div>
             )}
+
+            <div className="form-group">
+              <label htmlFor="recurrencePattern">Repeat Pattern</label>
+              <select
+                id="recurrencePattern"
+                value={recurrencePattern}
+                onChange={(e) => setRecurrencePattern(e.target.value)}
+                className="form-control"
+              >
+                {patternOptions.map(p => (
+                  <option key={p.value} value={p.value}>{p.label}</option>
+                ))}
+              </select>
+            </div>
 
             <div className="form-group">
               <label htmlFor="venueId">Venue</label>
@@ -689,21 +898,91 @@ const ProgramTemplateWizard = () => {
                     <label>Venue Name *</label>
                     <input
                       type="text"
-                      value={newVenueName}
-                      onChange={(e) => setNewVenueName(e.target.value)}
+                      value={newVenue.name}
+                      onChange={(e) => setNewVenue({...newVenue, name: e.target.value})}
                       className="form-control"
                       placeholder="Enter venue name"
                     />
                   </div>
                   <div className="form-group">
-                    <label>Address (optional)</label>
+                    <label>Address *</label>
                     <input
                       type="text"
-                      value={newVenueAddress}
-                      onChange={(e) => setNewVenueAddress(e.target.value)}
+                      value={newVenue.address}
+                      onChange={(e) => setNewVenue({...newVenue, address: e.target.value})}
                       className="form-control"
                       placeholder="Enter address"
                     />
+                  </div>
+                  <div className="form-group">
+                    <label>Postcode</label>
+                    <input
+                      type="text"
+                      value={newVenue.postcode}
+                      onChange={(e) => setNewVenue({...newVenue, postcode: e.target.value})}
+                      className="form-control"
+                      placeholder="Enter postcode"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Contact Phone</label>
+                    <input
+                      type="text"
+                      value={newVenue.contact_phone}
+                      onChange={(e) => setNewVenue({...newVenue, contact_phone: e.target.value})}
+                      className="form-control"
+                      placeholder="Enter contact phone"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Contact Email</label>
+                    <input
+                      type="email"
+                      value={newVenue.contact_email}
+                      onChange={(e) => setNewVenue({...newVenue, contact_email: e.target.value})}
+                      className="form-control"
+                      placeholder="Enter contact email"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Capacity</label>
+                    <input
+                      type="number"
+                      value={newVenue.capacity}
+                      onChange={(e) => setNewVenue({...newVenue, capacity: e.target.value})}
+                      className="form-control"
+                      placeholder="Enter capacity"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Accessibility Features</label>
+                    <input
+                      type="text"
+                      value={newVenue.accessibility_features}
+                      onChange={(e) => setNewVenue({...newVenue, accessibility_features: e.target.value})}
+                      className="form-control"
+                      placeholder="Enter accessibility features"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Venue Type</label>
+                    <input
+                      type="text"
+                      value={newVenue.venue_type}
+                      onChange={(e) => setNewVenue({...newVenue, venue_type: e.target.value})}
+                      className="form-control"
+                      placeholder="Enter venue type"
+                    />
+                  </div>
+                  <div className="form-group checkbox-group">
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={newVenue.is_active}
+                        onChange={(e) => setNewVenue({...newVenue, is_active: e.target.checked})}
+                      />{' '}
+                      Active
+                    </label>
                   </div>
                   <div className="form-actions">
                     <button 
@@ -716,7 +995,7 @@ const ProgramTemplateWizard = () => {
                     <button 
                       className="btn btn-primary"
                       onClick={createVenue}
-                      disabled={saving || !newVenueName.trim()}
+                      disabled={saving || !newVenue.name.trim() || !newVenue.address.trim()}
                     >
                       <FiSave /> Save Venue
                     </button>
@@ -771,18 +1050,6 @@ const ProgramTemplateWizard = () => {
             <h4>Add Time Slot</h4>
             <div className="form-row">
               <div className="form-group">
-                <label>Type</label>
-                <select
-                  value={newSlot.slot_type}
-                  onChange={(e) => setNewSlot({...newSlot, slot_type: e.target.value})}
-                  className="form-control"
-                >
-                  {slotTypeOptions.map(option => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-group">
                 <label>Start</label>
                 <input
                   type="time"
@@ -801,14 +1068,16 @@ const ProgramTemplateWizard = () => {
                 />
               </div>
               <div className="form-group">
-                <label>Run # (optional)</label>
-                <input
-                  type="number"
-                  value={newSlot.route_run_number}
-                  onChange={(e) => setNewSlot({...newSlot, route_run_number: e.target.value})}
+                <label>Type</label>
+                <select
+                  value={newSlot.slot_type}
+                  onChange={(e) => setNewSlot({...newSlot, slot_type: e.target.value})}
                   className="form-control"
-                  min="1"
-                />
+                >
+                  {slotTypeOptions.map(option => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
               </div>
               <div className="form-group">
                 <label>Label (optional)</label>
@@ -842,10 +1111,9 @@ const ProgramTemplateWizard = () => {
               <table className="slots-table">
                 <thead>
                   <tr>
-                    <th>Type</th>
                     <th>Start</th>
                     <th>End</th>
-                    <th>Run #</th>
+                    <th>Type</th>
                     <th>Label</th>
                     <th>Actions</th>
                   </tr>
@@ -853,10 +1121,9 @@ const ProgramTemplateWizard = () => {
                 <tbody>
                   {slots.sort((a, b) => a.seq - b.seq).map((slot) => (
                     <tr key={slot.id}>
-                      <td>{slot.slot_type}</td>
                       <td>{formatTime(slot.start_time)}</td>
                       <td>{formatTime(slot.end_time)}</td>
-                      <td>{slot.route_run_number || '-'}</td>
+                      <td>{slot.slot_type}</td>
                       <td>{slot.label || '-'}</td>
                       <td className="actions-cell">
                         <button
@@ -1035,6 +1302,184 @@ const ProgramTemplateWizard = () => {
             </div>
             <div className="requirement-item">
               <strong>Vehicles Required:</strong> {requirements.vehicles_required}
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Staff & Vehicles */}
+      <div className="glass-card mb-4">
+        <div className="card-header">
+          <h3><FiUsers /> Staff & Vehicles</h3>
+        </div>
+        <div className="card-body">
+          {/* Staff Placeholders */}
+          <div className="section-container">
+            <h4>Staff Placeholders</h4>
+            <div className="placeholders-list">
+              {staffPlaceholders.length === 0 && requirements.staff_required === 0 ? (
+                <p className="muted">No staff required yet</p>
+              ) : (
+                <div className="placeholder-grid">
+                  {/* Display existing placeholders first */}
+                  {staffPlaceholders.map(placeholder => (
+                    <div key={placeholder.id} className="placeholder-item">
+                      <select
+                        value={placeholder.mode === 'auto' ? 'auto' : placeholder.staff_id}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value === 'auto') {
+                            updateStaffPlaceholder(placeholder.id, 'auto');
+                          } else {
+                            updateStaffPlaceholder(placeholder.id, 'manual', value);
+                          }
+                        }}
+                        className="form-control"
+                      >
+                        <option value="auto">Auto-assign</option>
+                        {staffList.map(staff => (
+                          <option key={staff.id} value={staff.id}>
+                            {staff.first_name} {staff.last_name}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        className="btn btn-icon btn-danger"
+                        onClick={() => deleteStaffPlaceholder(placeholder.id)}
+                        disabled={saving}
+                        title="Remove"
+                      >
+                        <FiX />
+                      </button>
+                    </div>
+                  ))}
+                  
+                  {/* Add auto placeholders up to staff_required */}
+                  {Array.from({ length: Math.max(0, requirements.staff_required - staffPlaceholders.length) }).map((_, index) => (
+                    <div key={`auto-${index}`} className="placeholder-item">
+                      <select
+                        defaultValue="auto"
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value !== 'auto') {
+                            addStaffPlaceholder('manual', value);
+                          }
+                        }}
+                        className="form-control"
+                      >
+                        <option value="auto">Auto-assign</option>
+                        {staffList.map(staff => (
+                          <option key={staff.id} value={staff.id}>
+                            {staff.first_name} {staff.last_name}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        className="btn btn-icon btn-disabled"
+                        disabled={true}
+                        title="Default placeholder"
+                      >
+                        <FiX style={{ opacity: 0.3 }} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              <div className="placeholder-actions">
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => addStaffPlaceholder()}
+                  disabled={saving}
+                >
+                  <FiPlusCircle /> Add staff slot
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          {/* Vehicle Placeholders */}
+          <div className="section-container">
+            <h4>Vehicle Placeholders</h4>
+            <div className="placeholders-list">
+              {vehiclePlaceholders.length === 0 && requirements.vehicles_required === 0 ? (
+                <p className="muted">No vehicles required yet</p>
+              ) : (
+                <div className="placeholder-grid">
+                  {/* Display existing placeholders first */}
+                  {vehiclePlaceholders.map(placeholder => (
+                    <div key={placeholder.id} className="placeholder-item">
+                      <select
+                        value={placeholder.mode === 'auto' ? 'auto' : placeholder.vehicle_id}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value === 'auto') {
+                            updateVehiclePlaceholder(placeholder.id, 'auto');
+                          } else {
+                            updateVehiclePlaceholder(placeholder.id, 'manual', value);
+                          }
+                        }}
+                        className="form-control"
+                      >
+                        <option value="auto">Auto-assign</option>
+                        {vehiclesList.map(vehicle => (
+                          <option key={vehicle.id} value={vehicle.id}>
+                            {vehicle.name} {vehicle.capacity_total ? `(${vehicle.capacity_total} seats)` : ''}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        className="btn btn-icon btn-danger"
+                        onClick={() => deleteVehiclePlaceholder(placeholder.id)}
+                        disabled={saving}
+                        title="Remove"
+                      >
+                        <FiX />
+                      </button>
+                    </div>
+                  ))}
+                  
+                  {/* Add auto placeholders up to vehicles_required */}
+                  {Array.from({ length: Math.max(0, requirements.vehicles_required - vehiclePlaceholders.length) }).map((_, index) => (
+                    <div key={`auto-${index}`} className="placeholder-item">
+                      <select
+                        defaultValue="auto"
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value !== 'auto') {
+                            addVehiclePlaceholder('manual', value);
+                          }
+                        }}
+                        className="form-control"
+                      >
+                        <option value="auto">Auto-assign</option>
+                        {vehiclesList.map(vehicle => (
+                          <option key={vehicle.id} value={vehicle.id}>
+                            {vehicle.name} {vehicle.capacity_total ? `(${vehicle.capacity_total} seats)` : ''}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        className="btn btn-icon btn-disabled"
+                        disabled={true}
+                        title="Default placeholder"
+                      >
+                        <FiX style={{ opacity: 0.3 }} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              <div className="placeholder-actions">
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => addVehiclePlaceholder()}
+                  disabled={saving}
+                >
+                  <FiPlusCircle /> Add vehicle
+                </button>
+              </div>
             </div>
           </div>
         </div>

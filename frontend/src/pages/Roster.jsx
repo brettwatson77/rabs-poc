@@ -5,8 +5,6 @@ import { format, startOfWeek, addDays } from 'date-fns';
 // Relative path only – honours proxy / production deploy config
 const API_URL = import.meta.env.VITE_API_URL || '';
 
-const todayISO = () => new Date().toISOString().split('T')[0];
-
 const Roster = () => {
   // View toggle state: 'day' or 'staff'
   const [view, setView] = useState('day');
@@ -79,8 +77,7 @@ const Roster = () => {
     };
 
     fetchAll();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [dates]);
 
   const staffFiltered = staffDirectory.filter((s) =>
     `${s.first_name || ''} ${s.last_name || ''}`
@@ -132,17 +129,19 @@ const Roster = () => {
           </button>
         </div>
         
-        {/* Search input */}
-        <div className="search-input" style={{ flex: 1, maxWidth: '300px', marginLeft: '16px' }}>
-          <input
-            type="text"
-            placeholder="Search staff..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="glass-input"
-            style={{ width: '100%', padding: '8px', borderRadius: '4px' }}
-          />
-        </div>
+        {/* Search input - only show in staff view */}
+        {view === 'staff' && (
+          <div className="search-input" style={{ flex: 1, maxWidth: '300px', marginLeft: '16px' }}>
+            <input
+              type="text"
+              placeholder="Search staff..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="glass-input"
+              style={{ width: '100%', padding: '8px', borderRadius: '4px' }}
+            />
+          </div>
+        )}
       </div>
 
       {error && <div className="error-message">{error}</div>}
@@ -189,132 +188,115 @@ const Roster = () => {
         </div>
       )}
 
-      {/* Staff View */}
+      {/* Staff View - Single grid with sticky first column */}
       {!loading && view === 'staff' && (
-        <div 
-          className="staff-roster-view"
-          style={{
-            display: 'flex',
-            height: 'calc(100vh - 200px)',
-            overflow: 'hidden'
-          }}
-        >
-          {/* Left sticky staff list */}
-          <div 
-            className="staff-list-container"
-            style={{
-              width: '280px',
-              flexShrink: 0,
-              overflowY: 'auto',
-              paddingRight: '16px',
-              position: 'sticky',
-              left: 0,
-              zIndex: 2,               // keep list above scrollable grid
-              background: 'inherit'    // maintain page background while sticky
-            }}
-          >
-            <ul
-              className="glass-panel"
-              style={{ listStyle: 'none', padding: 0, margin: 0 }}
+        <div className="rosterGrid" style={{
+          display: 'grid',
+          gridTemplateColumns: '280px repeat(14, minmax(220px, 1fr))',
+          gridAutoRows: 'minmax(64px, auto)',
+          overflow: 'auto',
+          height: 'calc(100vh - 200px)'
+        }}>
+          {/* Header row with date headers */}
+          <div className="headerCell" style={{
+            position: 'sticky',
+            left: 0,
+            top: 0,
+            zIndex: 3,
+            background: 'var(--panel-bg)',
+            padding: '12px',
+            fontWeight: 'bold',
+            borderBottom: '1px solid #ddd'
+          }}>
+            Staff
+          </div>
+          
+          {/* Date headers */}
+          {dates.map((date) => (
+            <div 
+              key={`header-${date}`} 
+              className="headerCell"
+              style={{
+                padding: '12px',
+                fontWeight: 'bold',
+                borderBottom: '1px solid #ddd',
+                textAlign: 'center'
+              }}
             >
-              {staffFiltered.length > 0 ? (
-                staffFiltered.map((s) => (
-                  <li
-                    key={s.id}
-                    className="glass-card"
-                    style={{ marginBottom: '8px', padding: '12px' }}
+              {formatDateHeader(date)}
+            </div>
+          ))}
+          
+          {/* Staff rows with day cells */}
+          {staffFiltered.length > 0 ? (
+            staffFiltered.map((staff) => (
+              React.Fragment.apply(null, [
+                // Staff name cell (sticky)
+                <div 
+                  key={`staff-${staff.id}`}
+                  className="staffCell"
+                  style={{
+                    position: 'sticky',
+                    left: 0,
+                    zIndex: 2,
+                    background: 'var(--panel-bg)',
+                    padding: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    borderBottom: '1px solid #eee'
+                  }}
+                >
+                  <div 
+                    className="staff-avatar"
+                    style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '50%',
+                      backgroundColor: '#4a6fa5',
+                      color: 'white',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: 'bold'
+                    }}
                   >
-                    <div
-                      className="staff-row"
-                      style={{ display: 'flex', alignItems: 'center', gap: '12px' }}
-                    >
-                      <div 
-                        className="staff-avatar"
-                        style={{
-                          width: '36px',
-                          height: '36px',
-                          borderRadius: '50%',
-                          backgroundColor: '#4a6fa5',
-                          color: 'white',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontWeight: 'bold'
-                        }}
-                      >
-                        {`${(s.first_name || '').charAt(0)}${(s.last_name || '').charAt(0)}`}
-                      </div>
-                      <div className="staff-main">
-                        <div className="staff-full-name">
-                          {s.first_name} {s.last_name}
-                        </div>
-                      </div>
-                    </div>
-                  </li>
+                    {`${(staff.first_name || '').charAt(0)}${(staff.last_name || '').charAt(0)}`}
+                  </div>
+                  <div>
+                    {staff.first_name} {staff.last_name}
+                  </div>
+                </div>,
+                
+                // Day cells for this staff member
+                ...dates.map((date) => (
+                  <div
+                    key={`${staff.id}-${date}`}
+                    className="dayCell"
+                    style={{
+                      padding: '12px',
+                      borderBottom: '1px solid #eee',
+                      fontSize: '0.85rem',
+                      color: '#666',
+                      textAlign: 'center'
+                    }}
+                  >
+                    <div>No shifts assigned</div>
+                  </div>
                 ))
-              ) : (
-                <li className="glass-card" style={{ padding: '12px' }}>
-                  No staff match your search.
-                </li>
-              )}
-              {staffDirectory.length === 0 && (
-                <li className="glass-card" style={{ padding: '12px' }}>
-                  No staff data available.
-                </li>
-              )}
-            </ul>
-          </div>
-
-          {/* Right side scrollable grid of shift placeholders */}
-          <div 
-            className="staff-shifts-container"
-            style={{
-              overflowX: 'auto',
-              flexGrow: 1
-            }}
-          >
-            {staffFiltered.length > 0 ? (
-              <div 
-                className="staff-shifts-grid"
-                style={{
-                  display: 'grid',
-                  gridTemplateRows: `repeat(${staffFiltered.length}, 60px)`,
-                  gridTemplateColumns: 'repeat(14, minmax(320px, 1fr))',
-                  gap: '8px',
-                  paddingBottom: '16px'
-                }}
-              >
-                {/* Generate placeholder cells for each staff member and date */}
-                {staffFiltered.flatMap((staff, staffIdx) => 
-                  dates.map((date, dateIdx) => (
-                    <div
-                      key={`${staff.id}-${date}`}
-                      className="shift-placeholder glass-card"
-                      style={{
-                        gridRow: staffIdx + 1,
-                        gridColumn: dateIdx + 1,
-                        padding: '8px',
-                        minHeight: '60px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        fontSize: '0.85rem',
-                        color: '#666'
-                      }}
-                    >
-                      <div>{formatDateHeader(date)}</div>
-                      <div>No shifts assigned</div>
-                    </div>
-                  ))
-                )}
-              </div>
-            ) : (
-              <div className="empty-staff-grid glass-card" style={{ padding: '24px', textAlign: 'center' }}>
-                No staff available to display shifts.
-              </div>
-            )}
-          </div>
+              ])
+            ))
+          ) : (
+            <div 
+              style={{
+                gridColumn: 'span 15',
+                padding: '24px',
+                textAlign: 'center'
+              }}
+            >
+              No staff match your search criteria.
+            </div>
+          )}
         </div>
       )}
     </div>

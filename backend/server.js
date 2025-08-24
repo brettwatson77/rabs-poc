@@ -107,6 +107,32 @@ app.locals.pool = pool;
   try {
     await pool.query(ddlBlock);
     await pool.query(billingTableDDL);
+    // ---------------------------------------------------------------------
+    // Staff / Vehicle placeholder tables for Wizard v2.1
+    // ---------------------------------------------------------------------
+    const placeholdersDDL = `
+      -- Staff placeholders (auto / manual)
+      CREATE TABLE IF NOT EXISTS rules_program_staff_placeholders (
+        id uuid PRIMARY KEY,
+        rule_id uuid NOT NULL,
+        slot_index integer NOT NULL DEFAULT 0,
+        mode text NOT NULL DEFAULT 'auto' CHECK (mode IN ('auto','manual')),
+        staff_id uuid NULL,
+        created_at timestamp DEFAULT now()
+      );
+
+      -- Vehicle placeholders (auto / manual)
+      CREATE TABLE IF NOT EXISTS rules_program_vehicle_placeholders (
+        id uuid PRIMARY KEY,
+        rule_id uuid NOT NULL,
+        slot_index integer NOT NULL DEFAULT 0,
+        mode text NOT NULL DEFAULT 'auto' CHECK (mode IN ('auto','manual')),
+        vehicle_id uuid NULL,
+        created_at timestamp DEFAULT now()
+      );
+    `;
+
+    await pool.query(placeholdersDDL);
     console.log('✅ Wizard V2 schema verified/updated');
   } catch (schemaErr) {
     console.error('❌ Failed ensuring Wizard V2 schema:', schemaErr.message);

@@ -439,6 +439,212 @@ router.post('/rules/:id/participants/:rppId/billing', async (req, res) => {
   }
 });
 
+
+/** -----------------------------------------------------------------------
+ *  Placeholders (Staff & Vehicles)
+ *  Tables:
+ *    rules_program_staff_placeholders
+ *    rules_program_vehicle_placeholders
+ *  Endpoints implement simple CRUD for wizard v2.1
+ * ----------------------------------------------------------------------*/
+
+// Helper: check rule exists
+async function ruleExists(pool, ruleId) {
+  const chk = await pool.query(`SELECT id FROM rules_programs WHERE id = $1`, [
+    ruleId,
+  ]);
+  return chk.rowCount > 0;
+}
+
+// ------------------------ STAFF PLACEHOLDERS ---------------------------
+
+// GET
+router.get('/rules/:id/staff-placeholders', async (req, res) => {
+  const pool = req.app.locals.pool;
+  const { id } = req.params;
+
+  try {
+    if (!(await ruleExists(pool, id))) {
+      return res.status(404).json({ success: false, error: 'Rule not found' });
+    }
+
+    const result = await pool.query(
+      `SELECT id, rule_id, slot_index, mode, staff_id, created_at
+         FROM rules_program_staff_placeholders
+        WHERE rule_id = $1
+        ORDER BY created_at ASC`,
+      [id]
+    );
+    res.json({ success: true, data: result.rows });
+  } catch (err) {
+    console.error('Error fetching staff placeholders:', err);
+    res.status(500).json({ success: false, error: 'Failed to fetch placeholders' });
+  }
+});
+
+// POST
+router.post('/rules/:id/staff-placeholders', async (req, res) => {
+  const pool = req.app.locals.pool;
+  const { id } = req.params;
+  const { mode = 'auto', staff_id = null, slot_index = 0 } = req.body || {};
+
+  try {
+    if (!(await ruleExists(pool, id))) {
+      return res.status(404).json({ success: false, error: 'Rule not found' });
+    }
+
+    if (!['auto', 'manual'].includes(mode)) {
+      return res.status(400).json({ success: false, error: 'Invalid mode' });
+    }
+    if (mode === 'manual' && !staff_id) {
+      return res
+        .status(400)
+        .json({ success: false, error: 'staff_id required for manual mode' });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO rules_program_staff_placeholders
+        (id, rule_id, slot_index, mode, staff_id)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, rule_id, slot_index, mode, staff_id, created_at`,
+      [uuidv4(), id, slot_index, mode, mode === 'manual' ? staff_id : null]
+    );
+    res.status(201).json({ success: true, data: result.rows[0] });
+  } catch (err) {
+    console.error('Error inserting staff placeholder:', err);
+    res.status(500).json({ success: false, error: 'Failed to add placeholder' });
+  }
+});
+
+// DELETE
+router.delete(
+  '/rules/:id/staff-placeholders/:phId',
+  async (req, res) => {
+    const pool = req.app.locals.pool;
+    const { id, phId } = req.params;
+
+    try {
+      if (!(await ruleExists(pool, id))) {
+        return res.status(404).json({ success: false, error: 'Rule not found' });
+      }
+
+      const del = await pool.query(
+        `DELETE FROM rules_program_staff_placeholders
+          WHERE id = $1 AND rule_id = $2
+          RETURNING id`,
+        [phId, id]
+      );
+
+      if (del.rowCount === 0) {
+        return res
+          .status(404)
+          .json({ success: false, error: 'Placeholder not found' });
+      }
+
+      res.json({ success: true, data: { id: phId, deleted: true } });
+    } catch (err) {
+      console.error('Error deleting staff placeholder:', err);
+      res
+        .status(500)
+        .json({ success: false, error: 'Failed to delete placeholder' });
+    }
+  }
+);
+
+// ------------------------ VEHICLE PLACEHOLDERS -------------------------
+
+router.get('/rules/:id/vehicle-placeholders', async (req, res) => {
+  const pool = req.app.locals.pool;
+  const { id } = req.params;
+
+  try {
+    if (!(await ruleExists(pool, id))) {
+      return res.status(404).json({ success: false, error: 'Rule not found' });
+    }
+
+    const result = await pool.query(
+      `SELECT id, rule_id, slot_index, mode, vehicle_id, created_at
+         FROM rules_program_vehicle_placeholders
+        WHERE rule_id = $1
+        ORDER BY created_at ASC`,
+      [id]
+    );
+    res.json({ success: true, data: result.rows });
+  } catch (err) {
+    console.error('Error fetching vehicle placeholders:', err);
+    res
+      .status(500)
+      .json({ success: false, error: 'Failed to fetch placeholders' });
+  }
+});
+
+router.post('/rules/:id/vehicle-placeholders', async (req, res) => {
+  const pool = req.app.locals.pool;
+  const { id } = req.params;
+  const { mode = 'auto', vehicle_id = null, slot_index = 0 } = req.body || {};
+
+  try {
+    if (!(await ruleExists(pool, id))) {
+      return res.status(404).json({ success: false, error: 'Rule not found' });
+    }
+
+    if (!['auto', 'manual'].includes(mode)) {
+      return res.status(400).json({ success: false, error: 'Invalid mode' });
+    }
+    if (mode === 'manual' && !vehicle_id) {
+      return res
+        .status(400)
+        .json({ success: false, error: 'vehicle_id required for manual mode' });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO rules_program_vehicle_placeholders
+        (id, rule_id, slot_index, mode, vehicle_id)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, rule_id, slot_index, mode, vehicle_id, created_at`,
+      [uuidv4(), id, slot_index, mode, mode === 'manual' ? vehicle_id : null]
+    );
+    res.status(201).json({ success: true, data: result.rows[0] });
+  } catch (err) {
+    console.error('Error inserting vehicle placeholder:', err);
+    res.status(500).json({ success: false, error: 'Failed to add placeholder' });
+  }
+});
+
+router.delete(
+  '/rules/:id/vehicle-placeholders/:phId',
+  async (req, res) => {
+    const pool = req.app.locals.pool;
+    const { id, phId } = req.params;
+
+    try {
+      if (!(await ruleExists(pool, id))) {
+        return res.status(404).json({ success: false, error: 'Rule not found' });
+      }
+
+      const del = await pool.query(
+        `DELETE FROM rules_program_vehicle_placeholders
+          WHERE id = $1 AND rule_id = $2
+          RETURNING id`,
+        [phId, id]
+      );
+
+      if (del.rowCount === 0) {
+        return res
+          .status(404)
+          .json({ success: false, error: 'Placeholder not found' });
+      }
+
+      res.json({ success: true, data: { id: phId, deleted: true } });
+    } catch (err) {
+      console.error('Error deleting vehicle placeholder:', err);
+      res
+        .status(500)
+        .json({ success: false, error: 'Failed to delete placeholder' });
+    }
+  }
+);
+
 // GET /templates/rules/:id/requirements - Get rule requirements
 router.get('/rules/:id/requirements', async (req, res) => {
   const pool = req.app.locals.pool;

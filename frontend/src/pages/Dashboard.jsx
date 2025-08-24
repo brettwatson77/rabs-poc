@@ -44,20 +44,6 @@ const Dashboard = () => {
     }
   );
   
-  const { 
-    data: summaryData,
-    isLoading: summaryLoading,
-    error: summaryError,
-    refetch: refetchSummary
-  } = { data:null,isLoading:false,error:null,refetch:()=>{} }; // Metrics disabled
-
-  const { 
-    data: alertsData,
-    isLoading: alertsLoading,
-    error: alertsError,
-    refetch: refetchAlerts
-  } = { data:null,isLoading:false,error:null,refetch:()=>{} }; // Alerts disabled
-  
   // Organize time slots into columns (Earlier/Before/Now/Next/Later)
   const organizeTimeSlots = () => {
     if (!cardsData || !cardsData.data) return {
