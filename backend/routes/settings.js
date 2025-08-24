@@ -205,6 +205,55 @@ router.put('/:key', async (req, res) => {
   }
 });
 
+/**
+ * ---------------------------------------------------------------------------
+ * GET /api/v1/settings/org
+ * ---------------------------------------------------------------------------
+ * Returns organisation-level operational defaults. If a key is missing (or its
+ * value cannot be parsed as a number) the hard coded fallback is used.
+ * Shape: { loom_window_days, staff_threshold_per_wpu, default_bus_capacity }
+ */
+router.get('/org', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+
+    // Keys we care about and their hard-coded defaults
+    const DEFAULTS = {
+      loom_window_days: 14,
+      staff_threshold_per_wpu: 5,
+      default_bus_capacity: 10,
+    };
+
+    const keys = Object.keys(DEFAULTS);
+
+    // Fetch only the keys we need in a single query
+    const result = await pool.query(
+      `SELECT key, value
+         FROM settings
+        WHERE key = ANY($1)`,
+      [keys]
+    );
+
+    // Build response map starting with defaults
+    const data = { ...DEFAULTS };
+
+    // Overwrite with DB values when present & numeric
+    result.rows.forEach((row) => {
+      const n = Number(row.value);
+      data[row.key] = Number.isFinite(n) ? n : DEFAULTS[row.key];
+    });
+
+    return res.json({ success: true, data });
+  } catch (error) {
+    console.error('Error fetching org settings:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch organisation settings',
+      message: error.message,
+    });
+  }
+});
+
 // DELETE /settings/:key - Delete setting
 router.delete('/:key', async (req, res) => {
   try {

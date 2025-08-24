@@ -375,6 +375,36 @@ router.get('/rates', async (req, res) => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// GET /finance/billing-codes - Thin list of active billing codes (Wizard v2)
+// ---------------------------------------------------------------------------
+router.get('/billing-codes', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+
+    const result = await pool.query(
+      `SELECT id, code, description
+         FROM billing_rates
+        WHERE is_active = true
+     ORDER BY code ASC`
+    );
+
+    // Always 200 even if empty – wizard handles empty state
+    res.json({
+      success: true,
+      data: result.rows,
+      count: result.rowCount
+    });
+  } catch (error) {
+    console.error('Error fetching billing codes:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch billing codes',
+      message: error.message
+    });
+  }
+});
+
 // PUT /finance/rates/:id - Update billing rate
 router.put('/rates/:id', async (req, res) => {
   try {

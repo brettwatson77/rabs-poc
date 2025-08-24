@@ -26,7 +26,17 @@ const pool = new Pool({
  */
 router.get('/', async (req, res, next) => {
   try {
-    const result = await pool.query('SELECT * FROM vehicles ORDER BY name');
+    // Thin list per spec – only id, name, capacity totals and active flag
+    const result = await pool.query(
+      `SELECT 
+         id, 
+         name, 
+         capacity               AS capacity_total,
+         wheelchair_capacity    AS capacity_wheelchair,
+         active
+       FROM vehicles
+       ORDER BY name`
+    );
     res.json({
       success: true,
       data: result.rows

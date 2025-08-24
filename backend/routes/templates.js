@@ -111,20 +111,63 @@ router.post('/rules', async (req, res) => {
   }
 });
 
+// GET /templates/rules/:id/slots - Fetch all slots for a rule (ordered)
+router.get('/rules/:id/slots', async (req, res) => {
+  const pool = req.app.locals.pool;
+  const { id } = req.params;
+
+  try {
+    // Validate the rule exists first
+    const ruleCheck = await pool.query(
+      'SELECT id FROM rules_programs WHERE id = $1',
+      [id]
+    );
+
+    if (ruleCheck.rowCount === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Rule not found'
+      });
+    }
+
+    // Fetch slots ordered by seq then start_time
+    const slotResult = await pool.query(
+      `SELECT 
+         id, rule_id, seq, slot_type, start_time, end_time, 
+         route_run_number, label
+       FROM rules_program_slots
+       WHERE rule_id = $1
+       ORDER BY seq ASC, start_time ASC`,
+      [id]
+    );
+
+    res.json({
+      success: true,
+      data: slotResult.rows
+    });
+  } catch (err) {
+    console.error('Error fetching rule slots:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch slots'
+    });
+  }
+});
+
 // PATCH /templates/rules/:id - Update an existing rule
 router.patch('/rules/:id', async (req, res) => {
   const pool = req.app.locals.pool;
   const { id } = req.params;
   const allowedFields = [
-    'name', 
-    'description', 
-    'day_of_week', 
-    'start_time', 
-    'end_time', 
-    'venue_id', 
-    'transport_required', 
-    'staffing_ratio', 
-    'recurrence_pattern', 
+    'name',
+    'description',
+    'anchor_date',
+    'recurrence_pattern',
+    'day_of_week',
+    'week_in_cycle',
+    'venue_id',
+    'auto_assign_staff',
+    'auto_assign_vehicles',
     'active'
   ];
   
@@ -335,14 +378,65 @@ router.post('/rules/:id/participants', async (req, res) => {
 
 // POST /templates/rules/:id/participants/:rppId/billing - Add billing for a participant
 router.post('/rules/:id/participants/:rppId/billing', async (req, res) => {
-  // Placeholder endpoint for optional billing functionality
-  res.json({
-    success: true,
-    data: {
-      not_implemented: true,
-      message: 'Billing functionality is optional in this POC'
+  const pool = req.app.locals.pool;
+  const { rppId } = req.params;
+
+  // Normalise body -> lines array
+  let lines = req.body.lines || req.body; // allow raw array
+  if (lines && !Array.isArray(lines)) {
+    lines = [lines];
+  }
+
+  // Empty payload → succeed with empty array
+  if (!Array.isArray(lines) || lines.length === 0) {
+    return res.json({ success: true, data: [] });
+  }
+
+  // Validate rows
+  const validLines = lines.filter(
+    (l) =>
+      l &&
+      typeof l.billing_code === 'string' &&
+      l.billing_code.trim() !== '' &&
+      !isNaN(parseFloat(l.hours)) &&
+      parseFloat(l.hours) > 0
+  );
+
+  if (validLines.length === 0) {
+    return res.status(400).json({
+      success: false,
+      error: 'No valid billing lines supplied'
+    });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const inserted = [];
+
+    for (const line of validLines) {
+      const result = await client.query(
+        `INSERT INTO rules_program_participant_billing
+          (id, rpp_id, billing_code, hours)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id, rpp_id, billing_code, hours`,
+        [uuidv4(), rppId, line.billing_code.trim(), parseFloat(line.hours)]
+      );
+      inserted.push(result.rows[0]);
     }
-  });
+
+    await client.query('COMMIT');
+    res.json({ success: true, data: inserted });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Error inserting billing lines:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to add billing lines'
+    });
+  } finally {
+    client.release();
+  }
 });
 
 // GET /templates/rules/:id/requirements - Get rule requirements
@@ -436,6 +530,40 @@ router.post('/rules/:id/finalize', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to finalize rule'
+    });
+  }
+});
+
+// DELETE /templates/rules/:id/slots/:slotId - Remove a slot from a rule
+router.delete('/rules/:id/slots/:slotId', async (req, res) => {
+  const pool = req.app.locals.pool;
+  const { id, slotId } = req.params;
+
+  try {
+    // Ensure slot belongs to rule for safety
+    const check = await pool.query(
+      `SELECT id FROM rules_program_slots WHERE id = $1 AND rule_id = $2`,
+      [slotId, id]
+    );
+
+    if (check.rowCount === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Slot not found for this rule'
+      });
+    }
+
+    await pool.query(`DELETE FROM rules_program_slots WHERE id = $1`, [slotId]);
+
+    return res.json({
+      success: true,
+      data: { id: slotId, deleted: true }
+    });
+  } catch (err) {
+    console.error('Error deleting slot:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete slot'
     });
   }
 });

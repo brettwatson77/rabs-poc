@@ -40,7 +40,12 @@ const aliasMap = {
  */
 router.get('/', async (req, res, next) => {
   try {
-    const result = await pool.query('SELECT * FROM staff ORDER BY last_name, first_name');
+    // Thin list per spec – only id, first_name, last_name, active
+    const result = await pool.query(
+      `SELECT id, first_name, last_name, active
+         FROM staff
+     ORDER BY last_name, first_name`
+    );
     res.json({
       success: true,
       data: result.rows

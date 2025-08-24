@@ -13,8 +13,119 @@
 const express = require('express');
 const router = express.Router();
 
-// GET /loom/instances - Get loom instances
+/**
+ * @route   GET /api/v1/loom/window
+ * @desc    Get array of dates in the loom window
+ * @access  Public
+ * @query   days - Number of days in window (optional)
+ * @returns Array of date objects: [{ date: 'YYYY-MM-DD' }]
+ */
+router.get('/window', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    let windowDays;
+    
+    // Use days from query param if provided
+    if (req.query.days && !isNaN(parseInt(req.query.days))) {
+      windowDays = parseInt(req.query.days);
+    } else {
+      // Otherwise fetch from settings
+      const settingResult = await pool.query(
+        `SELECT value FROM settings WHERE key = 'loom_window_days'`
+      );
+      
+      // Use setting value if found, otherwise default to 14
+      windowDays = settingResult.rows.length > 0 ? 
+        parseInt(settingResult.rows[0].value) : 14;
+      
+      // Ensure it's a valid number
+      if (isNaN(windowDays) || windowDays <= 0) {
+        windowDays = 14;
+      }
+    }
+    
+    // Generate array of dates from today to today + windowDays
+    const dates = [];
+    const today = new Date();
+    
+    for (let i = 0; i < windowDays; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      
+      // Format as YYYY-MM-DD
+      const formattedDate = date.toISOString().split('T')[0];
+      dates.push({ date: formattedDate });
+    }
+    
+    res.json({
+      success: true,
+      data: dates
+    });
+  } catch (error) {
+    console.error('Error generating loom window dates:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate loom window dates',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * @route   GET /api/v1/loom/instances
+ * @desc    Get loom instances within date range
+ * @access  Public
+ * @query   startDate - Start date (YYYY-MM-DD)
+ * @query   endDate - End date (YYYY-MM-DD)
+ * @returns Array of loom instances with specific fields
+ */
 router.get('/instances', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { startDate, endDate } = req.query;
+    
+    // Validate date parameters
+    if (!startDate || !endDate) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required parameters',
+        message: 'startDate and endDate are required'
+      });
+    }
+    
+    // Query loom_instances table for instances within date range
+    const query = `
+      SELECT 
+        id, 
+        source_rule_id, 
+        instance_date, 
+        start_time, 
+        end_time, 
+        venue_id,
+        'planned' AS status
+      FROM loom_instances
+      WHERE instance_date BETWEEN $1 AND $2
+      ORDER BY instance_date ASC, start_time ASC
+    `;
+    
+    const result = await pool.query(query, [startDate, endDate]);
+    
+    res.json({
+      success: true,
+      data: result.rows
+    });
+  } catch (error) {
+    console.error('Error fetching loom instances:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch loom instances',
+      message: error.message
+    });
+  }
+});
+
+// GET /loom/instances - Get loom instances (legacy)
+router.get('/instances_legacy', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { 
@@ -444,8 +555,8 @@ router.post('/generate', async (req, res) => {
   }
 });
 
-// GET /loom/window - Get loom window settings
-router.get('/window', async (req, res) => {
+// GET /loom/window/settings - Get loom window settings (legacy)
+router.get('/window/settings', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     

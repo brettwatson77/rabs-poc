@@ -55,6 +55,64 @@ pool.query('SELECT NOW()', (err, res) => {
 // Make pool available to routes
 app.locals.pool = pool;
 
+// ---------------------------------------------------------------------------
+// Ensure Wizard V2 supporting schema exists (runs once at start-up)
+// ---------------------------------------------------------------------------
+(async () => {
+  const ddlBlock = `
+  DO $$ BEGIN
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'rules_programs' AND column_name = 'anchor_date'
+    ) THEN
+      ALTER TABLE rules_programs ADD COLUMN anchor_date date;
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'rules_programs' AND column_name = 'recurrence_pattern'
+    ) THEN
+      ALTER TABLE rules_programs
+        ADD COLUMN recurrence_pattern text
+        CHECK (recurrence_pattern IN ('one_off','weekly','fortnightly','monthly'))
+        DEFAULT 'fortnightly';
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'rules_programs' AND column_name = 'auto_assign_staff'
+    ) THEN
+      ALTER TABLE rules_programs ADD COLUMN auto_assign_staff boolean DEFAULT true;
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'rules_programs' AND column_name = 'auto_assign_vehicles'
+    ) THEN
+      ALTER TABLE rules_programs ADD COLUMN auto_assign_vehicles boolean DEFAULT true;
+    END IF;
+  END $$;
+  `;
+
+  const billingTableDDL = `
+    CREATE TABLE IF NOT EXISTS rules_program_participant_billing (
+      id uuid PRIMARY KEY,
+      rpp_id uuid NOT NULL,
+      billing_code text NOT NULL,
+      hours numeric(6,2) NOT NULL,
+      created_at timestamp DEFAULT now()
+    );
+  `;
+
+  try {
+    await pool.query(ddlBlock);
+    await pool.query(billingTableDDL);
+    console.log('✅ Wizard V2 schema verified/updated');
+  } catch (schemaErr) {
+    console.error('❌ Failed ensuring Wizard V2 schema:', schemaErr.message);
+  }
+})();
+
 // Middleware
 // ---------------------------------------------------------------------------
 // CORS Configuration

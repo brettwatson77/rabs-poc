@@ -26,7 +26,12 @@ const pool = new Pool({
  */
 router.get('/', async (req, res, next) => {
   try {
-    const result = await pool.query('SELECT * FROM participants ORDER BY last_name, first_name');
+    // Return thin list per spec – id, first_name, last_name, active only
+    const result = await pool.query(
+      `SELECT id, first_name, last_name, active
+         FROM participants
+     ORDER BY last_name, first_name`
+    );
     res.json({
       success: true,
       data: result.rows

@@ -16,24 +16,11 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
+    // Thin list per spec – only id & name
     const query = `
-      SELECT
-        id,
-        name,
-        address,
-        suburb,
-        state,
-        postcode,
-        capacity,
-        facilities,
-        active,
-        created_at,
-        updated_at,
-        location_lat,
-        location_lng,
-        status
-      FROM venues
-      ORDER BY name ASC
+      SELECT id, name
+        FROM venues
+    ORDER BY name ASC
     `;
     
     const result = await pool.query(query);

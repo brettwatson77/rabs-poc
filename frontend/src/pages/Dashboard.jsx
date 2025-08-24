@@ -49,31 +49,14 @@ const Dashboard = () => {
     isLoading: summaryLoading,
     error: summaryError,
     refetch: refetchSummary
-  } = useQuery(
-    ['dashboardSummary', formattedDate],
-    async () => {
-      const response = await axios.get(`${API_URL}/api/v1/dashboard/summary`, {
-        params: { date: formattedDate }
-      });
-      return response.data;
-    }
-  );
+  } = { data:null,isLoading:false,error:null,refetch:()=>{} }; // Metrics disabled
 
   const { 
     data: alertsData,
     isLoading: alertsLoading,
     error: alertsError,
     refetch: refetchAlerts
-  } = useQuery(
-    ['dashboardAlerts', formattedDate],
-    async () => {
-      const response = await axios.get(`${API_URL}/api/v1/dashboard/alerts`, {
-        params: { date: formattedDate }
-      });
-      return response.data;
-    },
-    { staleTime: 30000 }
-  );
+  } = { data:null,isLoading:false,error:null,refetch:()=>{} }; // Alerts disabled
   
   // Organize time slots into columns (Earlier/Before/Now/Next/Later)
   const organizeTimeSlots = () => {
@@ -90,34 +73,35 @@ const Dashboard = () => {
     
     return {
       // Ended more than 1 hour ago
+      // 1. Earlier: ended more than 2h ago
       earlier: slots.filter(slot => {
         const endTime = parseISO(slot.display_time_end);
-        const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-        return isBefore(endTime, oneHourAgo);
+        const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+        return isBefore(endTime, twoHoursAgo);
       }),
-      // Ended within the last hour
+      // 2. Before: ended between now-2h and now (inclusive)
       before: slots.filter(slot => {
         const endTime = parseISO(slot.display_time_end);
-        const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-        return isAfter(endTime, oneHourAgo) && isBefore(endTime, now);
+        const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+        return !isBefore(endTime, twoHoursAgo) && !isAfter(endTime, now);
       }),
-      // Ongoing now
+      // 3. Now: currently in progress
       now: slots.filter(slot => {
         const startTime = parseISO(slot.display_time_start);
         const endTime = parseISO(slot.display_time_end);
-        return isBefore(startTime, now) && isAfter(endTime, now);
+        return !isAfter(startTime, now) && isAfter(endTime, now);
       }),
-      // Starts within next hour
+      // 4. Next: starts within next 2h
       next: slots.filter(slot => {
         const startTime = parseISO(slot.display_time_start);
-        const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
-        return isAfter(startTime, now) && isBefore(startTime, oneHourFromNow);
+        const twoHoursFromNow = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+        return isAfter(startTime, now) && !isAfter(startTime, twoHoursFromNow);
       }),
-      // Starts more than 1 hour from now
+      // 5. Later: starts after next 2h window
       later: slots.filter(slot => {
         const startTime = parseISO(slot.display_time_start);
-        const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
-        return isAfter(startTime, oneHourFromNow);
+        const twoHoursFromNow = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+        return isAfter(startTime, twoHoursFromNow);
       })
     };
   };
@@ -133,8 +117,7 @@ const Dashboard = () => {
   // Handle refresh button click
   const handleRefresh = () => {
     refetchCards();
-    refetchSummary();
-    refetchAlerts();
+    // Metrics & alerts disabled
   };
   
   // Render time slot card
@@ -219,7 +202,7 @@ const Dashboard = () => {
             follows the RP2 methodology, with API-IS-KING principle in full effect.
           </p>
           <p>
-            <strong>The Loom System:</strong> RABS uses a "loom" metaphor where programs are woven 
+            <strong>The Loom System:</strong> RABS uses a &quot;loom&quot; metaphor where programs are woven 
             into the schedule. The Wall (program templates) + Calendar (dates) create the Master Schedule, 
             which breaks down into time slots shown below (Earlier/Before/Now/Next/Later).
           </p>
@@ -230,7 +213,7 @@ const Dashboard = () => {
       <section className="dashboard-section">
         <div className="section-header">
           <h3>
-            <FiClock /> Today's Timeline
+            <FiClock /> Today&rsquo;s Timeline
           </h3>
         </div>
         
@@ -248,7 +231,17 @@ const Dashboard = () => {
             </button>
           </div>
         ) : (
-          <div className="time-slots-grid">
+          <div
+            className="time-slots-grid"
+            /* Horizontal 5-column timeline grid */
+            style={{
+              display: 'grid',
+              gridAutoFlow: 'column',
+              gridTemplateColumns: 'repeat(5, minmax(280px, 1fr))',
+              gap: '16px',
+              overflowX: 'auto'
+            }}
+          >
             {/* Earlier */}
             <div className="time-column">
               <div className="column-header earlier">
@@ -257,7 +250,9 @@ const Dashboard = () => {
               </div>
               <div className="column-content">
                 {timeSlotColumns.earlier.length === 0 ? (
-                  <div className="empty-column-message">No early activities</div>
+                  <div className="empty-column-message">
+                    No activities in this bucket yet
+                  </div>
                 ) : (
                   timeSlotColumns.earlier.map(slot => renderTimeSlotCard(slot))
                 )}
@@ -272,7 +267,9 @@ const Dashboard = () => {
               </div>
               <div className="column-content">
                 {timeSlotColumns.before.length === 0 ? (
-                  <div className="empty-column-message">No previous activities</div>
+                  <div className="empty-column-message">
+                    No activities in this bucket yet
+                  </div>
                 ) : (
                   timeSlotColumns.before.map(slot => renderTimeSlotCard(slot))
                 )}
@@ -287,7 +284,9 @@ const Dashboard = () => {
               </div>
               <div className="column-content">
                 {timeSlotColumns.now.length === 0 ? (
-                  <div className="empty-column-message">No current activities</div>
+                  <div className="empty-column-message">
+                    No activities in this bucket yet
+                  </div>
                 ) : (
                   timeSlotColumns.now.map(slot => renderTimeSlotCard(slot))
                 )}
@@ -302,7 +301,9 @@ const Dashboard = () => {
               </div>
               <div className="column-content">
                 {timeSlotColumns.next.length === 0 ? (
-                  <div className="empty-column-message">No upcoming activities</div>
+                  <div className="empty-column-message">
+                    No activities in this bucket yet
+                  </div>
                 ) : (
                   timeSlotColumns.next.map(slot => renderTimeSlotCard(slot))
                 )}
@@ -317,7 +318,9 @@ const Dashboard = () => {
               </div>
               <div className="column-content">
                 {timeSlotColumns.later.length === 0 ? (
-                  <div className="empty-column-message">No activities later today</div>
+                  <div className="empty-column-message">
+                    No activities in this bucket yet
+                  </div>
                 ) : (
                   timeSlotColumns.later.map(slot => renderTimeSlotCard(slot))
                 )}
@@ -327,86 +330,7 @@ const Dashboard = () => {
         )}
       </section>
       
-      {/* KPI Overview Section */}
-      <section className="dashboard-section">
-        <div className="section-header">
-          <h3>Key Metrics</h3>
-        </div>
-        {summaryLoading ? (
-          <div className="loading-container"><div className="loading-spinner"></div><p>Loading summary...</p></div>
-        ) : summaryError ? (
-          <div className="error-container glass-card"><FiAlertCircle className="error-icon" /><p>Error loading summary</p></div>
-        ) : (
-          <div className="kpi-grid">
-            <div className="glass-card kpi-card">
-              <div className="kpi-title"><FiClock className="icon-small" /> Time Slots</div>
-              <div className="kpi-value">{summaryData?.data?.time_slots?.total || 0}</div>
-              <div className="kpi-sub">Segment types: {summaryData?.data?.time_slots?.segment_types || 0}</div>
-            </div>
-            <div className="glass-card kpi-card">
-              <div className="kpi-title"><FiUsers className="icon-small" /> Participants</div>
-              <div className="kpi-value">{summaryData?.data?.participants?.total || 0}</div>
-              <div className="kpi-sub">Checked in: {summaryData?.data?.participants?.attended || 0} · Absent: {summaryData?.data?.participants?.absent || 0}</div>
-            </div>
-            <div className="glass-card kpi-card">
-              <div className="kpi-title"><FiUsers className="icon-small" /> Staff on Duty</div>
-              <div className="kpi-value">{summaryData?.data?.staff_count || 0}</div>
-            </div>
-            <div className="glass-card kpi-card">
-              <div className="kpi-title"><FiTruck className="icon-small" /> Vehicles in Use</div>
-              <div className="kpi-value">{summaryData?.data?.vehicle_count || 0}</div>
-            </div>
-          </div>
-        )}
-      </section>
-      
-      {/* Alerts Section */}
-      <section className="dashboard-section">
-        <div className="section-header">
-          <h3><FiAlertCircle /> Alerts</h3>
-        </div>
-        {alertsLoading ? (
-          <div className="loading-container"><div className="loading-spinner"></div><p>Loading alerts...</p></div>
-        ) : alertsError ? (
-          <div className="error-container glass-card"><FiAlertCircle className="error-icon" /><p>Error loading alerts</p></div>
-        ) : (
-          <div className="alerts-grid">
-            <div className="glass-card">
-              <h4>Staffing Alerts ({alertsData?.data?.staffing_alerts?.length || 0})</h4>
-              <ul className="list-unstyled">
-                {(alertsData?.data?.staffing_alerts || []).map((a) => (
-                  <li key={`s-${a.time_slot_id}`} className="alert-item">
-                    <strong>{a.program_name}</strong> · {a.segment_type} {a.start_time}–{a.end_time} · staff {a.staff_count}/{`CEIL(${a.participant_count}/`}{a.staff_ratio}
-                  </li>
-                ))}
-                {(alertsData?.data?.staffing_alerts || []).length === 0 && <li className="muted">No staffing alerts</li>}
-              </ul>
-            </div>
-            <div className="glass-card">
-              <h4>Vehicle Alerts ({alertsData?.data?.vehicle_alerts?.length || 0})</h4>
-              <ul className="list-unstyled">
-                {(alertsData?.data?.vehicle_alerts || []).map((v, idx) => (
-                  <li key={`v-${idx}`} className="alert-item">
-                    <strong>{v.make} {v.model}</strong> · {v.reason} ({v.start_date}–{v.end_date}) · affects {v.program_name} {v.start_time}–{v.end_time}
-                  </li>
-                ))}
-                {(alertsData?.data?.vehicle_alerts || []).length === 0 && <li className="muted">No vehicle alerts</li>}
-              </ul>
-            </div>
-            <div className="glass-card">
-              <h4>Staff Alerts ({alertsData?.data?.staff_alerts?.length || 0})</h4>
-              <ul className="list-unstyled">
-                {(alertsData?.data?.staff_alerts || []).map((s, idx) => (
-                  <li key={`st-${idx}`} className="alert-item">
-                    <strong>{s.first_name} {s.last_name}</strong> · {s.reason} ({s.start_date}–{s.end_date}) · affects {s.program_name} {s.start_time}–{s.end_time}
-                  </li>
-                ))}
-                {(alertsData?.data?.staff_alerts || []).length === 0 && <li className="muted">No staff alerts</li>}
-              </ul>
-            </div>
-          </div>
-        )}
-      </section>
+      {/* KPI Overview and Alerts sections hidden until endpoints exist */}
       
       {/* Quick Actions */}
       <section className="dashboard-section">

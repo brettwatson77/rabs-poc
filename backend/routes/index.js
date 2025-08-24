@@ -19,6 +19,7 @@ const venueRoutes = require('./venues');
 const loomRoutes = require('./loom');
 const intentionRoutes = require('./intentions');
 const financeRoutes = require('./finance');
+const rosterRoutes = require('./roster');      // NEW – roster read endpoints
 const settingsRoutes = require('./settings');
 const systemRoutes = require('./system');
 const changesRoutes = require('./changes');
@@ -36,6 +37,7 @@ router.use('/venues', venueRoutes);
 router.use('/loom', loomRoutes);
 router.use('/intentions', intentionRoutes);
 router.use('/finance', financeRoutes);
+router.use('/roster', rosterRoutes);          // NEW – mount roster routes
 router.use('/settings', settingsRoutes);
 router.use('/system', systemRoutes);
 router.use('/changes', changesRoutes);
