@@ -227,10 +227,9 @@ const Roster = () => {
           {/* Staff rows with day cells */}
           {staffFiltered.length > 0 ? (
             staffFiltered.map((staff) => (
-              React.Fragment.apply(null, [
-                // Staff name cell (sticky)
+              <React.Fragment key={`row-${staff.id}`}>
+                {/* Staff name cell (sticky) */}
                 <div 
-                  key={`staff-${staff.id}`}
                   className="staffCell"
                   style={{
                     position: 'sticky',
@@ -263,10 +262,10 @@ const Roster = () => {
                   <div>
                     {staff.first_name} {staff.last_name}
                   </div>
-                </div>,
+                </div>
                 
-                // Day cells for this staff member
-                ...dates.map((date) => (
+                {/* Day cells for this staff member */}
+                {dates.map((date) => (
                   <div
                     key={`${staff.id}-${date}`}
                     className="dayCell"
@@ -280,8 +279,8 @@ const Roster = () => {
                   >
                     <div>No shifts assigned</div>
                   </div>
-                ))
-              ])
+                ))}
+              </React.Fragment>
             ))
           ) : (
             <div 
