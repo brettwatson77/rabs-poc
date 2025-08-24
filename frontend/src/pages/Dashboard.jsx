@@ -17,7 +17,7 @@ import {
 } from 'react-icons/fi';
 
 // API base URL from environment
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3009';
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 // Dashboard component
 const Dashboard = () => {
@@ -26,14 +26,14 @@ const Dashboard = () => {
   
   // Fetch today's time slots for the dashboard
   const { 
-    data: timeSlotsData, 
-    isLoading: timeSlotsLoading, 
-    error: timeSlotsError,
-    refetch: refetchTimeSlots
+    data: cardsData, 
+    isLoading: cardsLoading, 
+    error: cardsError,
+    refetch: refetchCards
   } = useQuery(
-    ['dashboardTimeSlots', formattedDate],
+    ['dashboardCards', formattedDate],
     async () => {
-      const response = await axios.get(`${API_URL}/api/v1/dashboard/time-slots`, {
+      const response = await axios.get(`${API_URL}/api/v1/dashboard/cards`, {
         params: { date: formattedDate }
       });
       return response.data;
@@ -77,7 +77,7 @@ const Dashboard = () => {
   
   // Organize time slots into columns (Earlier/Before/Now/Next/Later)
   const organizeTimeSlots = () => {
-    if (!timeSlotsData || !timeSlotsData.data) return {
+    if (!cardsData || !cardsData.data) return {
       earlier: [],
       before: [],
       now: [],
@@ -86,36 +86,36 @@ const Dashboard = () => {
     };
     
     const now = new Date();
-    const slots = timeSlotsData.data;
+    const slots = cardsData.data;
     
     return {
       // Ended more than 1 hour ago
       earlier: slots.filter(slot => {
-        const endTime = parseISO(`${formattedDate}T${slot.end_time}`);
+        const endTime = parseISO(slot.display_time_end);
         const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
         return isBefore(endTime, oneHourAgo);
       }),
       // Ended within the last hour
       before: slots.filter(slot => {
-        const endTime = parseISO(`${formattedDate}T${slot.end_time}`);
+        const endTime = parseISO(slot.display_time_end);
         const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
         return isAfter(endTime, oneHourAgo) && isBefore(endTime, now);
       }),
       // Ongoing now
       now: slots.filter(slot => {
-        const startTime = parseISO(`${formattedDate}T${slot.start_time}`);
-        const endTime = parseISO(`${formattedDate}T${slot.end_time}`);
+        const startTime = parseISO(slot.display_time_start);
+        const endTime = parseISO(slot.display_time_end);
         return isBefore(startTime, now) && isAfter(endTime, now);
       }),
       // Starts within next hour
       next: slots.filter(slot => {
-        const startTime = parseISO(`${formattedDate}T${slot.start_time}`);
+        const startTime = parseISO(slot.display_time_start);
         const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
         return isAfter(startTime, now) && isBefore(startTime, oneHourFromNow);
       }),
       // Starts more than 1 hour from now
       later: slots.filter(slot => {
-        const startTime = parseISO(`${formattedDate}T${slot.start_time}`);
+        const startTime = parseISO(slot.display_time_start);
         const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
         return isAfter(startTime, oneHourFromNow);
       })
@@ -127,12 +127,12 @@ const Dashboard = () => {
   // Format time for display
   const formatTime = (timeString) => {
     if (!timeString) return '';
-    return format(parseISO(`${formattedDate}T${timeString}`), 'h:mm a');
+    return format(parseISO(timeString), 'h:mm a');
   };
   
   // Handle refresh button click
   const handleRefresh = () => {
-    refetchTimeSlots();
+    refetchCards();
     refetchSummary();
     refetchAlerts();
   };
@@ -141,7 +141,7 @@ const Dashboard = () => {
   const renderTimeSlotCard = (slot) => {
     if (!slot) return null;
     
-    const slotType = slot.slot_type || 'event';
+    const slotType = (slot.card_type || 'event').toLowerCase();
     const iconMap = {
       pickup: <FiTruck className="card-icon pickup" />,
       event: <FiCalendar className="card-icon event" />,
@@ -153,16 +153,18 @@ const Dashboard = () => {
         <div className={`card-header ${slotType}`}>
           <div className="card-header-content">
             {iconMap[slotType] || iconMap.event}
-            <h4>{slot.title || 'Untitled'}</h4>
+            <h4>{slot.display_title || 'Untitled'}</h4>
           </div>
           <span className="time-badge">
-            {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
+            {formatTime(slot.display_time_start)} - {formatTime(slot.display_time_end)}
           </span>
         </div>
         <div className="card-body">
-          <div className="card-detail">
-            <strong>Program:</strong> {slot.program_title || 'N/A'}
-          </div>
+          {slot.display_subtitle && (
+            <div className="card-detail">
+              <strong>Program:</strong> {slot.display_subtitle}
+            </div>
+          )}
           {slot.venue_name && (
             <div className="card-detail">
               <strong>Venue:</strong> {slot.venue_name}
@@ -232,15 +234,15 @@ const Dashboard = () => {
           </h3>
         </div>
         
-        {timeSlotsLoading ? (
+        {cardsLoading ? (
           <div className="loading-container">
             <div className="loading-spinner"></div>
             <p>Loading time slots...</p>
           </div>
-        ) : timeSlotsError ? (
+        ) : cardsError ? (
           <div className="error-container glass-card">
             <FiAlertCircle className="error-icon" />
-            <p>Error loading time slots: {timeSlotsError.message}</p>
+            <p>Error loading time slots: {cardsError.message}</p>
             <button className="btn btn-primary" onClick={handleRefresh}>
               Try Again
             </button>

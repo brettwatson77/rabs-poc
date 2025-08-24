@@ -104,19 +104,25 @@ app.use((req, res, next) => {
   next();
 });
 
-// Health check endpoint
-app.get('/health', (req, res) => {
+// -------------------------------------------------------------
+// Health check endpoints (root + versioned)
+// -------------------------------------------------------------
+const healthHandler = (_req, res) => {
   res.json({
-    status: 'healthy',
-    uptime: process.uptime(),
-    timestamp: new Date().toISOString(),
-    version: '3.0.0'
+    ok: true,
+    time: new Date().toISOString(),
   });
-});
+};
+
+app.get('/health', healthHandler);
+app.get('/api/health', healthHandler); // compat alias for FE checks
+app.get('/api/v1/health', healthHandler);
 
 // API Routes - Versioned under /api/v1
 const apiRoutes = require('./routes');
 app.use('/api/v1', apiRoutes);
+// Compat alias so legacy calls to /api still work
+app.use('/api', apiRoutes);
 
 // Serve OpenAPI documentation
 app.get('/api/docs', (req, res) => {

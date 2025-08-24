@@ -21,8 +21,8 @@ import {
   FiMapPin
 } from 'react-icons/fi';
 
-// API base URL
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3009';
+// Health-check path (env-driven, default '/api/health')
+const HEALTH_PATH = import.meta.env.VITE_HEALTH_PATH || '/api/health';
 
 // Real page components
 import Dashboard from './pages/Dashboard';
@@ -34,6 +34,11 @@ import Participants from './pages/Participants';
 import Staff from './pages/Staff';
 import Vehicles from './pages/Vehicles';
 import Venues from './pages/Venues';
+import ProgramTemplateWizard from './pages/ProgramTemplateWizard';
+
+// Toast notifications
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 // The above four pages are full-featured components located in ./pages/
 
@@ -45,7 +50,7 @@ const HealthCheck = () => {
   const { error, isLoading } = useQuery(
     'health',
     async () => {
-      const response = await axios.get(`${API_URL}/health`);
+      const response = await axios.get(HEALTH_PATH);
       return response.data;
     },
     {
@@ -248,19 +253,23 @@ const Layout = ({ children }) => {
 // Main App component
 const App = () => {
   return (
-    <Layout>
-      <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/schedule" element={<MasterSchedule />} />
-        <Route path="/roster" element={<Roster />} />
-        <Route path="/finance" element={<Finance />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/participants" element={<Participants />} />
-        <Route path="/staff" element={<Staff />} />
-        <Route path="/vehicles" element={<Vehicles />} />
-        <Route path="/venues" element={<Venues />} />
-      </Routes>
-    </Layout>
+    <>
+      <Layout>
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/schedule" element={<MasterSchedule />} />
+          <Route path="/roster" element={<Roster />} />
+          <Route path="/finance" element={<Finance />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/participants" element={<Participants />} />
+          <Route path="/staff" element={<Staff />} />
+          <Route path="/vehicles" element={<Vehicles />} />
+          <Route path="/venues" element={<Venues />} />
+          <Route path="/template-wizard" element={<ProgramTemplateWizard />} />
+        </Routes>
+      </Layout>
+      <ToastContainer position="bottom-right" autoClose={3000} />
+    </>
   );
 };
 

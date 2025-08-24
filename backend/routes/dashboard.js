@@ -103,6 +103,45 @@ router.get('/time-slots', async (req, res, next) => {
 });
 
 /**
+ * @route   GET /api/v1/dashboard/cards
+ * @desc    Get ordered dashboard cards for a specific date
+ * @access  Public
+ *
+ * Response:
+ * { success: true, data: [ { ...event_card_map columns..., instance_date } ] }
+ */
+router.get('/cards', async (req, res, next) => {
+  try {
+    const { date } = req.query;
+
+    if (!date) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required query parameter: date'
+      });
+    }
+
+    // Pull cards for the given day, ordered chronologically then by seq / card_order
+    const cardResult = await pool.query(
+      `SELECT e.*, li.instance_date
+       FROM event_card_map e
+       JOIN loom_instances li
+         ON e.loom_instance_id = li.id
+       WHERE li.instance_date = $1
+       ORDER BY e.display_time_start ASC, e.card_order ASC`,
+      [date]
+    );
+
+    res.json({
+      success: true,
+      data: cardResult.rows
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * @route   GET /api/v1/dashboard/time-slots/:id
  * @desc    Get detailed information for a specific time slot
  * @access  Public

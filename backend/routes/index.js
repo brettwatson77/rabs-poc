@@ -22,6 +22,8 @@ const financeRoutes = require('./finance');
 const settingsRoutes = require('./settings');
 const systemRoutes = require('./system');
 const changesRoutes = require('./changes');
+const templatesRoutes = require('./templates');
+const calendarRoutes = require('./calendar');
 
 // Mount routes at their respective paths
 router.use('/participants', participantRoutes);
@@ -37,6 +39,8 @@ router.use('/finance', financeRoutes);
 router.use('/settings', settingsRoutes);
 router.use('/system', systemRoutes);
 router.use('/changes', changesRoutes);
+router.use('/templates', templatesRoutes);
+router.use('/calendar', calendarRoutes);
 
 // Root API info endpoint
 router.get('/', (req, res) => {

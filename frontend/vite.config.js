@@ -8,7 +8,8 @@ export default defineConfig({
     port: 3008,
     proxy: {
       '/api': {
-        target: 'http://localhost:3009',
+        // Explicit IPv4 loopback avoids localhost/IPv6 quirks
+        target: 'http://127.0.0.1:3009',
         changeOrigin: true,
         secure: false,
       }

@@ -1,35 +1,12 @@
 import axios from 'axios';
 
 // ---------------------------------------------------------------------------
-// Environment-aware backend URL helper
-//   • Dev (Vite @ :3008 or localhost)  → http://<host>:3009/api/v1
-//   • Prod / Staging (same origin)    → https://<origin>/api/v1
+// Simple environment-driven backend URL
+//  • Production build gets value from `.env.production` (VITE_API_BASE)
+//  • Dev builds can supply VITE_API_BASE or default to '/api/v1'
 // ---------------------------------------------------------------------------
 
-const { protocol, hostname, port, origin } = window.location;
-
-let API_BASE_URL;
-
-// ---------------------------------------------------------------------------
-// 1) Explicit environment override via VITE_API_URL
-// 2) Vite dev server (port 3008) → talk to backend on localhost:3009
-// 3) Fallback: same-origin (prod / staging)
-// ---------------------------------------------------------------------------
-const envOverride = import.meta.env.VITE_API_URL;
-
-if (envOverride) {
-  // Respect explicit override; make sure it ends with /api/v1 exactly once
-  const trimmed = envOverride.replace(/\\/$/, '');           // drop trailing slash
-  API_BASE_URL = trimmed.endsWith('/api/v1')
-    ? trimmed
-    : `${trimmed}/api/v1`;
-} else if (port === '3008') {
-  // Running under Vite dev server – always hit backend on localhost:3009
-  API_BASE_URL = `${protocol}//localhost:3009/api/v1`;
-} else {
-  // Same-origin for deployed environments
-  API_BASE_URL = `${origin}/api/v1`;
-}
+const API_BASE_URL = import.meta.env.VITE_API_BASE || '/api/v1';
 
 // Create an axios instance with the base URL pre-configured
 const api = axios.create({
@@ -776,3 +753,10 @@ export const createDynamicProgram = async (programData) => {
     throw error;
   }
 };
+
+/* ---------------------------------------------------------------------------
+ * Default export
+ * ------------------------------------------------------------------------ */
+
+// Export the configured axios instance for direct use when needed
+export default api;

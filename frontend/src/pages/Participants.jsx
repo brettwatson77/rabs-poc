@@ -46,7 +46,7 @@ import ParticipantCard from './participants/components/Directory/ParticipantCard
 import '../styles/Participants.css';
 
 // API base URL from environment
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3009';
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 // Support flag icon mapping
 const SUPPORT_FLAG_ICONS = {
