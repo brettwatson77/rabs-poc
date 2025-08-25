@@ -219,8 +219,7 @@ const Roster = () => {
               display: 'grid',
               gridTemplateColumns: 'repeat(7, minmax(220px, 1fr))',
               gap: '16px',
-              marginBottom: '24px',
-              overflowX: 'auto',
+              marginBottom: '24px'
             }}
           >
             {dates.slice(0, 7).map((d) => {
@@ -250,8 +249,7 @@ const Roster = () => {
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(7, minmax(220px, 1fr))',
-              gap: '16px',
-              overflowX: 'auto',
+              gap: '16px'
             }}
           >
             {dates.slice(7).map((d) => {
@@ -292,10 +290,11 @@ const Roster = () => {
             left: 0,
             top: 0,
             zIndex: 3,
-            background: 'var(--panel-bg)',
+            background: 'var(--panel-bg, rgba(30, 34, 42, 0.7))',
             padding: '12px',
             fontWeight: 'bold',
-            borderBottom: '1px solid #ddd'
+            borderBottom: '1px solid var(--ui-border, rgba(255,255,255,0.08))',
+            boxShadow: '2px 0 0 rgba(0,0,0,0.08)'
           }}>
             Staff
           </div>
@@ -306,9 +305,13 @@ const Roster = () => {
               key={`header-${date}`} 
               className="headerCell"
               style={{
+                position: 'sticky',
+                top: 0,
+                zIndex: 2,
+                background: 'var(--panel-bg, rgba(30, 34, 42, 0.7))',
                 padding: '12px',
                 fontWeight: 'bold',
-                borderBottom: '1px solid #ddd',
+                borderBottom: '1px solid var(--ui-border, rgba(255,255,255,0.08))',
                 textAlign: 'center'
               }}
             >
@@ -327,12 +330,13 @@ const Roster = () => {
                     position: 'sticky',
                     left: 0,
                     zIndex: 2,
-                    background: 'var(--panel-bg)',
-                    padding: '12px',
+                    background: 'var(--panel-bg, rgba(30, 34, 42, 0.7))',
+                    padding: '12px 16px',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '12px',
-                    borderBottom: '1px solid #eee'
+                    borderBottom: '1px solid var(--ui-border, rgba(255,255,255,0.08))',
+                    boxShadow: '2px 0 0 rgba(0,0,0,0.08)'
                   }}
                 >
                   <div 
@@ -363,10 +367,11 @@ const Roster = () => {
                     className="dayCell"
                     style={{
                       padding: '12px',
-                      borderBottom: '1px solid #eee',
+                      borderBottom: '1px solid var(--ui-border, rgba(255,255,255,0.08))',
                       fontSize: '0.85rem',
-                      color: '#666',
-                      textAlign: 'center'
+                      color: 'var(--ui-text-muted, rgba(255,255,255,0.6))',
+                      textAlign: 'center',
+                      background: 'rgba(255,255,255,0.02)'
                     }}
                   >
                     <div>No shifts assigned</div>

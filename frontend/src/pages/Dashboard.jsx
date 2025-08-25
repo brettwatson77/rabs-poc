@@ -11,8 +11,6 @@ import {
   FiCheckCircle,
   FiRefreshCw,
   FiPlusCircle,
-  FiFileText,
-  FiSettings,
   FiChevronRight,
   FiMail
 } from 'react-icons/fi';
@@ -21,6 +19,7 @@ import {
 const Dashboard = () => {
   const [currentDate] = useState(new Date());
   const formattedDate = format(currentDate, 'yyyy-MM-dd');
+  const [imageError, setImageError] = useState(false);
   
   // Fetch today's time slots for the dashboard
   const { 
@@ -41,6 +40,34 @@ const Dashboard = () => {
       staleTime: 30000
     }
   );
+  
+  // Fetch system health status
+  const {
+    data: systemHealth,
+    isLoading: systemHealthLoading,
+    error: systemHealthError,
+    refetch: refetchSystemHealth
+  } = useQuery(
+    ['systemHealth'],
+    async () => {
+      console.log('System card health URL', '/api/health');
+      try {
+        const response = await api.get('/api/health');
+        console.log('System card health status', response.status, response.data?.ok);
+        return response.data;
+      } catch (err) {
+        console.log('System card health error', err.response?.status || 'network error');
+        throw err;
+      }
+    },
+    {
+      refetchInterval: 60000, // Check every 60 seconds
+      refetchIntervalInBackground: true,
+    }
+  );
+  
+  // Determine if system is online
+  const isSystemOnline = !systemHealthError && systemHealth && systemHealth.ok === true;
   
   // Organize time slots into columns (Earlier/Before/Now/Next/Later)
   const organizeTimeSlots = () => {
@@ -101,6 +128,7 @@ const Dashboard = () => {
   // Handle refresh button click
   const handleRefresh = () => {
     refetchCards();
+    refetchSystemHealth();
     // Metrics & alerts disabled
   };
   
@@ -165,11 +193,11 @@ const Dashboard = () => {
           <button 
             className="btn btn-icon" 
             onClick={handleRefresh} 
-            disabled={cardsLoading}
+            disabled={cardsLoading || systemHealthLoading}
             title="Refresh Dashboard"
           >
             <FiRefreshCw />
-            {cardsLoading && <span className="ml-2">Refreshing...</span>}
+            {(cardsLoading || systemHealthLoading) && <span className="ml-2">Refreshing...</span>}
           </button>
           <span className="date-display">
             {format(currentDate, 'EEEE, MMMM d, yyyy')}
@@ -363,9 +391,9 @@ const Dashboard = () => {
           <div className="glass-card system-status-card">
             <div className="system-status-header">
               <h4>System Settings</h4>
-              <div className="status-indicator online">
-                <FiCheckCircle />
-                <span>Online</span>
+              <div className={`status-indicator ${isSystemOnline ? 'online' : 'offline'}`}>
+                {isSystemOnline ? <FiCheckCircle /> : <FiAlertCircle />}
+                <span>{isSystemOnline ? 'Online' : 'Offline'}</span>
               </div>
             </div>
             <div className="system-status-details">
@@ -387,7 +415,18 @@ const Dashboard = () => {
               <h4>Photo Highlights</h4>
             </div>
             <div className="photo-container">
-              <img src="/dashphoto.jpg" alt="Highlights" style={{ width: '100%', height: 'auto' }} />
+              {imageError ? (
+                <div className="empty-photo-placeholder" style={{ padding: '24px', textAlign: 'center', color: 'var(--ui-text-muted)' }}>
+                  No photo
+                </div>
+              ) : (
+                <img 
+                  src="/dashphoto.jpg" 
+                  alt="Highlights" 
+                  style={{ width: '100%', height: 'auto' }} 
+                  onError={() => setImageError(true)}
+                />
+              )}
             </div>
           </div>
         </div>

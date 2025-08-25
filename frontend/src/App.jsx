@@ -21,9 +21,6 @@ import {
   FiMapPin
 } from 'react-icons/fi';
 
-// Health-check path (env-driven, default '/api/health')
-const HEALTH_PATH = import.meta.env.VITE_HEALTH_PATH || '/api/health';
-
 // Real page components
 import Dashboard from './pages/Dashboard';
 import MasterSchedule from './pages/MasterSchedule';
@@ -47,14 +44,21 @@ import './styles/UI.css';
 
 // Health check component
 const HealthCheck = () => {
-  const { error, isLoading } = useQuery(
+  const { data, error, isLoading } = useQuery(
     'health',
     async () => {
-      const response = await api.get(HEALTH_PATH);
-      return response.data;
+      console.log('Header health URL', '/api/health');
+      try {
+        const response = await api.get('/api/health');
+        console.log('Header health status', response.status, response.data?.ok);
+        return response.data;
+      } catch (err) {
+        console.log('Header health error', err.response?.status || 'network error');
+        throw err;
+      }
     },
     {
-      refetchInterval: 30000, // Check every 30 seconds
+      refetchInterval: 60000, // Check every 60 seconds
       refetchIntervalInBackground: true,
     }
   );
@@ -68,7 +72,8 @@ const HealthCheck = () => {
     );
   }
 
-  if (error) {
+  // Consider both HTTP 200 and data.ok === true for success
+  if (error || !data || data.ok !== true) {
     return (
       <div className="health-check health-error">
         <FiAlertCircle className="health-icon" />
