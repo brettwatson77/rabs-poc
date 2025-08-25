@@ -47,12 +47,12 @@ const HealthCheck = () => {
   const { data, error, isLoading } = useQuery(
     'health',
     async () => {
-      console.log('Header health URL', '/api/health');
+      console.log('Header health URL', '/health');
       try {
-        const response = await api.get('/api/health');
+        const response = await api.get('/health');
         console.log(
           'Header health URL/status/body',
-          '/api/health',
+          '/health',
           response.status,
           response.data
         );

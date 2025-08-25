@@ -54,12 +54,12 @@ const Dashboard = () => {
   } = useQuery(
     ['systemHealth'],
     async () => {
-      console.log('System card health URL', '/api/health');
+      console.log('System card health URL', '/health');
       try {
-        const response = await api.get('/api/health');
+        const response = await api.get('/health');
         console.log(
           'System card health URL/status/body',
-          '/api/health',
+          '/health',
           response.status,
           response.data
         );
