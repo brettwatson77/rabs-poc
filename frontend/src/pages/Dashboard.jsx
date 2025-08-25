@@ -41,6 +41,10 @@ const Dashboard = () => {
     }
   );
   
+  // unified healthy test
+  const isHealthy = (d) =>
+    !!d && (d.ok === true || d.success === true || d.status === 'ok');
+  
   // Fetch system health status
   const {
     data: systemHealth,
@@ -53,10 +57,19 @@ const Dashboard = () => {
       console.log('System card health URL', '/api/health');
       try {
         const response = await api.get('/api/health');
-        console.log('System card health status', response.status, response.data?.ok);
+        console.log(
+          'System card health URL/status/body',
+          '/api/health',
+          response.status,
+          response.data
+        );
         return response.data;
       } catch (err) {
-        console.log('System card health error', err.response?.status || 'network error');
+        console.log(
+          'System card health error',
+          err.response?.status || 'network',
+          err?.response?.data
+        );
         throw err;
       }
     },
@@ -67,7 +80,7 @@ const Dashboard = () => {
   );
   
   // Determine if system is online
-  const isSystemOnline = !systemHealthError && systemHealth && systemHealth.ok === true;
+  const isSystemOnline = !systemHealthError && isHealthy(systemHealth);
   
   // Organize time slots into columns (Earlier/Before/Now/Next/Later)
   const organizeTimeSlots = () => {

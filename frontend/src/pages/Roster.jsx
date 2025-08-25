@@ -158,7 +158,14 @@ const Roster = () => {
         </button>
       </div>
 
-      <div className="roster-controls glass-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+      <div className="roster-controls glass-card" style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        marginBottom: '16px',
+        position: 'relative',
+        zIndex: 4
+      }}>
         {/* View toggle buttons */}
         <div className="view-toggle" style={{ display: 'flex', gap: '8px' }}>
           <button 
@@ -191,14 +198,26 @@ const Roster = () => {
         
         {/* Search input - only show in staff view */}
         {view === 'staff' && (
-          <div className="search-input" style={{ flex: 1, maxWidth: '300px', marginLeft: '16px' }}>
+          <div className="roster-search" style={{ 
+            height: '40px', 
+            width: '100%', 
+            maxWidth: '320px', 
+            marginLeft: '16px',
+            display: 'flex',
+            alignItems: 'center'
+          }}>
             <input
               type="text"
               placeholder="Search staff..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="glass-input"
-              style={{ width: '100%', padding: '8px', borderRadius: '4px' }}
+              style={{ 
+                width: '100%', 
+                height: '100%',
+                padding: '8px 12px', 
+                borderRadius: '10px' 
+              }}
             />
           </div>
         )}

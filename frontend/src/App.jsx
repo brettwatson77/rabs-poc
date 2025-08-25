@@ -50,10 +50,19 @@ const HealthCheck = () => {
       console.log('Header health URL', '/api/health');
       try {
         const response = await api.get('/api/health');
-        console.log('Header health status', response.status, response.data?.ok);
+        console.log(
+          'Header health URL/status/body',
+          '/api/health',
+          response.status,
+          response.data
+        );
         return response.data;
       } catch (err) {
-        console.log('Header health error', err.response?.status || 'network error');
+        console.log(
+          'Header health error',
+          err.response?.status || 'network',
+          err?.response?.data
+        );
         throw err;
       }
     },
@@ -62,6 +71,10 @@ const HealthCheck = () => {
       refetchIntervalInBackground: true,
     }
   );
+
+  // unified healthy test
+  const isHealthy = (d) =>
+    !!d && (d.ok === true || d.success === true || d.status === 'ok');
 
   if (isLoading) {
     return (
@@ -73,7 +86,7 @@ const HealthCheck = () => {
   }
 
   // Consider both HTTP 200 and data.ok === true for success
-  if (error || !data || data.ok !== true) {
+  if (error || !isHealthy(data)) {
     return (
       <div className="health-check health-error">
         <FiAlertCircle className="health-icon" />
