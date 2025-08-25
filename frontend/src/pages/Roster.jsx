@@ -1,23 +1,47 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/api';
-import { format, startOfWeek, addDays } from 'date-fns';
+import { format, startOfWeek, addDays, subDays } from 'date-fns';
 
 const Roster = () => {
   // View toggle state: 'day' or 'staff'
   const [view, setView] = useState('day');
   
-  // build 14-day window starting Monday of current week
-  const mondayThisWeek = startOfWeek(new Date(), { weekStartsOn: 1 });
-  const initialDates = Array.from({ length: 14 }, (_, i) =>
-    addDays(mondayThisWeek, i).toISOString().split('T')[0]
+  // Track current fortnight via its starting Monday
+  const [startMonday, setStartMonday] = useState(
+    startOfWeek(new Date(), { weekStartsOn: 1 })
   );
 
-  const [dates] = useState(initialDates); // static in this component
+  // Derive the 14-day string array from startMonday (memoised for stability)
+  const dates = React.useMemo(
+    () =>
+      Array.from({ length: 14 }, (_, i) =>
+        addDays(startMonday, i).toISOString().split('T')[0]
+      ),
+    [startMonday]
+  );
   const [instancesByDate, setInstancesByDate] = useState({});      // {date: []}
   const [staffDirectory, setStaffDirectory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+
+  /* ---------------------------------------------------------------------- */
+  /* Fortnight helpers & navigation                                         */
+  /* ---------------------------------------------------------------------- */
+
+  // Human-readable label for the current 14-day window (Mon .. Sun)
+  const fortnightLabel = `${format(startMonday, 'EEE d MMM')} — ${format(
+    addDays(startMonday, 13),
+    'EEE d MMM',
+  )}`;
+
+  const handlePrevFortnight = () => {
+    setStartMonday((prev) => subDays(prev, 14));
+  };
+
+  const handleNextFortnight = () => {
+    setStartMonday((prev) => addDays(prev, 14));
+  };
 
   // fetch 14 days in parallel once
   useEffect(() => {
@@ -95,6 +119,45 @@ const Roster = () => {
         {/* Simple refresh */}
       </div>
 
+      {/* Fortnight navigation ------------------------------------------------ */}
+      <div
+        className="fortnight-nav glass-card"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '12px',
+          marginBottom: '16px',
+        }}
+      >
+        <button
+          className="btn nav-button"
+          onClick={handlePrevFortnight}
+          style={{ minWidth: '140px' }}
+        >
+          Previous&nbsp;Fortnight
+        </button>
+
+        <div
+          style={{
+            flex: 1,
+            textAlign: 'center',
+            fontWeight: 600,
+            letterSpacing: '-0.01em',
+          }}
+        >
+          {fortnightLabel}
+        </div>
+
+        <button
+          className="btn nav-button"
+          onClick={handleNextFortnight}
+          style={{ minWidth: '140px' }}
+        >
+          Next&nbsp;Fortnight
+        </button>
+      </div>
+
       <div className="roster-controls glass-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         {/* View toggle buttons */}
         <div className="view-toggle" style={{ display: 'flex', gap: '8px' }}>
@@ -149,38 +212,67 @@ const Roster = () => {
       {/* Main roster view - conditional rendering based on view state */}
       {!loading && view === 'day' && (
         <div className="roster-view-grid">
-          {/* Grid of 14 day columns */}
-          <div className="instances-area">
-            <div 
-              className="instances-columns"
-              style={{
-                display: 'grid',
-                gridAutoFlow: 'column',
-                gridTemplateColumns: 'repeat(14, minmax(320px, 1fr))',
-                gap: '16px',
-                overflowX: 'auto'
-              }}
-            >
-              {dates.map((d) => {
-                const dayInstances = instancesByDate[d] || [];
-                return (
-                  <div key={d} className="instance-column glass-card">
-                    <div className="column-header">{formatDateHeader(d)}</div>
-                    {dayInstances.length === 0 ? (
-                      <div className="empty-day">No program instances today.</div>
-                    ) : (
-                      dayInstances.map((inst) => (
-                        <div key={inst.instance_id} className="instance-card">
-                          <strong>{inst.program_name}</strong>
-                          <div>Staff: {inst.staff_required}</div>
-                          <div>Vehicles: {inst.vehicles_required}</div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+          {/* Week 1 (first 7 days) */}
+          <div
+            className="week-grid"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(7, minmax(220px, 1fr))',
+              gap: '16px',
+              marginBottom: '24px',
+              overflowX: 'auto',
+            }}
+          >
+            {dates.slice(0, 7).map((d) => {
+              const dayInstances = instancesByDate[d] || [];
+              return (
+                <div key={d} className="instance-column glass-card">
+                  <div className="column-header">{formatDateHeader(d)}</div>
+                  {dayInstances.length === 0 ? (
+                    <div className="empty-day">No program instances today.</div>
+                  ) : (
+                    dayInstances.map((inst) => (
+                      <div key={inst.instance_id} className="instance-card">
+                        <strong>{inst.program_name}</strong>
+                        <div>Staff: {inst.staff_required}</div>
+                        <div>Vehicles: {inst.vehicles_required}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Week 2 (next 7 days) */}
+          <div
+            className="week-grid"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(7, minmax(220px, 1fr))',
+              gap: '16px',
+              overflowX: 'auto',
+            }}
+          >
+            {dates.slice(7).map((d) => {
+              const dayInstances = instancesByDate[d] || [];
+              return (
+                <div key={d} className="instance-column glass-card">
+                  <div className="column-header">{formatDateHeader(d)}</div>
+                  {dayInstances.length === 0 ? (
+                    <div className="empty-day">No program instances today.</div>
+                  ) : (
+                    dayInstances.map((inst) => (
+                      <div key={inst.instance_id} className="instance-card">
+                        <strong>{inst.program_name}</strong>
+                        <div>Staff: {inst.staff_required}</div>
+                        <div>Vehicles: {inst.vehicles_required}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

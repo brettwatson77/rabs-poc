@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery } from 'react-query';
-import axios from 'axios';
+import api from '../api/api';
 import { format, parseISO, isBefore, isAfter } from 'date-fns';
 import { 
   FiCalendar, 
@@ -13,11 +13,9 @@ import {
   FiPlusCircle,
   FiFileText,
   FiSettings,
-  FiChevronRight
+  FiChevronRight,
+  FiMail
 } from 'react-icons/fi';
-
-// API base URL from environment
-const API_URL = import.meta.env.VITE_API_URL || '';
 
 // Dashboard component
 const Dashboard = () => {
@@ -33,7 +31,7 @@ const Dashboard = () => {
   } = useQuery(
     ['dashboardCards', formattedDate],
     async () => {
-      const response = await axios.get(`${API_URL}/api/v1/dashboard/cards`, {
+      const response = await api.get('/dashboard/cards', {
         params: { date: formattedDate }
       });
       return response.data;
@@ -167,9 +165,11 @@ const Dashboard = () => {
           <button 
             className="btn btn-icon" 
             onClick={handleRefresh} 
+            disabled={cardsLoading}
             title="Refresh Dashboard"
           >
             <FiRefreshCw />
+            {cardsLoading && <span className="ml-2">Refreshing...</span>}
           </button>
           <span className="date-display">
             {format(currentDate, 'EEEE, MMMM d, yyyy')}
@@ -196,7 +196,7 @@ const Dashboard = () => {
       </div>
       
       {/* Time Slots Section */}
-      <section className="dashboard-section">
+      <section className="dashboard-section mb-4">
         <div className="section-header">
           <h3>
             <FiClock /> Today&rsquo;s Timeline
@@ -218,26 +218,26 @@ const Dashboard = () => {
           </div>
         ) : (
           <div
-            className="time-slots-grid"
-            /* Horizontal 5-column timeline grid */
+            className="time-slots-grid responsive-5col"
             style={{
               display: 'grid',
-              gridAutoFlow: 'column',
-              gridTemplateColumns: 'repeat(5, minmax(280px, 1fr))',
+              gridTemplateColumns: 'repeat(5, 1fr)',
               gap: '16px',
-              overflowX: 'auto'
+              overflowX: 'visible'
             }}
           >
             {/* Earlier */}
             <div className="time-column">
               <div className="column-header earlier">
                 <h4>Earlier</h4>
-                <span className="count-badge">{timeSlotColumns.earlier.length}</span>
+                {timeSlotColumns.earlier.length > 0 && (
+                  <span className="count-badge">{timeSlotColumns.earlier.length}</span>
+                )}
               </div>
               <div className="column-content">
                 {timeSlotColumns.earlier.length === 0 ? (
-                  <div className="empty-column-message">
-                    No activities in this bucket yet
+                  <div className="empty-dotted-card">
+                    No cards to display
                   </div>
                 ) : (
                   timeSlotColumns.earlier.map(slot => renderTimeSlotCard(slot))
@@ -249,12 +249,14 @@ const Dashboard = () => {
             <div className="time-column">
               <div className="column-header before">
                 <h4>Before</h4>
-                <span className="count-badge">{timeSlotColumns.before.length}</span>
+                {timeSlotColumns.before.length > 0 && (
+                  <span className="count-badge">{timeSlotColumns.before.length}</span>
+                )}
               </div>
               <div className="column-content">
                 {timeSlotColumns.before.length === 0 ? (
-                  <div className="empty-column-message">
-                    No activities in this bucket yet
+                  <div className="empty-dotted-card">
+                    No cards to display
                   </div>
                 ) : (
                   timeSlotColumns.before.map(slot => renderTimeSlotCard(slot))
@@ -266,12 +268,14 @@ const Dashboard = () => {
             <div className="time-column">
               <div className="column-header now">
                 <h4>Now</h4>
-                <span className="count-badge">{timeSlotColumns.now.length}</span>
+                {timeSlotColumns.now.length > 0 && (
+                  <span className="count-badge">{timeSlotColumns.now.length}</span>
+                )}
               </div>
               <div className="column-content">
                 {timeSlotColumns.now.length === 0 ? (
-                  <div className="empty-column-message">
-                    No activities in this bucket yet
+                  <div className="empty-dotted-card">
+                    No cards to display
                   </div>
                 ) : (
                   timeSlotColumns.now.map(slot => renderTimeSlotCard(slot))
@@ -283,12 +287,14 @@ const Dashboard = () => {
             <div className="time-column">
               <div className="column-header next">
                 <h4>Next</h4>
-                <span className="count-badge">{timeSlotColumns.next.length}</span>
+                {timeSlotColumns.next.length > 0 && (
+                  <span className="count-badge">{timeSlotColumns.next.length}</span>
+                )}
               </div>
               <div className="column-content">
                 {timeSlotColumns.next.length === 0 ? (
-                  <div className="empty-column-message">
-                    No activities in this bucket yet
+                  <div className="empty-dotted-card">
+                    No cards to display
                   </div>
                 ) : (
                   timeSlotColumns.next.map(slot => renderTimeSlotCard(slot))
@@ -300,12 +306,14 @@ const Dashboard = () => {
             <div className="time-column">
               <div className="column-header later">
                 <h4>Later</h4>
-                <span className="count-badge">{timeSlotColumns.later.length}</span>
+                {timeSlotColumns.later.length > 0 && (
+                  <span className="count-badge">{timeSlotColumns.later.length}</span>
+                )}
               </div>
               <div className="column-content">
                 {timeSlotColumns.later.length === 0 ? (
-                  <div className="empty-column-message">
-                    No activities in this bucket yet
+                  <div className="empty-dotted-card">
+                    No cards to display
                   </div>
                 ) : (
                   timeSlotColumns.later.map(slot => renderTimeSlotCard(slot))
@@ -319,50 +327,67 @@ const Dashboard = () => {
       {/* KPI Overview and Alerts sections hidden until endpoints exist */}
       
       {/* Quick Actions */}
-      <section className="dashboard-section">
+      <section className="dashboard-section mb-4">
         <div className="section-header">
           <h3>Quick Actions</h3>
         </div>
         
-        <div className="quick-actions-grid">
-          <button className="glass-card action-card">
+        <div className="quick-actions-grid integrated">
+          <button className="glass-card action-card action-cta">
             <FiPlusCircle className="action-icon" />
             <span>Create Program</span>
           </button>
-          <button className="glass-card action-card">
+          <button className="glass-card action-card action-cta">
             <FiUsers className="action-icon" />
-            <span>Staff Roster</span>
+            <span>Publish Roster</span>
           </button>
-          <button className="glass-card action-card">
-            <FiFileText className="action-icon" />
-            <span>Generate Reports</span>
+          <button className="glass-card action-card action-cta">
+            <FiMail className="action-icon" />
+            <span>Message All Clients</span>
           </button>
-          <button className="glass-card action-card">
-            <FiSettings className="action-icon" />
-            <span>System Settings</span>
+          <button className="glass-card action-card action-cta">
+            <FiMail className="action-icon" />
+            <span>Message All Staff</span>
+          </button>
+          <button className="glass-card action-card action-cta">
+            <FiTruck className="action-icon" />
+            <span>Vehicle Locator</span>
           </button>
         </div>
       </section>
       
-      {/* System Status */}
-      <section className="dashboard-section">
-        <div className="glass-card system-status-card">
-          <div className="system-status-header">
-            <h4>System Status</h4>
-            <div className="status-indicator online">
-              <FiCheckCircle />
-              <span>Online</span>
+      {/* System Status and Photo Highlights */}
+      <section className="dashboard-section mb-4">
+        <div className="system-photo-container" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          {/* System Settings */}
+          <div className="glass-card system-status-card">
+            <div className="system-status-header">
+              <h4>System Settings</h4>
+              <div className="status-indicator online">
+                <FiCheckCircle />
+                <span>Online</span>
+              </div>
+            </div>
+            <div className="system-status-details">
+              <div className="status-item">
+                <strong>Loom Window:</strong> 7 days before, 30 days ahead
+              </div>
+              <div className="status-item">
+                <strong>Last Updated:</strong> {format(new Date(), 'MMM d, yyyy h:mm a')}
+              </div>
+              <div className="status-item">
+                <strong>API Version:</strong> v1
+              </div>
             </div>
           </div>
-          <div className="system-status-details">
-            <div className="status-item">
-              <strong>Loom Window:</strong> 7 days before, 30 days ahead
+          
+          {/* Photo Highlights */}
+          <div className="glass-card photo-highlights-card">
+            <div className="card-header">
+              <h4>Photo Highlights</h4>
             </div>
-            <div className="status-item">
-              <strong>Last Updated:</strong> {format(new Date(), 'MMM d, yyyy h:mm a')}
-            </div>
-            <div className="status-item">
-              <strong>API Version:</strong> v1
+            <div className="photo-container">
+              <img src="/dashphoto.jpg" alt="Highlights" style={{ width: '100%', height: 'auto' }} />
             </div>
           </div>
         </div>

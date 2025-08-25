@@ -162,3 +162,78 @@
     flex-wrap: wrap;
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/*  Dashboard & Roster Polish (v3.5)                                          */
+/* -------------------------------------------------------------------------- */
+
+/* 5-column timeline: collapse to single column on small screens */
+.time-slots-grid.responsive-5col { width: 100%; }
+@media (max-width: 780px) {
+  .time-slots-grid.responsive-5col {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Empty dotted card placeholder */
+.empty-dotted-card {
+  border: 2px dashed var(--ui-border);
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+  color: var(--ui-text-muted);
+  background: rgba(255,255,255,0.02);
+}
+
+/* Quick Actions row */
+.quick-actions-grid.integrated {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+.action-card.action-cta {
+  color: #fff;
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 180ms ease;
+}
+.action-card.action-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 28px rgba(124,124,249,0.28),
+              0 0 0 1px rgba(124,124,249,0.35) inset;
+}
+.action-card .action-icon {
+  width: 20px;
+  height: 20px;
+  margin-right: 8px;
+}
+
+/* System Status + Photo Highlights cards */
+.system-status-card .system-status-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--ui-border);
+}
+.status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+.status-indicator.online { color: #39d98a; }
+.photo-highlights-card .photo-container {
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+/* Simple spacing helper */
+.mb-4 { margin-bottom: 16px; }
+
+/* Roster – By Staff view polish */
+.rosterGrid .staffCell { padding-left: 16px; }
+.rosterGrid .dayCell  { background: rgba(255,255,255,0.02); }
+.rosterGrid .staffCell,
+.rosterGrid .dayCell  { border-bottom: 1px solid var(--ui-border); }

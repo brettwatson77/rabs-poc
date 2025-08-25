@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
 import { useQuery } from 'react-query';
-import axios from 'axios';
+import api from './api/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 
@@ -50,7 +50,7 @@ const HealthCheck = () => {
   const { error, isLoading } = useQuery(
     'health',
     async () => {
-      const response = await axios.get(HEALTH_PATH);
+      const response = await api.get(HEALTH_PATH);
       return response.data;
     },
     {
@@ -236,7 +236,7 @@ const Layout = ({ children }) => {
         <div className="container">
           <div className="footer-content">
             <div className="footer-info">
-              <p>RABS v3 | RP2: From Flushed to Finished</p>
+              <p>RABS v3.5 | from flushed to finished</p>
             </div>
             <div className="footer-links">
               <a href="#" onClick={(e) => e.preventDefault()}>About</a>
