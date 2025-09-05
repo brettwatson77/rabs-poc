@@ -11,10 +11,15 @@ export default function RatesTab({
   onAddRate,
   onOpenImport,
 }) {
+  // Return array of truthy rate rows that match current search term
   const filteredRates = () => {
-    const list = ratesData?.data || [];
+    const list = Array.isArray(ratesData?.data)
+      ? ratesData.data.filter(Boolean)
+      : [];
+
     return list.filter((r) => {
-      const text = `${r.code} ${r.description}`.toLowerCase();
+      // Guard against null/undefined rate objects
+      const text = `${r?.code ?? ''} ${r?.description ?? ''}`.toLowerCase();
       return text.includes((searchQuery || '').toLowerCase());
     });
   };
@@ -73,23 +78,23 @@ export default function RatesTab({
             </tr>
           </thead>
           <tbody>
-            {filteredRates().map((r) => (
-              <tr key={r.id}>
-                <td className="code-mono no-wrap ellipsis">{r.code}</td>
-                <td className="desc-wrap-2">{r.description}</td>
+            {filteredRates().map((r, idx) => (
+              <tr key={r?.id || r?.code || idx}>
+                <td className="code-mono no-wrap ellipsis">{r?.code || '-'}</td>
+                <td className="desc-wrap-2">{r?.description || '-'}</td>
                 <td>
-                  <span className={`pill ${r.active ? 'pill-yes' : 'pill-no'}`}>
-                    {r.active ? 'Yes' : 'No'}
+                  <span className={`pill ${r?.active ? 'pill-yes' : 'pill-no'}`}>
+                    {r?.active ? 'Yes' : 'No'}
                   </span>
                 </td>
                 <td className="text-sm muted">
-                  {r.updated_at ? new Date(r.updated_at).toLocaleString() : '-'}
+                  {r?.updated_at ? new Date(r.updated_at).toLocaleString() : '-'}
                 </td>
                 <td className="text-right">
-                  ${parseFloat(r.base_rate || 0).toFixed(2)}
+                  ${parseFloat(r?.base_rate || 0).toFixed(2)}
                 </td>
                 <td>
-                  {r.ratios && r.ratios.length ? (
+                  {Array.isArray(r?.ratios) && r.ratios.length ? (
                     <div className="chips-scroll">
                       {r.ratios.map((ra) => (
                         <span key={ra.ratio} className="chip">
@@ -104,7 +109,7 @@ export default function RatesTab({
                 <td>
                   <button
                     className="btn btn-icon lg"
-                    onClick={() => onEditRate(r)}
+                    onClick={() => r?.id && onEditRate(r)}
                     title="Edit rate"
                   >
                     <FiEdit2 />
