@@ -8,11 +8,13 @@ export default function RatesTab({
   setSearchQuery,
   onRefetch,
   onEditRate,
+  onAddRate,
+  onOpenImport,
 }) {
   const filteredRates = () => {
     const list = ratesData?.data || [];
     return list.filter((r) => {
-      const text = `${r.code} ${r.description} ${r.support_category}`.toLowerCase();
+      const text = `${r.code} ${r.description}`.toLowerCase();
       return text.includes((searchQuery || '').toLowerCase());
     });
   };
@@ -29,12 +31,27 @@ export default function RatesTab({
             placeholder="Search rates..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="search-input"
+            className="search-input responsive"
           />
         </div>
 
         {/* Spacer for potential future filters */}
-        <div></div>
+        <div className="action-btn-group gap">
+          <button
+            className="btn btn-secondary"
+            onClick={onAddRate}
+            title="Add rate"
+          >
+            + Add Rate
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={onOpenImport}
+            title="Import CSV"
+          >
+            Import CSV
+          </button>
+        </div>
 
         {/* Refresh */}
         <button className="nav-button" onClick={onRefetch} title="Refresh Rates">
@@ -42,28 +59,54 @@ export default function RatesTab({
         </button>
       </div>
 
-      <div className="rates-table-container">
+      <div className="rates-table-container table-scroll">
         <table className="glass-table">
           <thead>
             <tr>
               <th>Code</th>
               <th>Description</th>
-              <th>Category</th>
-              <th>Amount</th>
               <th>Active</th>
+              <th>Updated</th>
+              <th>Base&nbsp;Rate</th>
+              <th>Ratios</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {filteredRates().map((r) => (
               <tr key={r.id}>
-                <td>{r.code}</td>
-                <td>{r.description}</td>
-                <td>{r.support_category}</td>
-                <td>${parseFloat(r.amount).toFixed(2)}</td>
-                <td>{r.is_active ? 'Yes' : 'No'}</td>
+                <td className="code-mono no-wrap ellipsis">{r.code}</td>
+                <td className="desc-wrap-2">{r.description}</td>
                 <td>
-                  <button className="btn btn-icon" onClick={() => onEditRate(r)} title="Edit rate">
+                  <span className={`pill ${r.active ? 'pill-yes' : 'pill-no'}`}>
+                    {r.active ? 'Yes' : 'No'}
+                  </span>
+                </td>
+                <td className="text-sm muted">
+                  {r.updated_at ? new Date(r.updated_at).toLocaleString() : '-'}
+                </td>
+                <td className="text-right">
+                  ${parseFloat(r.base_rate || 0).toFixed(2)}
+                </td>
+                <td>
+                  {r.ratios && r.ratios.length ? (
+                    <div className="chips-scroll">
+                      {r.ratios.map((ra) => (
+                        <span key={ra.ratio} className="chip">
+                          {`${ra.ratio}=$${parseFloat(ra.rate).toFixed(2)}`}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    '-'
+                  )}
+                </td>
+                <td>
+                  <button
+                    className="btn btn-icon lg"
+                    onClick={() => onEditRate(r)}
+                    title="Edit rate"
+                  >
                     <FiEdit2 />
                   </button>
                 </td>

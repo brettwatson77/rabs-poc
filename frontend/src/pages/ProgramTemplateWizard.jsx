@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api/api';
 import { toast } from 'react-toastify';
 import { 
   FiSave, 
@@ -18,9 +18,6 @@ import {
   FiLink,
   FiX
 } from 'react-icons/fi';
-
-// API base URL from environment
-const API_URL = import.meta.env.VITE_API_URL || '';
 
 const ProgramTemplateWizard = () => {
   const navigate = useNavigate();
@@ -92,7 +89,7 @@ const ProgramTemplateWizard = () => {
     const createDraftRule = async () => {
       try {
         setLoading(true);
-        const response = await axios.post(`${API_URL}/api/v1/templates/rules`);
+        const response = await api.post('/templates/rules');
         if (response.data.success && response.data.data) {
           const ruleId = response.data.data.id;
           setRuleId(ruleId);
@@ -126,7 +123,7 @@ const ProgramTemplateWizard = () => {
   // Fetch participants for dropdown
   const fetchParticipants = async () => {
     try {
-      const response = await axios.get(`${API_URL}/api/v1/participants`);
+      const response = await api.get('/participants');
       if (response.data.success && response.data.data) {
         setParticipants(response.data.data);
       }
@@ -139,7 +136,7 @@ const ProgramTemplateWizard = () => {
   // Fetch venues for dropdown
   const fetchVenues = async () => {
     try {
-      const response = await axios.get(`${API_URL}/api/v1/venues`);
+      const response = await api.get('/venues');
       if (response.data.success && response.data.data) {
         setVenues(response.data.data);
         // Set default venue if available
@@ -156,7 +153,7 @@ const ProgramTemplateWizard = () => {
   // Fetch staff list
   const fetchStaff = async () => {
     try {
-      const response = await axios.get(`${API_URL}/api/v1/staff`);
+      const response = await api.get('/staff');
       if (response.data.success && response.data.data) {
         setStaffList(response.data.data);
       }
@@ -169,7 +166,7 @@ const ProgramTemplateWizard = () => {
   // Fetch vehicles list
   const fetchVehicles = async () => {
     try {
-      const response = await axios.get(`${API_URL}/api/v1/vehicles`);
+      const response = await api.get('/vehicles');
       if (response.data.success && response.data.data) {
         setVehiclesList(response.data.data);
       }
@@ -183,7 +180,7 @@ const ProgramTemplateWizard = () => {
   const fetchStaffPlaceholders = async (id) => {
     if (!id) return;
     try {
-      const response = await axios.get(`${API_URL}/api/v1/templates/rules/${id}/staff-placeholders`);
+      const response = await api.get(`/templates/rules/${id}/staff-placeholders`);
       if (response.data.success && response.data.data) {
         setStaffPlaceholders(response.data.data);
       }
@@ -197,7 +194,7 @@ const ProgramTemplateWizard = () => {
   const fetchVehiclePlaceholders = async (id) => {
     if (!id) return;
     try {
-      const response = await axios.get(`${API_URL}/api/v1/templates/rules/${id}/vehicle-placeholders`);
+      const response = await api.get(`/templates/rules/${id}/vehicle-placeholders`);
       if (response.data.success && response.data.data) {
         setVehiclePlaceholders(response.data.data);
       }
@@ -210,7 +207,7 @@ const ProgramTemplateWizard = () => {
   // Fetch billing codes
   const fetchBillingCodes = async () => {
     try {
-      const response = await axios.get(`${API_URL}/api/v1/finance/billing-codes`);
+      const response = await api.get('/finance/billing-codes');
       if (response.data.success && response.data.data) {
         setBillingCodes(response.data.data);
       }
@@ -225,7 +222,7 @@ const ProgramTemplateWizard = () => {
     if (!id) return;
     
     try {
-      const response = await axios.get(`${API_URL}/api/v1/templates/rules/${id}/slots`);
+      const response = await api.get(`/templates/rules/${id}/slots`);
       if (response.data.success && response.data.data) {
         setSlots(response.data.data);
       }
@@ -240,7 +237,7 @@ const ProgramTemplateWizard = () => {
     if (!id) return;
     
     try {
-      const response = await axios.get(`${API_URL}/api/v1/templates/rules/${id}/requirements`);
+      const response = await api.get(`/templates/rules/${id}/requirements`);
       if (response.data.success && response.data.data) {
         setRequirements(response.data.data);
       }
@@ -256,7 +253,7 @@ const ProgramTemplateWizard = () => {
     
     try {
       setSaving(true);
-      const response = await axios.patch(`${API_URL}/api/v1/templates/rules/${ruleId}`, {
+      const response = await api.patch(`/templates/rules/${ruleId}`, {
         name: ruleName,
         description: ruleDescription,
         anchor_date: anchorDate,
@@ -291,7 +288,7 @@ const ProgramTemplateWizard = () => {
 
     try {
       setSaving(true);
-      const response = await axios.post(`${API_URL}/api/v1/venues`, newVenue);
+      const response = await api.post('/venues', newVenue);
 
       if (response.data.success && response.data.data) {
         const createdVenue = response.data.data;
@@ -335,7 +332,7 @@ const ProgramTemplateWizard = () => {
         seq
       };
       
-      const response = await axios.post(`${API_URL}/api/v1/templates/rules/${ruleId}/slots`, slotToAdd);
+      const response = await api.post(`/templates/rules/${ruleId}/slots`, slotToAdd);
       
       if (response.data.success) {
         toast.success('Time slot added');
@@ -364,7 +361,7 @@ const ProgramTemplateWizard = () => {
     
     try {
       setSaving(true);
-      const response = await axios.delete(`${API_URL}/api/v1/templates/rules/${ruleId}/slots/${slotId}`);
+      const response = await api.delete(`/templates/rules/${ruleId}/slots/${slotId}`);
       
       if (response.data.success) {
         toast.success('Time slot deleted');
@@ -405,12 +402,12 @@ const ProgramTemplateWizard = () => {
       setSaving(true);
       
       // Delete both slots
-      await axios.delete(`${API_URL}/api/v1/templates/rules/${ruleId}/slots/${newSlots[slotIndex].id}`);
-      await axios.delete(`${API_URL}/api/v1/templates/rules/${ruleId}/slots/${newSlots[swapIndex].id}`);
+      await api.delete(`/templates/rules/${ruleId}/slots/${newSlots[slotIndex].id}`);
+      await api.delete(`/templates/rules/${ruleId}/slots/${newSlots[swapIndex].id}`);
       
       // Re-add both slots with updated seq values
-      await axios.post(`${API_URL}/api/v1/templates/rules/${ruleId}/slots`, newSlots[slotIndex]);
-      await axios.post(`${API_URL}/api/v1/templates/rules/${ruleId}/slots`, newSlots[swapIndex]);
+      await api.post(`/templates/rules/${ruleId}/slots`, newSlots[slotIndex]);
+      await api.post(`/templates/rules/${ruleId}/slots`, newSlots[swapIndex]);
       
       // Refresh slots
       fetchSlots(ruleId);
@@ -428,7 +425,7 @@ const ProgramTemplateWizard = () => {
     
     try {
       setSaving(true);
-      const response = await axios.post(`${API_URL}/api/v1/templates/rules/${ruleId}/staff-placeholders`, {
+      const response = await api.post(`/templates/rules/${ruleId}/staff-placeholders`, {
         mode,
         staff_id: mode === 'manual' ? staffId : null
       });
@@ -453,10 +450,10 @@ const ProgramTemplateWizard = () => {
     try {
       setSaving(true);
       // Delete existing placeholder
-      await axios.delete(`${API_URL}/api/v1/templates/rules/${ruleId}/staff-placeholders/${placeholderId}`);
+      await api.delete(`/templates/rules/${ruleId}/staff-placeholders/${placeholderId}`);
       
       // Create new placeholder with updated values
-      await axios.post(`${API_URL}/api/v1/templates/rules/${ruleId}/staff-placeholders`, {
+      await api.post(`/templates/rules/${ruleId}/staff-placeholders`, {
         mode,
         staff_id: mode === 'manual' ? staffId : null
       });
@@ -476,7 +473,7 @@ const ProgramTemplateWizard = () => {
     
     try {
       setSaving(true);
-      const response = await axios.delete(`${API_URL}/api/v1/templates/rules/${ruleId}/staff-placeholders/${placeholderId}`);
+      const response = await api.delete(`/templates/rules/${ruleId}/staff-placeholders/${placeholderId}`);
       
       if (response.data.success) {
         fetchStaffPlaceholders(ruleId);
@@ -497,7 +494,7 @@ const ProgramTemplateWizard = () => {
     
     try {
       setSaving(true);
-      const response = await axios.post(`${API_URL}/api/v1/templates/rules/${ruleId}/vehicle-placeholders`, {
+      const response = await api.post(`/templates/rules/${ruleId}/vehicle-placeholders`, {
         mode,
         vehicle_id: mode === 'manual' ? vehicleId : null
       });
@@ -522,10 +519,10 @@ const ProgramTemplateWizard = () => {
     try {
       setSaving(true);
       // Delete existing placeholder
-      await axios.delete(`${API_URL}/api/v1/templates/rules/${ruleId}/vehicle-placeholders/${placeholderId}`);
+      await api.delete(`/templates/rules/${ruleId}/vehicle-placeholders/${placeholderId}`);
       
       // Create new placeholder with updated values
-      await axios.post(`${API_URL}/api/v1/templates/rules/${ruleId}/vehicle-placeholders`, {
+      await api.post(`/templates/rules/${ruleId}/vehicle-placeholders`, {
         mode,
         vehicle_id: mode === 'manual' ? vehicleId : null
       });
@@ -545,7 +542,7 @@ const ProgramTemplateWizard = () => {
     
     try {
       setSaving(true);
-      const response = await axios.delete(`${API_URL}/api/v1/templates/rules/${ruleId}/vehicle-placeholders/${placeholderId}`);
+      const response = await api.delete(`/templates/rules/${ruleId}/vehicle-placeholders/${placeholderId}`);
       
       if (response.data.success) {
         fetchVehiclePlaceholders(ruleId);
@@ -596,7 +593,7 @@ const ProgramTemplateWizard = () => {
     
     try {
       setSaving(true);
-      const response = await axios.post(`${API_URL}/api/v1/templates/rules/${ruleId}/participants`, {
+      const response = await api.post(`/templates/rules/${ruleId}/participants`, {
         participant_id: selectedParticipantId
       });
       
@@ -648,8 +645,8 @@ const ProgramTemplateWizard = () => {
     
     try {
       setSaving(true);
-      const response = await axios.post(
-        `${API_URL}/api/v1/templates/rules/${ruleId}/participants/${rppId}/billing`,
+      const response = await api.post(
+        `/templates/rules/${ruleId}/participants/${rppId}/billing`,
         {
           billing_code: billing.billing_code,
           hours: parseFloat(billing.hours)
@@ -680,7 +677,7 @@ const ProgramTemplateWizard = () => {
     
     try {
       setSaving(true);
-      const response = await axios.post(`${API_URL}/api/v1/templates/rules/${ruleId}/finalize`);
+      const response = await api.post(`/templates/rules/${ruleId}/finalize`);
       
       if (response.data.success) {
         const summary = response.data.data;
@@ -1230,8 +1227,8 @@ const ProgramTemplateWizard = () => {
                         >
                           <option value="">Select Code</option>
                           {billingCodes.map(code => (
-                            <option key={code.id} value={code.code}>
-                              {code.code} - {code.description}
+                            <option key={`${code.code}:${code.ratio}`} value={`${code.code}:${code.ratio}`}>
+                              {code.label}
                             </option>
                           ))}
                         </select>
