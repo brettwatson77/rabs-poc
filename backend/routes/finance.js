@@ -319,6 +319,11 @@ router.post('/rates', async (req, res) => {
     const pool = req.app.locals.pool;
     await auditBillingRatesSchema(pool);
 
+    // -------------------------------------------------------------------
+    // Diagnostics – log raw payload for visibility in server console
+    // -------------------------------------------------------------------
+    console.log('[FINANCE] POST /api/v1/finance/rates payload:', req.body);
+
     const {
       code,
       description,
@@ -361,7 +366,7 @@ router.post('/rates', async (req, res) => {
       throw e;
     }
   } catch (err) {
-    console.error('Error creating billing rate:', err);
+    console.error('[FINANCE] Error creating billing rate:', err);
     res.status(500).json({ success: false, error: 'Failed to create billing rate', message: err.message });
   }
 });
@@ -375,6 +380,12 @@ router.patch('/rates/:id', async (req, res) => {
     await auditBillingRatesSchema(pool);
 
     const { id } = req.params;
+
+    // -------------------------------------------------------------------
+    // Diagnostics – log incoming id & diff payload
+    // -------------------------------------------------------------------
+    console.log('[FINANCE] PATCH /api/v1/finance/rates/:id payload:', { id, body: req.body });
+
     const allowed = ['description', 'active', 'base_rate',
                      'ratio_1_1', 'ratio_1_2', 'ratio_1_3', 'ratio_1_4'];
     const updates = [];
@@ -404,7 +415,7 @@ router.patch('/rates/:id', async (req, res) => {
     ]);
     res.json({ success: true, data: rows[0] });
   } catch (err) {
-    console.error('Error patching billing rate:', err);
+    console.error('[FINANCE] Error patching billing rate:', err);
     res.status(500).json({ success: false, error: 'Failed to update billing rate', message: err.message });
   }
 });

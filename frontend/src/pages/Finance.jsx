@@ -190,8 +190,15 @@ const Finance = () => {
             ...oldData,
             data: oldData.data.map(r => {
               if (r.id === variables.rateId) {
-                // Rebuild ratios array from the updated values
-                const ratios = [];
+                // Start with existing ratios and only update those that changed
+                const existingRatioMap = {};
+                if (r.ratios && r.ratios.length) {
+                  r.ratios.forEach(ratio => {
+                    existingRatioMap[ratio.ratio] = ratio.rate;
+                  });
+                }
+                
+                // Update ratios based on changed fields
                 const ratioFields = [
                   { field: 'ratio_1_1', label: '1:1' },
                   { field: 'ratio_1_2', label: '1:2' },
@@ -200,19 +207,28 @@ const Finance = () => {
                 ];
                 
                 ratioFields.forEach(({ field, label }) => {
-                  const value = variables.rate[field];
-                  if (value && parseFloat(value) > 0) {
-                    ratios.push({ ratio: label, rate: parseFloat(value) });
+                  if (variables.rate[field] !== undefined) {
+                    const value = parseFloat(variables.rate[field]);
+                    if (!isNaN(value) && value > 0) {
+                      existingRatioMap[label] = value;
+                    } else {
+                      delete existingRatioMap[label]; // Remove ratio if set to 0
+                    }
                   }
                 });
                 
+                // Convert back to array format
+                const updatedRatios = Object.entries(existingRatioMap).map(
+                  ([ratio, rate]) => ({ ratio, rate })
+                );
+                
                 return {
                   ...r,
-                  description: variables.rate.description ?? r.description,
-                  active: variables.rate.active ?? r.active,
-                  base_rate: variables.rate.base_rate ?? r.base_rate,
+                  description: variables.rate.description !== undefined ? variables.rate.description : r.description,
+                  active: variables.rate.active !== undefined ? variables.rate.active : r.active,
+                  base_rate: variables.rate.base_rate !== undefined ? variables.rate.base_rate : r.base_rate,
                   updated_at: new Date().toISOString(),
-                  ratios
+                  ratios: updatedRatios
                 };
               }
               return r;
@@ -385,6 +401,9 @@ const Finance = () => {
   const handleRateSubmit = (e) => { 
     if (e && e.preventDefault) e.preventDefault(); 
     
+    // Diagnostic log: current draft, pristine, and computed dirty
+    console.log('Rate Submit - Draft:', newRate, 'Pristine:', pristineRate, 'Dirty:', isRateDirty);
+    
     // Validate the form
     const errors = validateRate(newRate);
     if (Object.keys(errors).length > 0) {
@@ -417,6 +436,11 @@ const Finance = () => {
         }
       }
     });
+    
+    // Diagnostic log: changed fields and selected rate ID
+    if (selectedRate) {
+      console.log('Rate Update - Changed Fields:', changedFields, 'Rate ID:', selectedRate.id);
+    }
     
     // If no fields changed, just close
     if (Object.keys(changedFields).length === 0) {
