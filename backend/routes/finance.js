@@ -12,6 +12,34 @@
 const express = require('express');
 const router = express.Router();
 const uuid = require('uuid');
+const fs = require('fs');
+const path = require('path');
+
+// ---------------------------------------------------------------------------
+// Internal: one-time live schema audit for billing_rates
+// ---------------------------------------------------------------------------
+let schemaAudited = false;
+let cachedColumns = [];
+const auditBillingRatesSchema = async (pool) => {
+  if (schemaAudited) return cachedColumns;
+  try {
+    const { rows } = await pool.query(`
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_name = 'billing_rates'
+          AND table_schema = 'public'
+        ORDER BY ordinal_position
+    `);
+    cachedColumns = rows.map(r => r.column_name);
+    console.log('[FINANCE] billing_rates columns:', cachedColumns.join(', '));
+    schemaAudited = true;
+  } catch (err) {
+    console.error('❌ [FINANCE] Failed auditing billing_rates schema:', err.message);
+  }
+  return cachedColumns;
+};
+
+const hasCol = (name) => cachedColumns.includes(name);
 
 // GET /finance/billing - Get billing data
 router.get('/billing', async (req, res) => {
@@ -98,91 +126,54 @@ router.get('/billing', async (req, res) => {
   }
 });
 
-// GET /finance/reports - Get financial reports
-router.get('/reports', async (req, res) => {
-  try {
-    const pool = req.app.locals.pool;
-    const { report_type, start_date, end_date } = req.query;
-    
-    if (!report_type || !start_date || !end_date) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required parameters',
-        message: 'report_type, start_date, and end_date are required'
-      });
-    }
-    
-    let result;
-    
-    switch (report_type) {
-      case 'participant_summary':
-        // Summary of billing by participant
-        result = await pool.query(`
-          SELECT 
-            p.id AS participant_id,
-            p.first_name || ' ' || p.last_name AS participant_name,
-            COUNT(b.id) AS billing_count,
-            SUM(b.hours) AS total_hours,
-            SUM(b.total_amount) AS total_amount
-          FROM billing b
-          JOIN participants p ON b.participant_id = p.id
-          WHERE b.date BETWEEN $1 AND $2
-          GROUP BY p.id, p.first_name, p.last_name
-          ORDER BY total_amount DESC
-        `, [start_date, end_date]);
-        break;
-        
-      case 'program_summary':
         // Summary of billing by program
         result = await pool.query(`
           SELECT 
-            prog.id AS program_id,
-            prog.title AS program_title,
-            COUNT(b.id) AS billing_count,
-            SUM(b.hours) AS total_hours,
-            SUM(b.total_amount) AS total_amount
-          FROM billing b
-          JOIN programs prog ON b.program_id = prog.id
-          WHERE b.date BETWEEN $1 AND $2
-          GROUP BY prog.id, prog.title
-          ORDER BY total_amount DESC
-        `, [start_date, end_date]);
-        break;
-        
-      case 'rate_code_summary':
-        // Summary by NDIS rate code
-        result = await pool.query(`
-          SELECT 
-            b.rate_code,
-            COUNT(b.id) AS billing_count,
-            SUM(b.hours) AS total_hours,
-            SUM(b.total_amount) AS total_amount
-          FROM billing b
-          WHERE b.date BETWEEN $1 AND $2
-          GROUP BY b.rate_code
-          ORDER BY total_amount DESC
-        `, [start_date, end_date]);
-        break;
-        
-      case 'monthly_trend':
-        // Monthly billing trends
-        result = await pool.query(`
-          SELECT 
-            TO_CHAR(b.date, 'YYYY-MM') AS month,
-            COUNT(b.id) AS billing_count,
-            SUM(b.hours) AS total_hours,
-            SUM(b.total_amount) AS total_amount
-          FROM billing b
-          WHERE b.date BETWEEN $1 AND $2
-          GROUP BY TO_CHAR(b.date, 'YYYY-MM')
-          ORDER BY month ASC
-        `, [start_date, end_date]);
-        break;
-        
-      default:
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid report type',
+router.get('/billing-codes', async (req, res) => {
+  const pool = req.app.locals.pool;
+  try {
+    // Confirm column list from live DB
+    await auditBillingRatesSchema(pool);
+
+    const result = await pool.query(`
+      SELECT id, code, description, base_rate,
+             ratio_1_1, ratio_1_2, ratio_1_3, ratio_1_4,
+             active, updated_at
+        FROM billing_rates
+       WHERE active = true
+    ORDER BY code ASC`);
+
+    // Flatten to variant list for wizard (one entry per ratio column that has a >0 value)
+    const flattened = [];
+    const ratioCols = [
+      { col: 'ratio_1_1', label: '1:1' },
+      { col: 'ratio_1_2', label: '1:2' },
+      { col: 'ratio_1_3', label: '1:3' },
+      { col: 'ratio_1_4', label: '1:4' },
+    ];
+
+    result.rows.forEach((r) => {
+      ratioCols.forEach(({ col, label }) => {
+        const rate = parseFloat(r[col]);
+        if (!isNaN(rate) && rate > 0) {
+          flattened.push({
+            id: r.id,
+            code: r.code,
+            ratio: label,
+            label: `${r.code} — ${r.description} (${label})`,
+            rate_cents: Math.round(rate * 100),
+            updated_at: r.updated_at,
+          });
+        }
+      });
+    });
+
+    res.json({ success: true, data: flattened, count: flattened.length });
+  } catch (error) {
+    // Never 500 – return empty list so Wizard shows friendly empty state
+    console.error('Error fetching billing codes:', error);
+    res.json({ success: true, data: [], count: 0 });
+  }
           message: 'Valid report types are: participant_summary, program_summary, rate_code_summary, monthly_trend'
         });
     }
@@ -383,148 +374,336 @@ router.get('/billing-codes', async (req, res) => {
     const pool = req.app.locals.pool;
 
     const result = await pool.query(
-      `SELECT id, code, description
+    await auditBillingRatesSchema(pool);
+
+    const result = await pool.query(
+      `SELECT id, code, description, base_rate,
+              ratio_1_1, ratio_1_2, ratio_1_3, ratio_1_4,
+              active, updated_at
          FROM billing_rates
-        WHERE is_active = true
+        WHERE active = true
      ORDER BY code ASC`
     );
 
-    // Always 200 even if empty – wizard handles empty state
-    res.json({
-      success: true,
-      data: result.rows,
-      count: result.rowCount
+    // Flatten to variant list for wizard (one entry per ratio that exists)
+    const flattened = [];
+    const ratioKeys = [
+      { col: 'ratio_1_1', label: '1:1' },
+      { col: 'ratio_1_2', label: '1:2' },
+      { col: 'ratio_1_3', label: '1:3' },
+      { col: 'ratio_1_4', label: '1:4' },
+    ];
+
+    result.rows.forEach(r => {
+      ratioKeys.forEach(({ col, label }) => {
+        const rate = parseFloat(r[col]);
+        if (!isNaN(rate) && rate > 0) {
+          flattened.push({
+            id: r.id,
+            code: r.code,
+            ratio: label,
+            label: `${r.code} — ${r.description} (${label})`,
+            rate_cents: Math.round(rate * 100),
+            updated_at: r.updated_at
+          });
+        }
+      });
     });
-  } catch (error) {
+
+    res.json({ success: true, data: flattened, count: flattened.length });
     console.error('Error fetching billing codes:', error);
     res.status(500).json({
-      success: false,
-      error: 'Failed to fetch billing codes',
-      message: error.message
-    });
-  }
+    // Never 500 – empty friendly response
+    res.json({ success: true, data: [], count: 0 });
 });
 
 // PUT /finance/rates/:id - Update billing rate
-router.put('/rates/:id', async (req, res) => {
-  try {
+// ---------------------------------------------------------------------------
+// GET /finance/rates - List with filters
+// ---------------------------------------------------------------------------
+router.get('/rates', async (req, res) => {
     const pool = req.app.locals.pool;
     const { id } = req.params;
+    await auditBillingRatesSchema(pool);
+
     const {
       code,
-      description,
-      amount,
-      support_category,
-      is_active,
-      effective_date,
-      end_date
-    } = req.body;
-    
-    // Check if rate exists
-    const checkResult = await pool.query('SELECT id FROM billing_rates WHERE id = $1', [id]);
-    if (checkResult.rowCount === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Billing rate not found'
-      });
+      active_only = 'false',
+      updated_since
+    } = req.query;
+
+    const clauses = [];
+    const params = [];
+    let idx = 1;
+
+    if (code) {
+      clauses.push(`LOWER(code) LIKE $${idx++}`);
+      params.push(`%${code.toLowerCase()}%`);
     }
-    
-    // Build dynamic update query
-    const updates = [];
-    const values = [];
-    let paramIndex = 1;
-    
-    if (code !== undefined) {
-      updates.push(`code = $${paramIndex++}`);
-      values.push(code);
+    if (active_only === 'true') {
+      clauses.push(`active = true`);
     }
-    
-    if (description !== undefined) {
-      updates.push(`description = $${paramIndex++}`);
-      values.push(description);
+    if (updated_since) {
+      clauses.push(`updated_at >= $${idx++}`);
+      params.push(updated_since);
     }
-    
-    if (amount !== undefined) {
-      updates.push(`amount = $${paramIndex++}`);
-      values.push(amount);
-    }
-    
-    if (support_category !== undefined) {
-      updates.push(`support_category = $${paramIndex++}`);
-      values.push(support_category);
-    }
-    
-    if (is_active !== undefined) {
-      updates.push(`is_active = $${paramIndex++}`);
-      values.push(is_active);
-    }
-    
-    if (effective_date !== undefined) {
-      updates.push(`effective_date = $${paramIndex++}`);
-      values.push(effective_date);
-    }
-    
-    if (end_date !== undefined) {
-      updates.push(`end_date = $${paramIndex++}`);
-      values.push(end_date);
-    }
-    
-    // If no fields to update
-    if (updates.length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'No fields to update'
-      });
-    }
-    
-    const query = `
-      UPDATE billing_rates
-      SET ${updates.join(', ')}
-      WHERE id = $${paramIndex}
-      RETURNING id, code, description, amount, support_category, 
-                is_active, effective_date, end_date
-    `;
-    
-    values.push(id);
-    
-    const result = await pool.query(query, values);
-    
-    // Log the rate change
-    try {
-      await pool.query(
-        `INSERT INTO system_logs (id, severity, category, message, details) 
-         VALUES ($1, $2, $3, $4, $5)`,
-        [
-          uuid.v4(),
-          'INFO',
-          'FINANCIAL',
-          `Billing rate updated: ${result.rows[0].code}`,
-          { 
-            rate_id: id,
-            changes: req.body
-          }
-        ]
+
+    let sql = `
+      SELECT id, code, description, active, base_rate,
+             ratio_1_1, ratio_1_2, ratio_1_3, ratio_1_4,
+             ${hasCol('updated_at') ? 'updated_at' : 'created_at AS updated_at'}
+      FROM billing_rates`;
+
+    if (clauses.length) sql += ' WHERE ' + clauses.join(' AND ');
+    sql += ' ORDER BY code ASC';
+
+    const { rows } = await pool.query(sql, params);
+
+    const data = rows.map(r => {
+      const ratios = [];
+      [['ratio_1_1', '1:1'], ['ratio_1_2', '1:2'],
+       ['ratio_1_3', '1:3'], ['ratio_1_4', '1:4']].forEach(
+        ([col, label]) => {
+          const val = parseFloat(r[col]);
+          if (!isNaN(val) && val > 0) ratios.push({ ratio: label, rate: val });
+        }
       );
-    } catch (logError) {
-      console.error('Failed to log to system_logs:', logError);
-    }
-    
-    res.json({
-      success: true,
-      data: result.rows[0],
-      message: 'Billing rate updated successfully'
+      return {
+        id: r.id,
+        code: r.code,
+        description: r.description,
+        active: r.active,
+        updated_at: r.updated_at,
+        base_rate: parseFloat(r.base_rate),
+        ratios
+      };
     });
-  } catch (error) {
+
+    res.json({ success: true, data, count: data.length });
     console.error('Error updating billing rate:', error);
-    res.status(500).json({
+    console.error('Error fetching billing rates:', error);
       success: false,
       error: 'Failed to update billing rate',
-      message: error.message
+      error: 'Failed to fetch billing rates',
     });
   }
 });
 
 // Helper functions for NDIS billing calculations
+// ---------------------------------------------------------------------------
+// POST /finance/rates - Create new billing rate
+// ---------------------------------------------------------------------------
+router.post('/rates', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    await auditBillingRatesSchema(pool);
+
+    const {
+      code,
+      description,
+      active = true,
+      base_rate = 0,
+      ratio_1_1 = 0,
+      ratio_1_2 = 0,
+      ratio_1_3 = 0,
+      ratio_1_4 = 0
+    } = req.body;
+
+    if (!code || !description) {
+      return res.status(400).json({ success: false, error: 'code and description are required' });
+    }
+
+    try {
+      const insertSQL = `
+        INSERT INTO billing_rates
+            (id, code, description, active, base_rate,
+             ratio_1_1, ratio_1_2, ratio_1_3, ratio_1_4)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+        RETURNING *
+      `;
+      const { rows } = await pool.query(insertSQL, [
+        uuid.v4(), code, description, active,
+        base_rate, ratio_1_1, ratio_1_2, ratio_1_3, ratio_1_4
+      ]);
+      const r = rows[0];
+      await pool.query(`INSERT INTO system_logs (id,severity,category,message,details)
+                       VALUES ($1,'INFO','FINANCIAL',$2,$3)`, [
+        uuid.v4(),
+        `Billing rate created: ${code}`,
+        { id: r.id }
+      ]);
+      res.status(201).json({ success: true, data: r });
+    } catch (e) {
+      if (e.code === '23505') { // unique_violation
+        return res.status(409).json({ success: false, error: 'Duplicate code' });
+      }
+      throw e;
+    }
+  } catch (err) {
+    console.error('Error creating billing rate:', err);
+    res.status(500).json({ success: false, error: 'Failed to create billing rate', message: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// PATCH /finance/rates/:id - Update billing rate
+// ---------------------------------------------------------------------------
+router.patch('/rates/:id', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    await auditBillingRatesSchema(pool);
+
+    const { id } = req.params;
+    const allowed = ['description', 'active', 'base_rate',
+                     'ratio_1_1', 'ratio_1_2', 'ratio_1_3', 'ratio_1_4'];
+    const updates = [];
+    const values = [];
+    let idx = 1;
+    allowed.forEach(col => {
+      if (req.body[col] !== undefined) {
+        updates.push(`${col} = $${idx++}`);
+        values.push(req.body[col]);
+      }
+    });
+    if (!updates.length) {
+      return res.status(400).json({ success: false, error: 'No updatable fields supplied' });
+    }
+    values.push(id);
+    const sql = `UPDATE billing_rates SET ${updates.join(', ')}
+                 WHERE id = $${idx}
+                 RETURNING *`;
+    const { rows } = await pool.query(sql, values);
+    if (!rows.length) return res.status(404).json({ success: false, error: 'Rate not found' });
+
+    await pool.query(`INSERT INTO system_logs (id,severity,category,message,details)
+                     VALUES ($1,'INFO','FINANCIAL',$2,$3)`, [
+      uuid.v4(),
+      `Billing rate updated: ${rows[0].code}`,
+      { id }
+    ]);
+    res.json({ success: true, data: rows[0] });
+  } catch (err) {
+    console.error('Error patching billing rate:', err);
+    res.status(500).json({ success: false, error: 'Failed to update billing rate', message: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /finance/rates/import - CSV import with dry-run
+// ---------------------------------------------------------------------------
+router.post('/rates/import', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    await auditBillingRatesSchema(pool);
+
+    const dryRun = (req.query.dryRun ?? 'true') !== 'false';
+    let csvText = req.body.csvText;
+    const filePath = req.body.filePath;
+    if (!csvText && filePath) {
+      const abs = path.resolve(__dirname, '..', '..', filePath);
+      csvText = fs.readFileSync(abs, 'utf8');
+    }
+    if (!csvText) return res.status(400).json({ success: false, error: 'csvText or filePath required' });
+
+    const lines = csvText.split(/\r?\n/).filter(l => l.trim() !== '');
+    if (!lines.length) return res.json({ success: true, dryRun, rows: [] });
+
+    // simple CSV parse (handles quotes)
+    const parseLine = (l) => {
+      const out = []; let cur = ''; let inQ = false;
+      for (let i = 0; i < l.length; i++) {
+        const ch = l[i];
+        if (ch === '"') {
+          if (inQ && l[i+1] === '"') { cur += '"'; i++; }
+          else inQ = !inQ;
+        } else if (ch === ',' && !inQ) { out.push(cur); cur = ''; }
+        else cur += ch;
+      }
+      out.push(cur);
+      return out;
+    };
+
+    const headerTokens = parseLine(lines[0]).map(h => h.trim().toLowerCase().replace(/[^a-z0-9]/g, ''));
+    const mapIdx = (variants) => {
+      for (const v of variants) {
+        const ix = headerTokens.indexOf(v);
+        if (ix !== -1) return ix;
+      }
+      return -1;
+    };
+    const idxCode = mapIdx(['code', 'ndiscode']);
+    const idxDesc = mapIdx(['description', 'desc']);
+    const idxBase = mapIdx(['baserate', 'base']);
+    const idxR11 = mapIdx(['ratio11','r11','ratio_11','ratio_1_1']);
+    const idxR12 = mapIdx(['ratio12','r12','ratio_1_2']);
+    const idxR13 = mapIdx(['ratio13','r13','ratio_1_3']);
+    const idxR14 = mapIdx(['ratio14','r14','ratio_1_4']);
+    const idxActive = mapIdx(['active','isactive']);
+
+    const preview = [];
+    let createCnt=0, updateCnt=0, skipCnt=0;
+
+    for (let lineIdx = 1; lineIdx < lines.length; lineIdx++) {
+      const cols = parseLine(lines[lineIdx]);
+      const code = cols[idxCode]?.trim();
+      const description = cols[idxDesc]?.trim();
+      if (!code || !description) {
+        skipCnt++; preview.push({ line: lineIdx+1, action:'skip', reason:'missing code/description' });
+        continue;
+      }
+      const existing = await pool.query('SELECT id FROM billing_rates WHERE code = $1', [code]);
+      const payload = {
+        description,
+        active: idxActive===-1?true: (cols[idxActive].toLowerCase().startsWith('t')),
+        base_rate: parseFloat(cols[idxBase]||0)||0,
+        ratio_1_1: parseFloat(cols[idxR11]||0)||0,
+        ratio_1_2: parseFloat(cols[idxR12]||0)||0,
+        ratio_1_3: parseFloat(cols[idxR13]||0)||0,
+        ratio_1_4: parseFloat(cols[idxR14]||0)||0
+      };
+      if (dryRun) {
+        preview.push({ line: lineIdx+1, action: existing.rowCount? 'update':'create', payload });
+        continue;
+      }
+      if (existing.rowCount) {
+        // update
+        const setParts=[]; const vals=[]; let k=1;
+        Object.entries(payload).forEach(([c,v])=>{ setParts.push(`${c}=$${k++}`); vals.push(v); });
+        vals.push(existing.rows[0].id);
+        await pool.query(`UPDATE billing_rates SET ${setParts.join(', ')} WHERE id=$${k}`, vals);
+        updateCnt++;
+      } else {
+        await pool.query(`INSERT INTO billing_rates
+            (id,code,description,active,base_rate,
+             ratio_1_1,ratio_1_2,ratio_1_3,ratio_1_4)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`, [
+          uuid.v4(), code, description, payload.active, payload.base_rate,
+          payload.ratio_1_1, payload.ratio_1_2, payload.ratio_1_3, payload.ratio_1_4
+        ]);
+        createCnt++;
+      }
+    }
+
+    if (!dryRun) {
+      await pool.query(`INSERT INTO system_logs (id,severity,category,message)
+                       VALUES ($1,'INFO','FINANCIAL',$2)`, [
+        uuid.v4(), `Billing rate import committed: +${createCnt}/~${updateCnt}`
+      ]);
+    }
+
+    res.json({
+      success:true,
+      dryRun,
+      detectedHeaders: headerTokens,
+      summary: { create: createCnt, update: updateCnt, skip: skipCnt },
+      rows: preview
+    });
+  } catch (err) {
+    console.error('Error importing billing rates:', err);
+    res.json({ success:true, dryRun:true, error:'importFailed', rows:[] });
+  }
+});
+
 
 /**
  * Calculate billing amount based on rate, hours, and adjustments
