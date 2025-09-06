@@ -97,7 +97,8 @@ router.patch('/:id', async (req, res, next) => {
       'has_visual_impairment',
       'has_hearing_impairment',
       'has_cognitive_support',
-      'has_communication_needs'
+      'has_communication_needs',
+      'plan_management_type'          // NEW
     ];
 
     const fields = Object.keys(req.body || {}).filter((k) =>
@@ -123,6 +124,80 @@ router.patch('/:id', async (req, res, next) => {
       RETURNING *`;
 
     const result = await pool.query(updateSql, [id, ...values]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Participant not found' });
+    }
+
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * ---------------------------------------------------------------------------
+ * PUT /api/v1/participants/:id
+ * ---------------------------------------------------------------------------
+ * Full update of a participant record (upsert-style without inserts).
+ * Only whitelisted fields are allowed to be updated.
+ */
+router.put('/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // Whitelist of ALL updatable columns for full update
+    const allowed = [
+      'first_name',
+      'last_name',
+      'ndis_number',
+      'date_of_birth',
+      'gender',
+      'phone',
+      'email',
+      'address',
+      'suburb',
+      'state',
+      'postcode',
+      'emergency_contact_name',
+      'emergency_contact_phone',
+      'support_level',
+      'status',
+      'plan_management_type',
+      'notes',
+      'supervision_multiplier',
+      'has_wheelchair_access',
+      'has_dietary_requirements',
+      'has_medical_requirements',
+      'has_behavioral_support',
+      'has_visual_impairment',
+      'has_hearing_impairment',
+      'has_cognitive_support',
+      'has_communication_needs'
+    ];
+
+    const bodyKeys = Object.keys(req.body || {});
+    const fields = bodyKeys.filter((k) => allowed.includes(k));
+
+    if (fields.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'No valid fields supplied for update'
+      });
+    }
+
+    // Build dynamic UPDATE statement
+    const setFragments = fields.map((f, idx) => `${f} = $${idx + 2}`);
+    const values = fields.map((f) => req.body[f]);
+
+    const sql = `
+      UPDATE participants
+      SET ${setFragments.join(', ')},
+          updated_at = NOW()
+      WHERE id = $1
+      RETURNING *`;
+
+    const result = await pool.query(sql, [id, ...values]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Participant not found' });

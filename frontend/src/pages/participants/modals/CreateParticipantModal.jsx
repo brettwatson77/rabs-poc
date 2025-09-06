@@ -216,6 +216,21 @@ const CreateParticipantModal = ({
                   </select>
                 </div>
                 
+                {/* Plan Management Type */}
+                <div className="form-group">
+                  <label htmlFor="create-plan-management">Plan Management</label>
+                  <select
+                    id="create-plan-management"
+                    value={participantForm.plan_management_type}
+                    onChange={(e) => setParticipantForm({...participantForm, plan_management_type: e.target.value})}
+                  >
+                    <option value="agency_managed">Agency Managed</option>
+                    <option value="plan_managed">Plan Managed</option>
+                    <option value="self_managed">Self Managed</option>
+                    <option value="fee_for_service">Fee For Service</option>
+                  </select>
+                </div>
+                
                 <div className="form-group">
                   <label htmlFor="status">Status</label>
                   <select

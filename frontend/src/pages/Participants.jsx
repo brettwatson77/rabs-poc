@@ -172,6 +172,7 @@ const Participants = () => {
     emergency_contact_phone: '',
     support_level: 'standard',
     status: 'active',
+    plan_management_type: 'agency_managed',
     notes: '',
     billing_codes: []
   });
@@ -460,6 +461,7 @@ const Participants = () => {
       emergency_contact_phone: '',
       support_level: 'standard',
       status: 'active',
+      plan_management_type: 'agency_managed',
       notes: '',
       billing_codes: []
     });
@@ -483,6 +485,7 @@ const Participants = () => {
       emergency_contact_phone: participant.emergency_contact_phone || '',
       support_level: participant.support_level || 'standard',
       status: participant.status || 'active',
+      plan_management_type: participant.plan_management_type || 'agency_managed',
       notes: participant.notes || '',
       billing_codes: participant.billing_codes || []
     });
