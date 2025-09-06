@@ -150,6 +150,9 @@ const whitelist = [
   'http://127.0.0.1:3009',
   'http://192.168.77.8:3008',
   'http://192.168.77.8:3009',
+  // Dev workstation origins
+  'http://192.168.77.6:3008',
+  'http://192.168.77.6:3009',
   'https://rabspoc.codexdiz.com',
   'https://www.rabspoc.codexdiz.com',   // sub-domain with www just in case
 ];

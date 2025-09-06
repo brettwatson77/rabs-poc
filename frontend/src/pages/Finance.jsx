@@ -431,9 +431,6 @@ const Finance = () => {
   const handleRateSubmit = (e) => { 
     if (e && e.preventDefault) e.preventDefault(); 
     
-    // Diagnostic log: current draft, pristine, and computed dirty
-    console.log('Rate Submit - Draft:', newRate, 'Pristine:', pristineRate, 'Dirty:', isRateDirty);
-    
     // Validate the form
     const errors = validateRate(newRate);
     if (Object.keys(errors).length > 0) {
@@ -444,55 +441,63 @@ const Finance = () => {
       return;
     }
     
-    // If no changes, just close the modal
+    // Check if form is dirty (has changes)
     if (!isRateDirty) {
       setIsRateModalOpen(false);
       toast.info('No changes to save');
       return;
     }
     
-    // Build a payload with only the changed fields
-    const changedFields = {};
-    const allowedFields = ['description', 'active', 'base_rate', 'ratio_1_1', 'ratio_1_2', 'ratio_1_3', 'ratio_1_4'];
-    
-    allowedFields.forEach(field => {
-      if (String(newRate[field]) !== String(pristineRate[field])) {
-        // Parse numeric fields
-        if (['base_rate', 'ratio_1_1', 'ratio_1_2', 'ratio_1_3', 'ratio_1_4'].includes(field)) {
-          let value = newRate[field].toString().replace(/[$,]/g, '');
-          changedFields[field] = parseFloat(value) || 0;
-        } else {
-          changedFields[field] = newRate[field];
+    // Branch based on whether we're creating or editing
+    if (selectedRate) {
+      // EDIT MODE - Log diagnostic info
+      console.log('rate-submit edit', { draft: newRate, pristine: pristineRate });
+      
+      // Build a payload with only the changed fields
+      const changedFields = {};
+      const allowedFields = ['description', 'active', 'base_rate', 'ratio_1_1', 'ratio_1_2', 'ratio_1_3', 'ratio_1_4'];
+      
+      allowedFields.forEach(field => {
+        if (String(newRate[field]) !== String(pristineRate[field])) {
+          // Parse numeric fields
+          if (['base_rate', 'ratio_1_1', 'ratio_1_2', 'ratio_1_3', 'ratio_1_4'].includes(field)) {
+            let value = newRate[field].toString().replace(/[$,]/g, '');
+            changedFields[field] = parseFloat(value) || 0;
+          } else {
+            changedFields[field] = newRate[field];
+          }
         }
-      }
-    });
-    
-    // Diagnostic log: changed fields and selected rate ID
-    if (selectedRate) {
+      });
+      
+      // Diagnostic log: changed fields and selected rate ID
       console.log('Rate Update - Changed Fields:', changedFields, 'Rate ID:', selectedRate.id);
-    }
-    
-    // If no fields changed, just close
-    if (Object.keys(changedFields).length === 0) {
-      setIsRateModalOpen(false);
-      toast.info('No changes to save');
-      return;
-    }
-    
-    if (selectedRate) {
+      
+      // If no fields changed, just close
+      if (Object.keys(changedFields).length === 0) {
+        setIsRateModalOpen(false);
+        toast.info('No changes to save');
+        return;
+      }
+      
+      // Send PATCH with only changed fields
       updateRateMutation.mutate({ rateId: selectedRate.id, rate: changedFields });
     } else {
-      // For new rates, we need all fields
+      // CREATE MODE - Log diagnostic info
+      console.log('rate-submit create', { draft: newRate });
+      
+      // For new rates, we need all fields with numeric parsing
       const payload = {
         code: newRate.code.trim(),
         description: newRate.description.trim(),
         active: newRate.active,
-        base_rate: parseFloat(newRate.base_rate) || 0,
-        ratio_1_1: parseFloat(newRate.ratio_1_1) || 0,
-        ratio_1_2: parseFloat(newRate.ratio_1_2) || 0,
-        ratio_1_3: parseFloat(newRate.ratio_1_3) || 0,
-        ratio_1_4: parseFloat(newRate.ratio_1_4) || 0
+        base_rate: parseFloat(newRate.base_rate.toString().replace(/[$,]/g, '')) || 0,
+        ratio_1_1: parseFloat(newRate.ratio_1_1.toString().replace(/[$,]/g, '')) || 0,
+        ratio_1_2: parseFloat(newRate.ratio_1_2.toString().replace(/[$,]/g, '')) || 0,
+        ratio_1_3: parseFloat(newRate.ratio_1_3.toString().replace(/[$,]/g, '')) || 0,
+        ratio_1_4: parseFloat(newRate.ratio_1_4.toString().replace(/[$,]/g, '')) || 0
       };
+      
+      // Send POST with complete payload
       createRateMutation.mutate(payload);
     }
   };
