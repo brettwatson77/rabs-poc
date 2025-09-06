@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiSearch, FiEdit2, FiRefreshCw } from 'react-icons/fi';
+import { FiSearch, FiEdit2, FiRefreshCw, FiTrash2 } from 'react-icons/fi';
 
 export default function RatesTab({
   ratesData,
@@ -10,6 +10,7 @@ export default function RatesTab({
   onEditRate,
   onAddRate,
   onOpenImport,
+  onDeleteRate,
 }) {
   // Return array of truthy rate rows that match current search term
   const filteredRates = () => {
@@ -113,6 +114,13 @@ export default function RatesTab({
                     title="Edit rate"
                   >
                     <FiEdit2 />
+                  </button>
+                  <button
+                    className="btn btn-icon danger lg"
+                    onClick={() => r?.id && onDeleteRate(r)}
+                    title="Delete rate"
+                  >
+                    <FiTrash2 />
                   </button>
                 </td>
               </tr>

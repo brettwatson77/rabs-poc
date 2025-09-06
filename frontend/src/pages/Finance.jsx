@@ -185,16 +185,24 @@ const Finance = () => {
         queryClient.setQueryData(['billingRates', searchQuery], (oldData) => {
           if (!oldData) return oldData;
           
+          // Ensure data is an array and filter out null values
+          const safeData = Array.isArray(oldData?.data) 
+            ? oldData.data.filter(Boolean) 
+            : [];
+          
           // Find and update the specific rate
           const updatedData = {
             ...oldData,
-            data: oldData.data.map(r => {
+            data: safeData.map(r => {
+              if (!r) return r; // Skip null items
               if (r.id === variables.rateId) {
                 // Start with existing ratios and only update those that changed
                 const existingRatioMap = {};
-                if (r.ratios && r.ratios.length) {
+                if (r.ratios && Array.isArray(r.ratios) && r.ratios.length) {
                   r.ratios.forEach(ratio => {
-                    existingRatioMap[ratio.ratio] = ratio.rate;
+                    if (ratio && ratio.ratio) {
+                      existingRatioMap[ratio.ratio] = ratio.rate;
+                    }
                   });
                 }
                 
@@ -241,6 +249,21 @@ const Finance = () => {
         setIsRateModalOpen(false);
         toast.success('Rate updated successfully');
       } 
+    }
+  );
+
+  // Add delete mutation for rates
+  const deleteRateMutation = useMutation(
+    async (id) => (await api.delete(`/finance/rates/${id}`)).data,
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['billingRates']);
+        toast.success('Rate deleted successfully');
+      },
+      onError: (error) => {
+        console.error('Error deleting rate:', error);
+        toast.error('Failed to delete rate');
+      }
     }
   );
 
@@ -308,6 +331,13 @@ const Finance = () => {
       updateBillingMutation.mutate({ billingId: selectedBilling.id, billing: payload });
     } else {
       createBillingMutation.mutate(payload);
+    }
+  };
+
+  // Handler for deleting a rate
+  const handleDeleteRate = (rate) => {
+    if (rate?.id && window.confirm(`Delete rate "${rate.code}"? This cannot be undone.`)) {
+      deleteRateMutation.mutate(rate.id);
     }
   };
 
@@ -554,6 +584,7 @@ const Finance = () => {
               onEditRate={handleRateSelect}
               onAddRate={handleAddRate}
               onOpenImport={handleOpenImport}
+              onDeleteRate={handleDeleteRate}
             />
             
             {/* Import Panel */}

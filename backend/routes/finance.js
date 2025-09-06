@@ -421,6 +421,50 @@ router.patch('/rates/:id', async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// DELETE /finance/rates/:id - Remove billing rate
+// ---------------------------------------------------------------------------
+router.delete('/rates/:id', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    await auditBillingRatesSchema(pool);
+
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ success: false, error: 'id required' });
+    }
+
+    const { rows } = await pool.query(
+      'DELETE FROM billing_rates WHERE id = $1 RETURNING *',
+      [id]
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ success: false, error: 'Rate not found' });
+    }
+
+    // Log deletion
+    try {
+      await pool.query(
+        `INSERT INTO system_logs (id, severity, category, message, details)
+         VALUES ($1, 'INFO', 'FINANCIAL', $2, $3)`,
+        [uuid.v4(), `Billing rate deleted: ${rows[0].code}`, { id }]
+      );
+    } catch (logErr) {
+      console.error('[FINANCE] Failed to log deletion:', logErr.message);
+    }
+
+    return res.json({ success: true, data: rows[0] });
+  } catch (err) {
+    console.error('[FINANCE] Error deleting billing rate:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete billing rate',
+      message: err.message,
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // POST /finance/rates/import - CSV import with dry-run
 // ---------------------------------------------------------------------------
 router.post('/rates/import', async (req, res) => {
