@@ -1,6 +1,6 @@
 import React from 'react';
 import { format, parseISO } from 'date-fns';
-import { FiPlusCircle, FiDownload, FiRefreshCw, FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { FiPlusCircle, FiDownload, FiRefreshCw, FiEdit2, FiTrash2, FiSearch } from 'react-icons/fi';
 
 export default function BillingTab({
   billingData,
@@ -44,13 +44,12 @@ export default function BillingTab({
       <div className="toolbar glass-panel">
         {/* Filters grid: 5-col first row, 3-col second row */}
         <div className="filters-grid">
-          {/* Search */}
-          <div className="filter-group">
-            <label htmlFor="billing-search">Search</label>
+          {/* Search (icon-only) */}
+          <div className="search-container">
+            <FiSearch className="search-icon" />
             <input
-              id="billing-search"
               type="text"
-              placeholder="Search billing entries..."
+              aria-label="Search billing entries"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="search-input"

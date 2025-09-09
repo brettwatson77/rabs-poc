@@ -34,7 +34,6 @@ export default function RatesTab({
           <FiSearch className="search-icon" />
           <input
             type="text"
-            placeholder="Search rates..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="search-input responsive"
