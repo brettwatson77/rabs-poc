@@ -56,6 +56,8 @@ export default function BillingTab({
 
         {/* Filters (middle, wrap as needed) */}
         <div className="filters-inline">
+          {/* ---------- row 1 ---------- */}
+          <div className="filters-row">
             {/* Participant */}
             <div className="filter-group">
               <label htmlFor="participant-filter">Participant</label>
@@ -127,8 +129,11 @@ export default function BillingTab({
                 <option value="self_funded">Self Funded (Fee-for-service)</option>
               </select>
             </div>
+          </div>
 
-            {/* Date range */}
+          {/* ---------- row 2 (date range) ---------- */}
+          <div className="filters-row">
+            {/* Date range - Start */}
             <div className="filter-group">
               <label>Start</label>
               <input
@@ -137,6 +142,7 @@ export default function BillingTab({
                 onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
               />
             </div>
+            {/* Date range - End */}
             <div className="filter-group">
               <label>End</label>
               <input
@@ -145,6 +151,7 @@ export default function BillingTab({
                 onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
               />
             </div>
+          </div> {/* end row 2 */}
         </div>
 
         {/* Action buttons (right aligned) */}

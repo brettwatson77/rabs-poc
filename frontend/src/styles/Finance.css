@@ -292,7 +292,7 @@
 
 .finance-container .toolbar {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start; /* top-align rows for cleaner two-row layout */
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
@@ -300,6 +300,9 @@
 }
 
 .finance-container .toolbar .search-container {
+  display: flex;              /* keep icon + input aligned */
+  align-items: center;
+  gap: 8px;
   min-width: 220px;
   flex: 1 1 220px;
 }
@@ -310,6 +313,13 @@
   gap: 12px;
   align-items: flex-end;
   flex: 2 1 280px;
+}
+
+.finance-container .toolbar .filters-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
 }
 
 .finance-container .toolbar .actions {
@@ -334,6 +344,11 @@
 /* Ensure search inputs fill available width */
 .finance-container .search-input {
   width: 100%;
+}
+
+/* Remove placeholder overlap under icon within toolbar search */
+.finance-container .toolbar .search-input {
+  padding-left: 0;
 }
 
 /* ------------------------------------------------------------------
@@ -446,6 +461,22 @@
 
 .finance-container .billing-summary .amount {
   color: #A5E5FF;
+}
+
+/* New responsive grid layout for summary items */
+.finance-container .billing-summary .summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.finance-container .billing-summary .summary-item {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
 }
 
 /* ------------------------------------------------------------------

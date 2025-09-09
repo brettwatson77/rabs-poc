@@ -142,7 +142,7 @@ export default function BillingModal({
                 Delete
               </button>
             )}
-            <button type="button" className="btn" onClick={onClose}>Cancel</button>
+            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
             <button type="submit" className="btn btn-primary">Save</button>
           </div>
         </form>

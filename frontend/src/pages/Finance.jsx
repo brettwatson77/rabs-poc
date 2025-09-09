@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { toast } from 'react-toastify';
 import api from '../api/api';
 import { format, startOfMonth, endOfMonth, addMonths, subMonths, parseISO } from 'date-fns';
-import { FiDollarSign, FiFileText, FiRefreshCw, FiBarChart2, FiPieChart, FiClipboard, FiPlusCircle, FiUpload, FiCheckCircle, FiX, FiPlus, FiCheck } from 'react-icons/fi';
+import { FiDollarSign, FiFileText, FiBarChart2, FiPieChart, FiClipboard, FiPlusCircle, FiUpload, FiCheckCircle, FiX, FiPlus, FiCheck } from 'react-icons/fi';
 import * as XLSX from 'xlsx';
 
 import BillingTab from './finance/tabs/BillingTab';
@@ -645,16 +645,6 @@ const Finance = () => {
     }));
   };
 
-  // Handler for toggling a participant in bulk form
-  const handleToggleParticipant = (id) => {
-    setBulkForm(prev => {
-      const newIds = prev.participant_ids.includes(id)
-        ? prev.participant_ids.filter(pid => pid !== id)
-        : [...prev.participant_ids, id];
-      return { ...prev, participant_ids: newIds };
-    });
-  };
-
   // Handler for selecting all participants
   const handleSelectAllParticipants = () => {
     if (!participantsData?.data) return;
@@ -1158,20 +1148,26 @@ const Finance = () => {
                     </span>
                   </div>
                   
-                  <div className="participants-list">
-                    {participantsData?.data?.map(p => (
-                      <div key={p.id} className="participant-item">
-                        <label className="checkbox-label">
-                          <input
-                            type="checkbox"
-                            checked={bulkForm.participant_ids.includes(p.id)}
-                            onChange={() => handleToggleParticipant(p.id)}
-                          />
-                          <span>{p.first_name} {p.last_name}</span>
-                        </label>
-                      </div>
+                  {/* Multi-select list replaces individual checkboxes */}
+                  <select
+                    multiple
+                    size="8"
+                    value={bulkForm.participant_ids.map(String)}
+                    onChange={(e) => {
+                      const selectedIds = Array.from(e.target.selectedOptions).map(
+                        (opt) => opt.value
+                      );
+                      setBulkForm((prev) => ({ ...prev, participant_ids: selectedIds }));
+                    }}
+                    className="multi-select"
+                    style={{ width: '100%', minHeight: '160px' }}
+                  >
+                    {participantsData?.data?.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.first_name} {p.last_name}
+                      </option>
                     ))}
-                  </div>
+                  </select>
                 </div>
                 
                 {/* Program Selection */}
@@ -1329,7 +1325,11 @@ const Finance = () => {
               </div>
               
               <div className="modal-footer">
-                <button type="button" className="btn" onClick={() => setIsBulkModalOpen(false)}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setIsBulkModalOpen(false)}
+                >
                   Cancel
                 </button>
                 <button
