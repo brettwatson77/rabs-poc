@@ -636,4 +636,32 @@
   }
 }
 
+/* ------------------------------------------------------------------
+ * Billing toolbar: tighten vertical alignment & control heights
+ * ------------------------------------------------------------------*/
+
+/* Keep grid cells themselves top-aligned */
+.finance-container .toolbar .filters-grid {
+  align-items: flex-start;
+}
+
+/* Ensure every filter-group sits at top with no extra margin */
+.finance-container .toolbar .filter-group {
+  align-self: flex-start;
+  margin: 0; /* override any inherited margin that may push rows */
+}
+
+/* Remove unintended offset on search container */
+.finance-container .toolbar .filter-group .search-container {
+  margin-top: 0;
+}
+
+/* Match input/select heights across toolbar for baseline alignment */
+.finance-container .toolbar .filter-group .search-container .search-input,
+.finance-container .toolbar select {
+  height: 40px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
 
