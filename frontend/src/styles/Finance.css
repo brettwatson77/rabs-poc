@@ -511,3 +511,50 @@
 }
 
 
+/* ------------------------------------------------------------------
+ * 2024-06 polish: spacing & alignment tweaks (search bar, buttons, rows)
+ * ------------------------------------------------------------------*/
+
+/* Search bar – keep icon and input aligned with spacing */
+.finance-container .search-filter-bar .search-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.finance-container .search-filter-bar .search-icon {
+  opacity: 0.7;
+}
+/* remove default left-padding so text starts after flex gap, not under icon */
+.finance-container .search-filter-bar .search-input {
+  padding-left: 0;
+}
+
+/* Action button group (Add Rate / Import CSV) spacing */
+.finance-container .action-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Inline table action buttons (Edit / Delete) spacing */
+.finance-container .rates-table-container td .btn + .btn {
+  margin-left: 6px;
+}
+
+/* Normalize table row appearance */
+.finance-container .glass-table th,
+.finance-container .glass-table td {
+  line-height: 1.4;
+}
+
+/* Utility helpers if not already present */
+.finance-container .no-wrap {
+  white-space: nowrap;
+}
+.finance-container .ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+

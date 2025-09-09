@@ -95,7 +95,12 @@ export default function RateModal({
               />
               {errors.description && <div className="field-error">{errors.description}</div>}
             </label>
-            {/* Active toggle sits with details for quick access */}
+          </div> {/* end Details grid */}
+
+          {/* ----------------------------  Options  ---------------------------- */}
+          <h4 className="section-title">Options</h4>
+          <div className="form-row checkbox-group">
+            {/* Active toggle */}
             <label className="checkbox-inline">
               <input
                 name="active"
@@ -106,11 +111,6 @@ export default function RateModal({
               Active
             </label>
 
-          </div> {/* end Details grid */}
-
-          {/* ----------------------------  Options  ---------------------------- */}
-          <h4 className="section-title">Options</h4>
-          <div className="form-row checkbox-group">
             <label className="checkbox-inline">
               <input
                 type="checkbox"

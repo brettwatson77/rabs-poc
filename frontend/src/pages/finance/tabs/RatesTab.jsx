@@ -72,9 +72,9 @@ export default function RatesTab({
               <th>Code</th>
               <th>Description</th>
               <th>Active</th>
-              <th>Updated</th>
               <th>Base&nbsp;/&nbsp;1:1</th>
               <th>Ratios</th>
+              <th>Updated</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -87,9 +87,6 @@ export default function RatesTab({
                   <span className={`pill ${r?.active ? 'pill-yes' : 'pill-no'}`}>
                     {r?.active ? 'Yes' : 'No'}
                   </span>
-                </td>
-                <td className="text-sm muted">
-                  {r?.updated_at ? new Date(r.updated_at).toLocaleString() : '-'}
                 </td>
                 <td className="text-right">
                   ${parseFloat(r?.base_rate || 0).toFixed(2)}
@@ -120,6 +117,9 @@ export default function RatesTab({
                       </div>
                     );
                   })()}
+                </td>
+                <td className="text-sm muted">
+                  {r?.updated_at ? new Date(r.updated_at).toLocaleString() : '-'}
                 </td>
                 <td>
                   <button
