@@ -157,11 +157,7 @@ const Finance = () => {
     program_id: '',
     rate_code: '',
     hours: 1,
-    quantity: 1,
     notes: '',
-    override_management: '',
-    show_override: false,
-    // New fields for option selection
     selected_rate_option_id: '',
     unit_price: 0
   });
@@ -512,10 +508,7 @@ const Finance = () => {
     program_id: '',
     rate_code: '',
     hours: 1,
-    quantity: 1,
     notes: '',
-    override_management: '',
-    show_override: false,
     selected_rate_option_id: '',
     unit_price: 0
   });
@@ -576,12 +569,6 @@ const Finance = () => {
   const handleBulkSubmit = (e) => {
     if (e && e.preventDefault) e.preventDefault();
     
-    // Validate dates.length === quantity
-    if (bulkForm.dates.length !== parseInt(bulkForm.quantity)) {
-      toast.error(`Number of dates (${bulkForm.dates.length}) must equal quantity (${bulkForm.quantity})`);
-      return;
-    }
-    
     // Validate required fields
     if (!bulkForm.participant_ids.length) {
       toast.error('Please select at least one participant');
@@ -609,14 +596,8 @@ const Finance = () => {
       rate_code: bulkForm.rate_code,
       unit_price: unitPrice,
       hours: parseFloat(bulkForm.hours) || 0,
-      quantity: parseInt(bulkForm.quantity) || 1,
       notes: bulkForm.notes || ''
     };
-    
-    // Add override_management if enabled
-    if (bulkForm.show_override && bulkForm.override_management) {
-      payload.override_management = bulkForm.override_management;
-    }
     
     // Submit to API
     bulkCreateBilling.mutate(payload);
@@ -1121,13 +1102,6 @@ const Finance = () => {
                       </div>
                     )}
                   </div>
-                  
-                  {/* Validation message */}
-                  {bulkForm.dates.length > 0 && bulkForm.dates.length !== parseInt(bulkForm.quantity) && (
-                    <div className="validation-error">
-                      Number of dates ({bulkForm.dates.length}) must equal quantity ({bulkForm.quantity})
-                    </div>
-                  )}
                 </div>
                 
                 {/* Participants Selection */}
@@ -1225,7 +1199,7 @@ const Finance = () => {
                   </select>
                 </div>
                 
-                {/* Hours and Quantity */}
+                {/* Hours */}
                 <div className="form-row">
                   <div className="form-group">
                     <label>Hours</label>
@@ -1235,18 +1209,6 @@ const Finance = () => {
                       min="0"
                       value={bulkForm.hours}
                       onChange={(e) => setBulkForm({...bulkForm, hours: e.target.value})}
-                      required
-                    />
-                  </div>
-                  
-                  <div className="form-group">
-                    <label>Quantity</label>
-                    <input
-                      type="number"
-                      step="1"
-                      min="1"
-                      value={bulkForm.quantity}
-                      onChange={(e) => setBulkForm({...bulkForm, quantity: e.target.value})}
                       required
                     />
                   </div>
@@ -1261,34 +1223,6 @@ const Finance = () => {
                     rows="3"
                   />
                 </div>
-                
-                {/* Management Override (optional) */}
-                <div className="form-group checkbox-group">
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={bulkForm.show_override}
-                      onChange={(e) => setBulkForm({...bulkForm, show_override: e.target.checked})}
-                    />
-                    <span>Override management for this entry</span>
-                  </label>
-                </div>
-                
-                {bulkForm.show_override && (
-                  <div className="form-group">
-                    <label>Management Override</label>
-                    <select
-                      value={bulkForm.override_management}
-                      onChange={(e) => setBulkForm({...bulkForm, override_management: e.target.value})}
-                    >
-                      <option value="">Select management type</option>
-                      <option value="agency_managed">Agency Managed</option>
-                      <option value="plan_managed">Plan Managed</option>
-                      <option value="self_managed">Self Managed</option>
-                      <option value="self_funded">Self Funded (Fee-for-service)</option>
-                    </select>
-                  </div>
-                )}
                 
                 {/* Management Summary */}
                 {bulkForm.participant_ids.length > 0 && participantsData?.data && (

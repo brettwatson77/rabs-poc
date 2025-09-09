@@ -1,6 +1,6 @@
 import React from 'react';
 import { format, parseISO } from 'date-fns';
-import { FiSearch, FiPlusCircle, FiDownload, FiRefreshCw, FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { FiPlusCircle, FiDownload, FiRefreshCw, FiEdit2, FiTrash2 } from 'react-icons/fi';
 
 export default function BillingTab({
   billingData,
@@ -42,10 +42,11 @@ export default function BillingTab({
            Unified toolbar: Search + Filters + Action buttons
          -------------------------------------------------------------------*/}
       <div className="toolbar glass-panel">
-        {/* Search */}
-        <div className="search-container">
-          <FiSearch className="search-icon" />
+        {/* Search – styled like other filters */}
+        <div className="filter-group">
+          <label htmlFor="billing-search">Search</label>
           <input
+            id="billing-search"
             type="text"
             placeholder="Search billing entries..."
             value={searchQuery}
@@ -74,6 +75,22 @@ export default function BillingTab({
                     {participant.first_name} {participant.last_name}
                   </option>
                 ))}
+              </select>
+            </div>
+
+            {/* Management */}
+            <div className="filter-group">
+              <label htmlFor="management-filter">Management</label>
+              <select
+                id="management-filter"
+                value={managementFilter}
+                onChange={(e) => setManagementFilter(e.target.value)}
+              >
+                <option value="all">All</option>
+                <option value="agency_managed">Agency Managed</option>
+                <option value="plan_managed">Plan Managed</option>
+                <option value="self_managed">Self Managed</option>
+                <option value="self_funded">Self Funded (Fee-for-service)</option>
               </select>
             </div>
 
@@ -113,22 +130,6 @@ export default function BillingTab({
                 <option value="cancelled">Cancelled</option>
               </select>
             </div>
-
-            {/* Management */}
-            <div className="filter-group">
-              <label htmlFor="management-filter">Management</label>
-              <select
-                id="management-filter"
-                value={managementFilter}
-                onChange={(e) => setManagementFilter(e.target.value)}
-              >
-                <option value="all">All</option>
-                <option value="agency_managed">Agency Managed</option>
-                <option value="plan_managed">Plan Managed</option>
-                <option value="self_managed">Self Managed</option>
-                <option value="self_funded">Self Funded (Fee-for-service)</option>
-              </select>
-            </div>
           </div>
 
           {/* ---------- row 2 (date range) ---------- */}
@@ -154,8 +155,8 @@ export default function BillingTab({
           </div> {/* end row 2 */}
         </div>
 
-        {/* Action buttons (right aligned) */}
-        <div className="actions">
+        {/* Action buttons (bottom-right) */}
+        <div className="actions bottom-right">
           <button className="create-btn glass-button" onClick={onOpenNewBilling}>
             <FiPlusCircle /> New
           </button>

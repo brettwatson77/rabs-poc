@@ -312,7 +312,9 @@
   flex-wrap: wrap;
   gap: 12px;
   align-items: flex-end;
-  flex: 2 1 280px;
+  /* occupy full row so action buttons wrap to next line */
+  flex: 1 1 100%;
+  margin-bottom: 4px; /* small separation between rows */
 }
 
 .finance-container .toolbar .filters-row {
@@ -326,6 +328,12 @@
   display: flex;
   gap: 8px;
   align-items: center;
+}
+
+/* When actions are intended for bottom-right placement */
+.finance-container .toolbar .actions.bottom-right {
+  align-self: flex-end;
+  margin-left: auto; /* push to far right */
 }
 
 /* Compact & consistent filter groups */
@@ -466,8 +474,9 @@
 /* New responsive grid layout for summary items */
 .finance-container .billing-summary .summary-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 12px;
+  /* fixed 2×2 grid for clearer separation */
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 16px;
   margin-top: 12px;
 }
 
