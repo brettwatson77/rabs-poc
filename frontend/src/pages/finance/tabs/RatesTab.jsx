@@ -123,14 +123,14 @@ export default function RatesTab({
                 </td>
                 <td>
                   <button
-                    className="btn btn-icon lg"
+                    className="btn btn-secondary btn-icon"
                     onClick={() => r?.id && onEditRate(r)}
                     title="Edit rate"
                   >
                     <FiEdit2 />
                   </button>
                   <button
-                    className="btn btn-icon danger lg"
+                    className="btn btn-secondary btn-icon danger"
                     onClick={() => r?.id && onDeleteRate(r)}
                     title="Delete rate"
                   >

@@ -458,4 +458,56 @@
   color: rgba(255, 255, 255, 0.95);
 }
 
+/* ------------------------------------------------------------------
+ * 2024-06 polish: Rate modal layout helpers
+ * ------------------------------------------------------------------*/
+
+.finance-container .section-title {
+  margin: 4px 0 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.finance-container .checkbox-group {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 4px 0 12px;
+}
+
+.finance-container .checkbox-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.finance-container .ratio-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 768px) {
+  .finance-container .ratio-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Icon buttons (used in tables/actions) */
+.finance-container .btn.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+
+.finance-container .btn.btn-icon.danger {
+  color: #ffb3b3;
+}
+
 
