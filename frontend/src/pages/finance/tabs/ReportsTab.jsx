@@ -4,9 +4,7 @@ import MonthNavigation from '../components/MonthNavigation';
 
 export default function ReportsTab({
     selectedMonth,
-  reportData,
   reportLoading,
-  reportError,
   onPrevMonth,
   onCurrentMonth,
   onNextMonth,
@@ -27,11 +25,13 @@ export default function ReportsTab({
       <div className="report-container glass-card">
         <h3>Participant Summary - {format(selectedMonth, 'MMMM yyyy')}</h3>
         {reportLoading && <p>Loading report...</p>}
-        {reportError && <p className="error">Error loading report</p>}
-        {!reportLoading && !reportError && (
-          <pre className="report-json">
-            {JSON.stringify(reportData, null, 2)}
-          </pre>
+        {!reportLoading && (
+          <div className="coming-soon">
+            <p style={{ margin: 0 }}>
+              Reports and visual analytics are coming soon. In the meantime you
+              can refresh to check for updates.
+            </p>
+          </div>
         )}
       </div>
     </div>

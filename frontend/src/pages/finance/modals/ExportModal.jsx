@@ -1,14 +1,15 @@
 import React from 'react';
 import { FiX } from 'react-icons/fi';
 
-export default function ExportModal({ isOpen, onClose, exportOptions, setExportOptions, participantsData, onSubmit, isExporting }) {
+export default function ExportModal({
+  isOpen,
+  onClose,
+  exportOptions,
+  setExportOptions,
+  onSubmit,
+  isExporting,
+}) {
   if (!isOpen) return null;
-
-  const toggleParticipant = (id) => {
-    const set = new Set(exportOptions.participant_ids);
-    if (set.has(id)) set.delete(id); else set.add(id);
-    setExportOptions({ ...exportOptions, participant_ids: Array.from(set) });
-  };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -22,14 +23,6 @@ export default function ExportModal({ isOpen, onClose, exportOptions, setExportO
         <form onSubmit={onSubmit} className="modal-body">
           <div className="form-grid">
             <label>
-              Format
-              <select value={exportOptions.format} onChange={(e) => setExportOptions({ ...exportOptions, format: e.target.value })}>
-                <option value="csv">CSV</option>
-                <option value="xlsx">Excel</option>
-                <option value="json">JSON</option>
-              </select>
-            </label>
-            <label>
               Start Date
               <input type="date" value={exportOptions.start_date} onChange={(e) => setExportOptions({ ...exportOptions, start_date: e.target.value })} />
             </label>
@@ -37,24 +30,29 @@ export default function ExportModal({ isOpen, onClose, exportOptions, setExportO
               End Date
               <input type="date" value={exportOptions.end_date} onChange={(e) => setExportOptions({ ...exportOptions, end_date: e.target.value })} />
             </label>
-            <label className="full-width">
-              Include Details
-              <input type="checkbox" checked={!!exportOptions.include_details} onChange={(e) => setExportOptions({ ...exportOptions, include_details: e.target.checked })} />
+            <label>
+              Type
+              <select
+                value={exportOptions.type || 'both'}
+                onChange={(e) => setExportOptions({ ...exportOptions, type: e.target.value })}
+              >
+                <option value="bulk">Bulk Upload</option>
+                <option value="invoices">Invoices</option>
+                <option value="both">Both</option>
+              </select>
             </label>
 
-            <div className="full-width">
-              <div className="listbox">
-                <div className="listbox-header">Participants</div>
-                <div className="listbox-body">
-                  {participantsData?.data?.map((p) => (
-                    <label key={p.id} className="listbox-row">
-                      <input type="checkbox" checked={exportOptions.participant_ids.includes(p.id)} onChange={() => toggleParticipant(p.id)} />
-                      <span>{p.first_name} {p.last_name}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <label>
+              Format
+              <select
+                value={exportOptions.format}
+                onChange={(e) => setExportOptions({ ...exportOptions, format: e.target.value })}
+              >
+                <option value="csv">CSV</option>
+                <option value="xlsx">Excel</option>
+                <option value="json">JSON</option>
+              </select>
+            </label>
           </div>
 
           <div className="modal-footer">

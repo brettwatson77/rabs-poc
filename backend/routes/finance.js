@@ -9,6 +9,8 @@
  * - PATCH /finance/rates/:id - Update billing rate
  * - POST /finance/rates/import - Import rates from CSV
  * - POST /finance/export - Export billing data
+ * - POST /finance/billing - Create billing entry
+ * - POST /finance/billing/bulk - Create multiple billing entries
  */
 
 const express = require('express');
@@ -17,6 +19,34 @@ const uuid = require('uuid');
 const fs = require('fs');
 const path = require('path');
 
+// Helper functions for numeric handling and rounding
+const toNumber = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; };
+const round2 = (n) => Math.round(n * 100) / 100;
+
+// ---------------------------------------------------------------------------
+// Helper: ensure payment_diamonds has required columns
+// ---------------------------------------------------------------------------
+const ensurePaymentDiamondsColumns = async (pool) => {
+  try {
+    // Add program_id column if it doesn't exist
+    await pool.query(`
+      ALTER TABLE payment_diamonds 
+      ADD COLUMN IF NOT EXISTS program_id UUID NULL
+    `);
+    
+    // Add hours column if it doesn't exist
+    await pool.query(`
+      ALTER TABLE payment_diamonds 
+      ADD COLUMN IF NOT EXISTS hours NUMERIC(6,2) NULL
+    `);
+    
+    console.log('[FINANCE] Ensured payment_diamonds has program_id and hours columns');
+  } catch (err) {
+    // Ignore errors if columns already exist or other issues
+    console.error('[FINANCE] Note: payment_diamonds column check:', err.message);
+  }
+};
+
 // ---------------------------------------------------------------------------
 // Internal: one-time live schema audit for billing_rates
 // ---------------------------------------------------------------------------
@@ -24,6 +54,90 @@ let schemaAudited = false;
 let cachedColumns = [];
 const auditBillingRatesSchema = async (pool) => {
   if (schemaAudited) return cachedColumns;
+
+  /* --------------------------------------------------------------------- */
+  /* 1. Idempotent DDL – ensure table & new columns exist                  */
+  /* --------------------------------------------------------------------- */
+  try {
+    await pool.query(`
+      /* --------------------------------------------------------------- */
+      /* Create table (minimal) if missing                               */
+      /* --------------------------------------------------------------- */
+      CREATE TABLE IF NOT EXISTS billing_rates (
+        id            uuid PRIMARY KEY,
+        code          text NOT NULL,
+        description   text NOT NULL,
+        active        boolean NOT NULL DEFAULT true,
+        base_rate     numeric(10,2) NOT NULL DEFAULT 0,
+        ratio_1_1     numeric(10,2) NULL,
+        ratio_1_2     numeric(10,2) NULL,
+        ratio_1_3     numeric(10,2) NULL,
+        ratio_1_4     numeric(10,2) NULL,
+        /* New column – group 1:5 support                                */
+        ratio_1_5     numeric(10,2),
+        /* New flag – single-rate (1:1 only)                             */
+        single_rate   boolean NOT NULL DEFAULT false,
+        created_at    timestamp with time zone NOT NULL DEFAULT now(),
+        updated_at    timestamp with time zone NOT NULL DEFAULT now()
+      );
+
+      /* --------------------------------------------------------------- */
+      /* Add missing columns (idempotent)                               */
+      /* --------------------------------------------------------------- */
+      ALTER TABLE billing_rates
+        ADD COLUMN IF NOT EXISTS single_rate boolean NOT NULL DEFAULT false;
+
+      ALTER TABLE billing_rates
+        ADD COLUMN IF NOT EXISTS ratio_1_5 numeric(10,2);
+
+      ALTER TABLE billing_rates
+        ADD COLUMN IF NOT EXISTS ratio_1_1 numeric(10,2);
+      ALTER TABLE billing_rates
+        ADD COLUMN IF NOT EXISTS ratio_1_2 numeric(10,2);
+      ALTER TABLE billing_rates
+        ADD COLUMN IF NOT EXISTS ratio_1_3 numeric(10,2);
+      ALTER TABLE billing_rates
+        ADD COLUMN IF NOT EXISTS ratio_1_4 numeric(10,2);
+
+      /* --------------------------------------------------------------- */
+      /* Relax uniqueness on code                                       */
+      /* --------------------------------------------------------------- */
+      DO $$
+      DECLARE
+        con  record;
+      BEGIN
+        /* Drop any UNIQUE constraints on code                           */
+        FOR con IN
+          SELECT conname
+          FROM   pg_constraint
+          WHERE  conrelid = 'billing_rates'::regclass
+            AND  contype  = 'u'
+            AND  conkey   = (SELECT array_agg(attnum)
+                             FROM pg_attribute
+                             WHERE attrelid = 'billing_rates'::regclass
+                               AND attname  = 'code')
+        LOOP
+          EXECUTE format('ALTER TABLE billing_rates DROP CONSTRAINT IF EXISTS %I', con.conname);
+        END LOOP;
+      END $$;
+
+      /* Re-create non-unique index if not present                       */
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_indexes
+          WHERE schemaname='public'
+            AND tablename='billing_rates'
+            AND indexname='idx_billing_rates_code'
+        ) THEN
+          CREATE INDEX idx_billing_rates_code ON billing_rates(code);
+        END IF;
+      END $$;
+    `);
+  } catch (ddlErr) {
+    console.error('❌ [FINANCE] billing_rates DDL error:', ddlErr.message);
+  }
+
   try {
     const { rows } = await pool.query(`
         SELECT column_name
@@ -47,24 +161,37 @@ const hasCol = (name) => cachedColumns.includes(name);
 router.get('/billing', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
+    
+    // Ensure payment_diamonds has required columns
+    await ensurePaymentDiamondsColumns(pool);
+    
     const { 
       start_date, 
       end_date, 
       participant_id,
       program_id,
-      status
+      status,
+      management
     } = req.query;
     
     // Build query with optional filters
     let query = `
-      SELECT b.id, b.participant_id, b.program_id, b.loom_instance_id,
-             b.date, b.hours, b.rate_code, b.rate_amount, b.support_ratio,
-             b.weekend_multiplier, b.total_amount, b.status, b.notes,
-             p.first_name || ' ' || p.last_name AS participant_name,
-             prog.title AS program_title
-      FROM billing b
-      LEFT JOIN participants p ON b.participant_id = p.id
-      LEFT JOIN programs prog ON b.program_id = prog.id
+      SELECT 
+        pd.id,
+        pd.participant_id,
+        COALESCE(pd.invoice_date, pd.created_at::date) AS date,
+        pd.hours,
+        pd.quantity,
+        pd.support_item_number AS rate_code,
+        pd.unit_price,
+        pd.total_amount,
+        pd.status,
+        p.first_name || ' ' || p.last_name AS participant_name,
+        p.plan_management_type AS management,
+        rp.name AS program_name
+      FROM payment_diamonds pd
+      JOIN participants p ON pd.participant_id = p.id
+      LEFT JOIN rules_programs rp ON pd.program_id = rp.id
       WHERE 1=1
     `;
     
@@ -72,31 +199,36 @@ router.get('/billing', async (req, res) => {
     let paramIndex = 1;
     
     if (start_date) {
-      query += ` AND b.date >= $${paramIndex++}`;
+      query += ` AND COALESCE(pd.invoice_date, pd.created_at::date) >= $${paramIndex++}`;
       queryParams.push(start_date);
     }
     
     if (end_date) {
-      query += ` AND b.date <= $${paramIndex++}`;
+      query += ` AND COALESCE(pd.invoice_date, pd.created_at::date) <= $${paramIndex++}`;
       queryParams.push(end_date);
     }
     
     if (participant_id) {
-      query += ` AND b.participant_id = $${paramIndex++}`;
+      query += ` AND pd.participant_id = $${paramIndex++}`;
       queryParams.push(participant_id);
     }
     
     if (program_id) {
-      query += ` AND b.program_id = $${paramIndex++}`;
+      query += ` AND pd.program_id = $${paramIndex++}`;
       queryParams.push(program_id);
     }
     
     if (status) {
-      query += ` AND b.status = $${paramIndex++}`;
+      query += ` AND pd.status = $${paramIndex++}`;
       queryParams.push(status);
     }
     
-    query += ` ORDER BY b.date DESC, p.last_name ASC`;
+    if (management) {
+      query += ` AND p.plan_management_type = $${paramIndex++}`;
+      queryParams.push(management);
+    }
+    
+    query += ` ORDER BY date DESC, participant_name ASC`;
     
     const result = await pool.query(query, queryParams);
     
@@ -105,8 +237,8 @@ router.get('/billing', async (req, res) => {
     let totalHours = 0;
     
     result.rows.forEach(row => {
-      totalAmount += parseFloat(row.total_amount || 0);
-      totalHours += parseFloat(row.hours || 0);
+      totalAmount += toNumber(row.total_amount);
+      totalHours += toNumber(row.hours);
     });
     
     res.json({
@@ -129,6 +261,341 @@ router.get('/billing', async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// POST /finance/billing - Create billing entry
+// ---------------------------------------------------------------------------
+router.post('/billing', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    
+    // Ensure payment_diamonds has required columns
+    await ensurePaymentDiamondsColumns(pool);
+    
+    const { 
+      participant_id, 
+      program_id, 
+      date, 
+      hours, 
+      quantity = 1, 
+      rate_code, 
+      unit_price, 
+      notes,
+      override_management
+    } = req.body;
+    
+    // Validate required fields
+    if (!participant_id || !date || !rate_code) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields',
+        message: 'participant_id, date, and rate_code are required'
+      });
+    }
+    
+    // Get participant management type
+    const participantResult = await pool.query(
+      'SELECT plan_management_type FROM participants WHERE id = $1',
+      [participant_id]
+    );
+    
+    if (participantResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Participant not found'
+      });
+    }
+    
+    const validMgmt = ['agency_managed','plan_managed','self_managed','self_funded'];
+    const participantMgmt = participantResult.rows[0].plan_management_type;
+    const overrideApplied = validMgmt.includes(override_management);
+    const management = overrideApplied ? override_management : participantMgmt;
+    
+    // Parse numeric values
+    const hoursNum = toNumber(hours);
+    const quantityNum = toNumber(quantity);
+    const unitPriceNum = toNumber(unit_price);
+    
+    // Calculate total amount
+    const totalAmount = round2(unitPriceNum * hoursNum * quantityNum);
+    
+    // Prepare notes with program info if provided
+    let finalNotes = notes || '';
+    if (program_id) {
+      try {
+        const programResult = await pool.query(
+          'SELECT name FROM programs WHERE id = $1',
+          [program_id]
+        );
+        if (programResult.rows.length > 0) {
+          const programName = programResult.rows[0].name;
+          finalNotes = finalNotes ? `${finalNotes}\nProgram: ${programName}` : `Program: ${programName}`;
+        }
+      } catch (err) {
+        console.error('Error fetching program name:', err);
+      }
+    }
+    
+    // Insert into payment_diamonds
+    const billingId = uuid.v4();
+    const insertResult = await pool.query(
+      `INSERT INTO payment_diamonds (
+        id, 
+        participant_id,
+        program_id,
+        support_item_number, 
+        unit_price,
+        hours,
+        quantity, 
+        total_amount, 
+        gst_code, 
+        status, 
+        invoice_date,
+        history_shift_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) 
+      RETURNING *`,
+      [
+        billingId,
+        participant_id,
+        program_id || null,
+        rate_code,
+        unitPriceNum,
+        hoursNum,
+        quantityNum,
+        totalAmount,
+        'FRE', // GST-free
+        'pending',
+        date,
+        null // No history shift for manual entries
+      ]
+    );
+    
+    // Log the creation
+    await pool.query(
+      `INSERT INTO system_logs (
+        id, 
+        severity, 
+        category, 
+        message, 
+        details
+      ) VALUES ($1, $2, $3, $4, $5)`,
+      [
+        uuid.v4(),
+        'INFO',
+        'FINANCIAL',
+        `Billing entry created: ${rate_code}`,
+        {
+          billing_id: billingId,
+          participant_id,
+          date,
+          amount: totalAmount,
+          notes: finalNotes,
+          override_applied: overrideApplied,
+          ...(overrideApplied && { override_management })
+        }
+      ]
+    );
+    
+    console.log(`[FINANCE] Created billing entry: ${billingId} for participant ${participant_id}, rate ${rate_code}, amount $${totalAmount}`);
+    
+    // Return created entry with management
+    const createdEntry = {
+      ...insertResult.rows[0],
+      management,
+      notes: finalNotes
+    };
+    
+    res.status(201).json({
+      success: true,
+      data: createdEntry
+    });
+  } catch (error) {
+    console.error('Error creating billing entry:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create billing entry',
+      message: error.message
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /finance/billing/bulk - Create multiple billing entries
+// ---------------------------------------------------------------------------
+router.post('/billing/bulk', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    
+    // Ensure payment_diamonds has required columns
+    await ensurePaymentDiamondsColumns(pool);
+    
+    const { 
+      dates, 
+      participant_ids, 
+      program_id, 
+      rate_code, 
+      unit_price, 
+      hours, 
+      quantity = 1, 
+      notes 
+    } = req.body;
+    
+    // Validate required fields
+    if (!dates || !Array.isArray(dates) || dates.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing or invalid dates array'
+      });
+    }
+    
+    if (!participant_ids || !Array.isArray(participant_ids) || participant_ids.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing or invalid participant_ids array'
+      });
+    }
+    
+    if (!rate_code) {
+      return res.status(400).json({
+        success: false,
+        error: 'rate_code is required'
+      });
+    }
+    
+    // Parse numeric values
+    const hoursNum = toNumber(hours);
+    const quantityNum = toNumber(quantity);
+    const unitPriceNum = toNumber(unit_price);
+    
+    // Calculate total amount per entry
+    const totalAmount = round2(unitPriceNum * hoursNum * quantityNum);
+    
+    // Prepare program info if provided
+    let programName = '';
+    if (program_id) {
+      try {
+        const programResult = await pool.query(
+          'SELECT name FROM programs WHERE id = $1',
+          [program_id]
+        );
+        if (programResult.rows.length > 0) {
+          programName = programResult.rows[0].name;
+        }
+      } catch (err) {
+        console.error('Error fetching program name:', err);
+      }
+    }
+    
+    // Create entries for each participant x date combination
+    const insertedIds = [];
+    const managementTypes = {};
+    
+    for (const participantId of participant_ids) {
+      // Get participant management type
+      const participantResult = await pool.query(
+        'SELECT plan_management_type, first_name, last_name FROM participants WHERE id = $1',
+        [participantId]
+      );
+      
+      if (participantResult.rows.length === 0) {
+        continue; // Skip if participant not found
+      }
+      
+      const participant = participantResult.rows[0];
+      const management = participant.plan_management_type;
+      const participantName = `${participant.first_name} ${participant.last_name}`;
+      
+      // Track management types for reporting
+      if (!managementTypes[management]) {
+        managementTypes[management] = 0;
+      }
+      
+      for (const date of dates) {
+        // Prepare notes with program info
+        let finalNotes = notes || '';
+        if (programName) {
+          finalNotes = finalNotes ? `${finalNotes}\nProgram: ${programName}` : `Program: ${programName}`;
+        }
+        
+        // Insert into payment_diamonds
+        const billingId = uuid.v4();
+        await pool.query(
+          `INSERT INTO payment_diamonds (
+            id, 
+            participant_id,
+            program_id,
+            support_item_number, 
+            unit_price,
+            hours,
+            quantity, 
+            total_amount, 
+            gst_code, 
+            status, 
+            invoice_date,
+            history_shift_id
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+          [
+            billingId,
+            participantId,
+            program_id || null,
+            rate_code,
+            unitPriceNum,
+            hoursNum,
+            quantityNum,
+            totalAmount,
+            'FRE', // GST-free
+            'pending',
+            date,
+            null // No history shift for manual entries
+          ]
+        );
+        
+        insertedIds.push(billingId);
+        managementTypes[management]++;
+      }
+    }
+    
+    // Log the bulk creation
+    await pool.query(
+      `INSERT INTO system_logs (
+        id, 
+        severity, 
+        category, 
+        message, 
+        details
+      ) VALUES ($1, $2, $3, $4, $5)`,
+      [
+        uuid.v4(),
+        'INFO',
+        'FINANCIAL',
+        `Bulk billing entries created: ${insertedIds.length}`,
+        {
+          count: insertedIds.length,
+          dates_count: dates.length,
+          participants_count: participant_ids.length,
+          rate_code,
+          management_breakdown: managementTypes
+        }
+      ]
+    );
+    
+    console.log(`[FINANCE] Created ${insertedIds.length} bulk billing entries for ${participant_ids.length} participants across ${dates.length} dates`);
+    
+    res.status(201).json({
+      success: true,
+      count: insertedIds.length,
+      example_ids: insertedIds.slice(0, 5),
+      management_breakdown: managementTypes
+    });
+  } catch (error) {
+    console.error('Error creating bulk billing entries:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create bulk billing entries',
+      message: error.message
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // GET /finance/billing-codes - Thin list of active billing codes (Wizard v2)
 // ---------------------------------------------------------------------------
 router.get('/billing-codes', async (req, res) => {
@@ -139,7 +606,8 @@ router.get('/billing-codes', async (req, res) => {
 
     const result = await pool.query(`
       SELECT id, code, description, base_rate,
-             ratio_1_1, ratio_1_2, ratio_1_3, ratio_1_4,
+             ratio_1_1, ratio_1_2, ratio_1_3, ratio_1_4, ratio_1_5,
+             single_rate,
              active, updated_at
         FROM billing_rates
        WHERE active = true
@@ -147,21 +615,24 @@ router.get('/billing-codes', async (req, res) => {
 
     // Flatten to variant list for wizard (one entry per ratio column that has a >0 value)
     const flattened = [];
-    const ratioCols = [
+    const ratioColsAll = [
       { col: 'ratio_1_1', label: '1:1' },
       { col: 'ratio_1_2', label: '1:2' },
       { col: 'ratio_1_3', label: '1:3' },
       { col: 'ratio_1_4', label: '1:4' },
+      { col: 'ratio_1_5', label: '1:5' },
     ];
 
     result.rows.forEach((r) => {
-      ratioCols.forEach(({ col, label }) => {
+      const colsToUse = r.single_rate ? ratioColsAll.slice(0, 1) /* only 1:1 */ : ratioColsAll;
+      colsToUse.forEach(({ col, label }) => {
         const rate = parseFloat(r[col]);
         if (!isNaN(rate) && rate > 0) {
           flattened.push({
             id: r.id,
             code: r.code,
             ratio: label,
+            option_id: `${r.id}-${label}`,
             label: `${r.code} — ${r.description} (${label})`,
             rate_cents: Math.round(rate * 100),
             updated_at: r.updated_at,
@@ -210,7 +681,7 @@ router.get('/rates', async (req, res) => {
 
     let sql = `
       SELECT id, code, description, active, base_rate,
-             ratio_1_1, ratio_1_2, ratio_1_3, ratio_1_4,
+             ratio_1_1, ratio_1_2, ratio_1_3, ratio_1_4, ratio_1_5, single_rate,
              ${hasCol('updated_at') ? 'updated_at' : 'created_at AS updated_at'}
       FROM billing_rates`;
 
@@ -222,7 +693,7 @@ router.get('/rates', async (req, res) => {
     const data = rows.map(r => {
       const ratios = [];
       [['ratio_1_1', '1:1'], ['ratio_1_2', '1:2'],
-       ['ratio_1_3', '1:3'], ['ratio_1_4', '1:4']].forEach(
+       ['ratio_1_3', '1:3'], ['ratio_1_4', '1:4'], ['ratio_1_5','1:5']].forEach(
         ([col, label]) => {
           const val = parseFloat(r[col]);
           if (!isNaN(val) && val > 0) ratios.push({ ratio: label, rate: val });
@@ -235,7 +706,8 @@ router.get('/rates', async (req, res) => {
         active: r.active,
         updated_at: r.updated_at,
         base_rate: parseFloat(r.base_rate),
-        ratios
+        ratios,
+        single_rate: r.single_rate
       };
     });
 
@@ -265,7 +737,7 @@ router.get('/rates/:id', async (req, res) => {
 
     const sql = `
       SELECT id, code, description, active, base_rate,
-             ratio_1_1, ratio_1_2, ratio_1_3, ratio_1_4,
+             ratio_1_1, ratio_1_2, ratio_1_3, ratio_1_4, ratio_1_5, single_rate,
              ${hasCol('updated_at') ? 'updated_at' : 'created_at AS updated_at'}
         FROM billing_rates
        WHERE id = $1
@@ -282,7 +754,8 @@ router.get('/rates/:id', async (req, res) => {
       ['ratio_1_1', '1:1'],
       ['ratio_1_2', '1:2'],
       ['ratio_1_3', '1:3'],
-      ['ratio_1_4', '1:4']
+      ['ratio_1_4', '1:4'],
+      ['ratio_1_5', '1:5']
     ].forEach(([col, label]) => {
       const val = parseFloat(r[col]);
       if (!isNaN(val) && val > 0) {
@@ -297,7 +770,8 @@ router.get('/rates/:id', async (req, res) => {
       active: r.active,
       updated_at: r.updated_at,
       base_rate: parseFloat(r.base_rate),
-      ratios
+      ratios,
+      single_rate: r.single_rate
     };
 
     return res.json({ success: true, data: payload });
@@ -332,7 +806,9 @@ router.post('/rates', async (req, res) => {
       ratio_1_1 = 0,
       ratio_1_2 = 0,
       ratio_1_3 = 0,
-      ratio_1_4 = 0
+      ratio_1_4 = 0,
+      ratio_1_5 = 0,
+      single_rate = false
     } = req.body;
 
     if (!code || !description) {
@@ -343,13 +819,22 @@ router.post('/rates', async (req, res) => {
       const insertSQL = `
         INSERT INTO billing_rates
             (id, code, description, active, base_rate,
-             ratio_1_1, ratio_1_2, ratio_1_3, ratio_1_4)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+             ratio_1_1, ratio_1_2, ratio_1_3, ratio_1_4, ratio_1_5, single_rate)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
         RETURNING *
       `;
       const { rows } = await pool.query(insertSQL, [
-        uuid.v4(), code, description, active,
-        base_rate, ratio_1_1, ratio_1_2, ratio_1_3, ratio_1_4
+        uuid.v4(),        // $1 id
+        code,             // $2
+        description,      // $3
+        active,           // $4
+        base_rate,        // $5
+        ratio_1_1,        // $6
+        ratio_1_2,        // $7
+        ratio_1_3,        // $8
+        ratio_1_4,        // $9
+        ratio_1_5,        // $10
+        single_rate       // $11
       ]);
       const r = rows[0];
       await pool.query(`INSERT INTO system_logs (id,severity,category,message,details)
@@ -387,7 +872,8 @@ router.patch('/rates/:id', async (req, res) => {
     console.log('[FINANCE] PATCH /api/v1/finance/rates/:id payload:', { id, body: req.body });
 
     const allowed = ['description', 'active', 'base_rate',
-                     'ratio_1_1', 'ratio_1_2', 'ratio_1_3', 'ratio_1_4'];
+                     'ratio_1_1', 'ratio_1_2', 'ratio_1_3', 'ratio_1_4',
+                     'ratio_1_5', 'single_rate'];
     const updates = [];
     const values = [];
     let idx = 1;
@@ -514,6 +1000,9 @@ router.post('/rates/import', async (req, res) => {
     const idxR12 = mapIdx(['ratio12','r12','ratio_1_2']);
     const idxR13 = mapIdx(['ratio13','r13','ratio_1_3']);
     const idxR14 = mapIdx(['ratio14','r14','ratio_1_4']);
+    /* New: ratio 1:5 and single-rate flag */
+    const idxR15 = mapIdx(['ratio15','r15','ratio_1_5']);
+    const idxSingle = mapIdx(['single_rate','singlerate','single','is_single','issingle']);
     const idxActive = mapIdx(['active','isactive']);
 
     const preview = [];
@@ -535,7 +1024,11 @@ router.post('/rates/import', async (req, res) => {
         ratio_1_1: parseFloat(cols[idxR11]||0)||0,
         ratio_1_2: parseFloat(cols[idxR12]||0)||0,
         ratio_1_3: parseFloat(cols[idxR13]||0)||0,
-        ratio_1_4: parseFloat(cols[idxR14]||0)||0
+        ratio_1_4: parseFloat(cols[idxR14]||0)||0,
+        ratio_1_5: parseFloat(cols[idxR15]||0)||0,
+        single_rate: idxSingle === -1 
+          ? false 
+          : /^(t|true|y|yes|1)$/i.test((cols[idxSingle]||'').trim())
       };
       if (dryRun) {
         preview.push({ line: lineIdx+1, action: existing.rowCount? 'update':'create', payload });
@@ -551,10 +1044,11 @@ router.post('/rates/import', async (req, res) => {
       } else {
         await pool.query(`INSERT INTO billing_rates
             (id,code,description,active,base_rate,
-             ratio_1_1,ratio_1_2,ratio_1_3,ratio_1_4)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`, [
+             ratio_1_1,ratio_1_2,ratio_1_3,ratio_1_4,ratio_1_5,single_rate)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`, [
           uuid.v4(), code, description, payload.active, payload.base_rate,
-          payload.ratio_1_1, payload.ratio_1_2, payload.ratio_1_3, payload.ratio_1_4
+          payload.ratio_1_1, payload.ratio_1_2, payload.ratio_1_3, payload.ratio_1_4,
+          payload.ratio_1_5, payload.single_rate
         ]);
         createCnt++;
       }
@@ -586,10 +1080,9 @@ router.post('/export', async (req, res) => {
     const pool = req.app.locals.pool;
     const { 
       start_date, 
-      end_date, 
-      participant_ids,
-      format = 'csv',
-      include_details = true
+      end_date,
+      type = 'both',
+      format = 'csv'
     } = req.body;
     
     if (!start_date || !end_date) {
@@ -600,47 +1093,30 @@ router.post('/export', async (req, res) => {
       });
     }
     
-    // Build query with optional filters
-    let query = `
+    // Query payment_diamonds joined with participants
+    const query = `
       SELECT 
-        b.id, b.date, b.hours, b.rate_code, b.rate_amount, 
-        b.support_ratio, b.weekend_multiplier, b.total_amount, b.status,
+        pd.id,
+        pd.participant_id,
+        COALESCE(pd.invoice_date, pd.created_at::date) AS date,
+        pd.hours,
+        pd.quantity,
+        pd.support_item_number AS rate_code,
+        pd.unit_price,
+        pd.total_amount,
+        pd.status,
         p.first_name || ' ' || p.last_name AS participant_name,
         p.ndis_number,
-        prog.title AS program_title
+        p.plan_management_type AS management,
+        rp.name AS program_name
+      FROM payment_diamonds pd
+      JOIN participants p ON pd.participant_id = p.id
+      LEFT JOIN rules_programs rp ON pd.program_id = rp.id
+      WHERE COALESCE(pd.invoice_date, pd.created_at::date) BETWEEN $1 AND $2
+      ORDER BY date ASC, participant_name ASC
     `;
     
-    // Add detailed fields if requested
-    if (include_details) {
-      query += `,
-        p.id AS participant_id,
-        prog.id AS program_id,
-        b.loom_instance_id,
-        b.notes,
-        p.date_of_birth,
-        p.ndis_plan_start,
-        p.ndis_plan_end
-      `;
-    }
-    
-    query += `
-      FROM billing b
-      JOIN participants p ON b.participant_id = p.id
-      JOIN programs prog ON b.program_id = prog.id
-      WHERE b.date BETWEEN $1 AND $2
-    `;
-    
-    const queryParams = [start_date, end_date];
-    let paramIndex = 3;
-    
-    if (participant_ids && participant_ids.length > 0) {
-      query += ` AND b.participant_id = ANY($${paramIndex++})`;
-      queryParams.push(participant_ids);
-    }
-    
-    query += ` ORDER BY b.date ASC, p.last_name ASC`;
-    
-    const result = await pool.query(query, queryParams);
+    const result = await pool.query(query, [start_date, end_date]);
     
     if (result.rowCount === 0) {
       return res.status(404).json({
@@ -650,8 +1126,48 @@ router.post('/export', async (req, res) => {
       });
     }
     
-    // In a real implementation, we would generate the actual file here
-    // For this example, we'll just return the data that would be exported
+    // Split records by management type
+    const bulkRecords = []; // agency_managed
+    const invoiceRecords = []; // plan_managed, self_managed, self_funded
+    
+    result.rows.forEach(row => {
+      // Ensure numeric values are properly formatted
+      const formattedRow = {
+        ...row,
+        unit_price: toNumber(row.unit_price),
+        hours: toNumber(row.hours),
+        quantity: toNumber(row.quantity),
+        total_amount: toNumber(row.total_amount)
+      };
+      
+      if (row.management === 'agency_managed') {
+        bulkRecords.push(formattedRow);
+      } else {
+        invoiceRecords.push(formattedRow);
+      }
+    });
+    
+    // Determine what to return based on type
+    let responseData = {};
+    
+    if (type === 'bulk') {
+      responseData = {
+        bulk: bulkRecords,
+        count: bulkRecords.length
+      };
+    } else if (type === 'invoices') {
+      responseData = {
+        invoices: invoiceRecords,
+        count: invoiceRecords.length
+      };
+    } else {
+      // Default to 'both'
+      responseData = {
+        bulk: bulkRecords,
+        invoices: invoiceRecords,
+        count: result.rowCount
+      };
+    }
     
     // Log the export to system_logs
     try {
@@ -665,9 +1181,12 @@ router.post('/export', async (req, res) => {
           `Billing data exported (${result.rowCount} records)`,
           { 
             format, 
+            type,
             start_date, 
             end_date, 
-            record_count: result.rowCount 
+            record_count: result.rowCount,
+            bulk_count: bulkRecords.length,
+            invoice_count: invoiceRecords.length
           }
         ]
       );
@@ -678,15 +1197,12 @@ router.post('/export', async (req, res) => {
     res.json({
       success: true,
       format,
-      data: {
-        records: result.rows,
-        count: result.rowCount,
-        export_date: new Date().toISOString(),
-        criteria: {
-          start_date,
-          end_date,
-          participant_ids: participant_ids || 'all'
-        }
+      type,
+      data: responseData,
+      export_date: new Date().toISOString(),
+      criteria: {
+        start_date,
+        end_date
       },
       message: `Successfully exported ${result.rowCount} billing records`
     });

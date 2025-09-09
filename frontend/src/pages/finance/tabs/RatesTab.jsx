@@ -73,7 +73,7 @@ export default function RatesTab({
               <th>Description</th>
               <th>Active</th>
               <th>Updated</th>
-              <th>Base&nbsp;Rate</th>
+              <th>Base&nbsp;/&nbsp;1:1</th>
               <th>Ratios</th>
               <th>Actions</th>
             </tr>

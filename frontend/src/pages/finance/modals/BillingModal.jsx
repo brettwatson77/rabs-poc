@@ -6,7 +6,8 @@ export default function BillingModal({
   onClose,
   participantsData,
   programsData,
-  ratesData,  selectedBilling,
+  codesData,
+  selectedBilling,
   newBilling,
   setNewBilling,
   onSubmit,
@@ -15,9 +16,13 @@ export default function BillingModal({
 }) {
   if (!isOpen) return null;
 
-  const selectedRate = ratesData?.data?.find((r) => r.code === newBilling.rate_code);
-  const rateAmount = selectedRate ? parseFloat(selectedRate.amount) : 0;
-  const total = calculateBillingAmount(rateAmount, parseFloat(newBilling.hours || 0), parseFloat(newBilling.support_ratio || 1), parseFloat(newBilling.weekend_multiplier || 1));
+  // Use unit price directly from state (set when selecting a rate option)
+  const unitPrice = parseFloat(newBilling.unit_price) || 0;
+  const total = calculateBillingAmount(
+    unitPrice,
+    parseFloat(newBilling.hours || 0),
+    parseFloat(newBilling.quantity || 1)
+  );
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -51,7 +56,6 @@ export default function BillingModal({
               <select
                 value={newBilling.program_id}
                 onChange={(e) => setNewBilling({ ...newBilling, program_id: e.target.value })}
-                required
               >
                 <option value="">Select program</option>
                 {programsData?.data?.map((pr) => (
@@ -72,22 +76,53 @@ export default function BillingModal({
 
             <label>
               Rate Code
-              <select value={newBilling.rate_code} onChange={(e) => setNewBilling({ ...newBilling, rate_code: e.target.value })} required>
+              <select
+                value={newBilling.selected_rate_option_id || ''}
+                onChange={(e) => {
+                  const optionId = e.target.value;
+                  const selectedCode = codesData?.data?.find(
+                    (c) => (c.option_id || `${c.id}-${c.ratio}`) === optionId
+                  );
+                  if (selectedCode) {
+                    setNewBilling({
+                      ...newBilling,
+                      selected_rate_option_id: optionId,
+                      rate_code: selectedCode.code,
+                      unit_price: selectedCode.rate_cents / 100,
+                    });
+                  } else {
+                    setNewBilling({
+                      ...newBilling,
+                      selected_rate_option_id: '',
+                      rate_code: '',
+                      unit_price: 0,
+                    });
+                  }
+                }}
+                required
+              >
                 <option value="">Select rate</option>
-                {ratesData?.data?.map((r) => (
-                  <option key={r.id} value={r.code}>{r.code} - ${parseFloat(r.amount).toFixed(2)}</option>
+                {codesData?.data?.map((c) => (
+                  <option
+                    key={c.option_id || `${c.id}-${c.ratio}`}
+                    value={c.option_id || `${c.id}-${c.ratio}`}
+                  >
+                    {`${c.code} — ${c.label.split(' — ')[1]} ($${(c.rate_cents/100).toFixed(2)})`}
+                  </option>
                 ))}
               </select>
             </label>
 
             <label>
-              Support Ratio
-              <input type="number" step="0.25" min="0" value={newBilling.support_ratio} onChange={(e) => setNewBilling({ ...newBilling, support_ratio: e.target.value })} />
-            </label>
-
-            <label>
-              Weekend Multiplier
-              <input type="number" step="0.25" min="0" value={newBilling.weekend_multiplier} onChange={(e) => setNewBilling({ ...newBilling, weekend_multiplier: e.target.value })} />
+              Quantity
+              <input
+                type="number"
+                step="1"
+                min="1"
+                value={newBilling.quantity}
+                onChange={(e) => setNewBilling({ ...newBilling, quantity: e.target.value })}
+                required
+              />
             </label>
 
             <label className="full-width">
@@ -96,7 +131,7 @@ export default function BillingModal({
             </label>
 
             <div className="summary">
-              <div>Rate Amount: ${rateAmount.toFixed(2)}</div>
+              <div>Rate Amount: ${unitPrice.toFixed(2)}</div>
               <div>Total: ${Number.isFinite(total) ? total.toFixed(2) : '0.00'}</div>
             </div>
           </div>

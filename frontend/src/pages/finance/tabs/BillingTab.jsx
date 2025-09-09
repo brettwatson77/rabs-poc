@@ -1,23 +1,23 @@
 import React from 'react';
 import { format, parseISO } from 'date-fns';
 import { FiSearch, FiPlusCircle, FiDownload, FiRefreshCw, FiEdit2, FiTrash2 } from 'react-icons/fi';
-import MonthNavigation from '../components/MonthNavigation';
 
 export default function BillingTab({
   billingData,
   billingLoading,
-  selectedMonth,
   searchQuery,
   setSearchQuery,
   participantsData,
   programsData,
   filterOptions,
   setFilterOptions,
-  onPrevMonth,
-  onCurrentMonth,
-  onNextMonth,
+  dateRange,
+  setDateRange,
+  managementFilter,
+  setManagementFilter,
   onRefetch,
   onOpenNewBilling,
+  onOpenBulkNew,
   onOpenExport,
   onEditBilling,
   onDeleteBilling,
@@ -38,8 +38,10 @@ export default function BillingTab({
 
   return (
     <div className="tab-content">
-      {/* Unified search / filter / action bar */}
-      <div className="search-filter-bar glass-panel">
+      {/* -------------------------------------------------------------------
+           Unified toolbar: Search + Filters + Action buttons
+         -------------------------------------------------------------------*/}
+      <div className="toolbar glass-panel">
         {/* Search */}
         <div className="search-container">
           <FiSearch className="search-icon" />
@@ -52,9 +54,8 @@ export default function BillingTab({
           />
         </div>
 
-        {/* Filters */}
-        <div className="filter-container">
-          <div className="filter-dropdown glass-panel">
+        {/* Filters (middle, wrap as needed) */}
+        <div className="filters-inline">
             {/* Participant */}
             <div className="filter-group">
               <label htmlFor="participant-filter">Participant</label>
@@ -110,13 +111,49 @@ export default function BillingTab({
                 <option value="cancelled">Cancelled</option>
               </select>
             </div>
-          </div>
+
+            {/* Management */}
+            <div className="filter-group">
+              <label htmlFor="management-filter">Management</label>
+              <select
+                id="management-filter"
+                value={managementFilter}
+                onChange={(e) => setManagementFilter(e.target.value)}
+              >
+                <option value="all">All</option>
+                <option value="agency_managed">Agency Managed</option>
+                <option value="plan_managed">Plan Managed</option>
+                <option value="self_managed">Self Managed</option>
+                <option value="self_funded">Self Funded (Fee-for-service)</option>
+              </select>
+            </div>
+
+            {/* Date range */}
+            <div className="filter-group">
+              <label>Start</label>
+              <input
+                type="date"
+                value={dateRange.start}
+                onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+              />
+            </div>
+            <div className="filter-group">
+              <label>End</label>
+              <input
+                type="date"
+                value={dateRange.end}
+                onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+              />
+            </div>
         </div>
 
-        {/* Actions */}
+        {/* Action buttons (right aligned) */}
         <div className="actions">
           <button className="create-btn glass-button" onClick={onOpenNewBilling}>
             <FiPlusCircle /> New
+          </button>
+          <button className="create-btn glass-button" onClick={onOpenBulkNew}>
+            <FiPlusCircle /> Bulk&nbsp;New
           </button>
           <button className="nav-button" onClick={onOpenExport}>
             <FiDownload /> Export
@@ -127,13 +164,6 @@ export default function BillingTab({
         </div>
       </div>
 
-      {/* Month navigation */}
-      <MonthNavigation
-        selectedMonth={selectedMonth}
-        onPrev={onPrevMonth}
-        onCurrent={onCurrentMonth}
-        onNext={onNextMonth}
-      />
       <div className="billing-table-container">
         <table className="billing-table glass-table">
           <thead>
@@ -142,10 +172,9 @@ export default function BillingTab({
               <th>Participant</th>
               <th>Program</th>
               <th>Hours</th>
+              <th>Quantity</th>
               <th>Rate Code</th>
-              <th>Rate</th>
-              <th>Support Ratio</th>
-              <th>Weekend Mult.</th>
+              <th>Unit Price</th>
               <th>Total Amount</th>
               <th>Status</th>
               <th>Actions</th>
@@ -156,13 +185,12 @@ export default function BillingTab({
               <tr key={billing.id}>
                 <td>{format(parseISO(billing.date), 'MMM d, yyyy')}</td>
                 <td>{billing.participant_name}</td>
-                <td>{billing.program_title}</td>
+                <td>{billing.program_name || billing.program_title || ''}</td>
                 <td>{billing.hours}</td>
+                <td>{billing.quantity ?? 1}</td>
                 <td>{billing.rate_code}</td>
-                <td>${parseFloat(billing.rate_amount).toFixed(2)}</td>
-                <td>{billing.support_ratio}x</td>
-                <td>{billing.weekend_multiplier}x</td>
-                <td className="amount">${parseFloat(billing.total_amount).toFixed(2)}</td>
+                <td>${Number.isFinite(parseFloat(billing.unit_price)) ? parseFloat(billing.unit_price).toFixed(2) : '0.00'}</td>
+                <td className="amount">${Number.isFinite(parseFloat(billing.total_amount)) ? parseFloat(billing.total_amount).toFixed(2) : '0.00'}</td>
                 <td>
                   <span className={`status-badge ${billing.status}`}>
                     {billing.status}
@@ -193,7 +221,7 @@ export default function BillingTab({
               <tr>
                 <td colSpan="3" className="summary-label">Total</td>
                 <td>{parseFloat(billingData.summary.total_hours).toFixed(2)}</td>
-                <td colSpan="4"></td>
+                <td colSpan="3"></td>
                 <td className="amount">${parseFloat(billingData.summary.total_amount).toFixed(2)}</td>
                 <td colSpan="2"></td>
               </tr>
@@ -228,8 +256,10 @@ export default function BillingTab({
             </div>
           </div>
           <div className="summary-item">
-            <div className="summary-label">Month</div>
-            <div className="summary-value">{format(selectedMonth, 'MMMM yyyy')}</div>
+            <div className="summary-label">Date Range</div>
+            <div className="summary-value">
+              {format(parseISO(dateRange.start), 'MMM d, yyyy')} – {format(parseISO(dateRange.end), 'MMM d, yyyy')}
+            </div>
           </div>
         </div>
       </div>

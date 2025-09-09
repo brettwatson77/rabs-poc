@@ -78,6 +78,17 @@ router.patch('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
 
+    // ---------------------------------------------------------------------
+    // Normalise deprecated value -> enum value used in DB
+    // ---------------------------------------------------------------------
+    if (
+      req.body &&
+      typeof req.body.plan_management_type === 'string' &&
+      req.body.plan_management_type.trim() === 'fee_for_service'
+    ) {
+      req.body.plan_management_type = 'self_funded';
+    }
+
     // Whitelist of updatable columns
     const allowedFields = [
       'first_name',
@@ -145,6 +156,17 @@ router.patch('/:id', async (req, res, next) => {
 router.put('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
+
+    // ---------------------------------------------------------------------
+    // Normalise deprecated value -> enum value used in DB
+    // ---------------------------------------------------------------------
+    if (
+      req.body &&
+      typeof req.body.plan_management_type === 'string' &&
+      req.body.plan_management_type.trim() === 'fee_for_service'
+    ) {
+      req.body.plan_management_type = 'self_funded';
+    }
 
     // Whitelist of ALL updatable columns for full update
     const allowed = [

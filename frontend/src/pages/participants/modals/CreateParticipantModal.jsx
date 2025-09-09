@@ -227,7 +227,7 @@ const CreateParticipantModal = ({
                     <option value="agency_managed">Agency Managed</option>
                     <option value="plan_managed">Plan Managed</option>
                     <option value="self_managed">Self Managed</option>
-                    <option value="fee_for_service">Fee For Service</option>
+                    <option value="self_funded">Self Funded (Fee-for-service)</option>
                   </select>
                 </div>
                 
