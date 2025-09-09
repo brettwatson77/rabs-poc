@@ -32,8 +32,6 @@ const ProgramTemplateWizard = () => {
   );
   const [recurrencePattern, setRecurrencePattern] = useState('fortnightly');
   const [venueId, setVenueId] = useState('');
-  const [autoAssignStaff, setAutoAssignStaff] = useState(true);
-  const [autoAssignVehicles, setAutoAssignVehicles] = useState(true);
   
   // State for UI
   const [loading, setLoading] = useState(true);
@@ -247,38 +245,6 @@ const ProgramTemplateWizard = () => {
     }
   };
   
-  // Update rule properties
-  const updateRule = async () => {
-    if (!ruleId) return;
-    
-    try {
-      setSaving(true);
-      const response = await api.patch(`/templates/rules/${ruleId}`, {
-        name: ruleName,
-        description: ruleDescription,
-        anchor_date: anchorDate,
-        recurrence_pattern: recurrencePattern,
-        day_of_week: parseInt(dayOfWeek),
-        venue_id: venueId,
-        auto_assign_staff: autoAssignStaff,
-        auto_assign_vehicles: autoAssignVehicles
-      });
-      
-      if (response.data.success) {
-        toast.success('Program details updated');
-        // Refresh requirements after update
-        fetchRequirements(ruleId);
-      } else {
-        throw new Error('Failed to update rule');
-      }
-    } catch (err) {
-      console.error('Error updating rule:', err);
-      toast.error('Failed to update program details');
-    } finally {
-      setSaving(false);
-    }
-  };
-
   // Create new venue
   const createVenue = async () => {
     if (!newVenue.name.trim() || !newVenue.address.trim()) {
@@ -1003,36 +969,17 @@ const ProgramTemplateWizard = () => {
 
             <div className="form-group checkbox-group">
               <label>
-                <input
-                  type="checkbox"
-                  checked={autoAssignStaff}
-                  onChange={(e) => setAutoAssignStaff(e.target.checked)}
-                />{' '}
-                Auto-assign staff on finalize
+                {/* (auto-assign staff checkbox removed) */}
               </label>
             </div>
 
             <div className="form-group checkbox-group">
               <label>
-                <input
-                  type="checkbox"
-                  checked={autoAssignVehicles}
-                  onChange={(e) => setAutoAssignVehicles(e.target.checked)}
-                />{' '}
-                Auto-assign vehicles on finalize
+                {/* (auto-assign vehicles checkbox removed) */}
               </label>
             </div>
           </div>
           
-          <div className="form-actions">
-            <button 
-              className="btn btn-primary"
-              onClick={updateRule}
-              disabled={saving}
-            >
-              <FiSave /> Save Details
-            </button>
-          </div>
         </div>
       </div>
       

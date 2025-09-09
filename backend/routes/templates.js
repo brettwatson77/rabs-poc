@@ -234,14 +234,13 @@ router.patch('/rules/:id', async (req, res) => {
 router.post('/rules/:id/slots', async (req, res) => {
   const pool = req.app.locals.pool;
   const { id } = req.params;
-  let slots = req.body.slots || [];
-  
-  // If a single slot object was provided, wrap it in an array
-  if (!Array.isArray(slots) && typeof slots === 'object') {
+  // Normalise payload: allow body.slots, raw array body, or single object
+  let slots = req.body.slots || req.body;
+  if (slots && !Array.isArray(slots)) {
     slots = [slots];
   }
-  
-  if (slots.length === 0) {
+
+  if (!Array.isArray(slots) || slots.length === 0) {
     return res.status(400).json({
       success: false,
       error: 'No slots provided'
@@ -266,8 +265,23 @@ router.post('/rules/:id/slots', async (req, res) => {
       await client.query('BEGIN');
       
       const insertedSlots = [];
+      // Determine the next sequence starting point (max(seq)+1)
+      const { rows: seqRows } = await client.query(
+        `SELECT COALESCE(MAX(seq), 0) AS maxseq
+           FROM rules_program_slots
+          WHERE rule_id = $1`,
+        [id]
+      );
+      let nextSeq = seqRows[0]?.maxseq || 0;
       
       for (const slot of slots) {
+        // Fallback: if seq not provided or invalid, auto-assign
+        const providedSeq = parseInt(slot.seq, 10);
+        const seqVal = Number.isFinite(providedSeq) ? providedSeq : ++nextSeq;
+        if (!Number.isFinite(providedSeq)) {
+          // increment nextSeq only when we auto-assign; otherwise keep it in sync
+          // (already done by ++nextSeq)
+        }
         const result = await client.query(`
           INSERT INTO rules_program_slots
           (id, rule_id, seq, slot_type, start_time, end_time, route_run_number, label)
@@ -276,7 +290,7 @@ router.post('/rules/:id/slots', async (req, res) => {
         `, [
           uuidv4(),
           id,
-          slot.seq,
+          seqVal,
           slot.slot_type,
           slot.start_time,
           slot.end_time,
