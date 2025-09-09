@@ -44,16 +44,20 @@ export default function BillingTab({
       <div className="toolbar glass-panel">
         {/* Filters grid: 5-col first row, 3-col second row */}
         <div className="filters-grid">
-          {/* Search (icon-only) */}
-          <div className="search-container">
-            <FiSearch className="search-icon" />
-            <input
-              type="text"
-              aria-label="Search billing entries"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="search-input"
-            />
+          {/* Search with label (aligns with grid headers) */}
+          <div className="filter-group">
+            <label htmlFor="billing-search">Search</label>
+            <div className="search-container">
+              <FiSearch className="search-icon" />
+              <input
+                id="billing-search"
+                type="text"
+                aria-label="Search billing entries"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="search-input"
+              />
+            </div>
           </div>
 
           {/* Participant */}
