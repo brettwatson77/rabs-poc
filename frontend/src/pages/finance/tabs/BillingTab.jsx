@@ -42,25 +42,23 @@ export default function BillingTab({
            Unified toolbar: Search + Filters + Action buttons
          -------------------------------------------------------------------*/}
       <div className="toolbar glass-panel">
-        {/* Search – styled like other filters */}
-        <div className="filter-group">
-          <label htmlFor="billing-search">Search</label>
-          <input
-            id="billing-search"
-            type="text"
-            placeholder="Search billing entries..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="search-input"
-          />
-        </div>
+        {/* Filters grid: 5-col first row, 3-col second row */}
+        <div className="filters-grid">
+          {/* Search */}
+          <div className="filter-group">
+            <label htmlFor="billing-search">Search</label>
+            <input
+              id="billing-search"
+              type="text"
+              placeholder="Search billing entries..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="search-input"
+            />
+          </div>
 
-        {/* Filters (middle, wrap as needed) */}
-        <div className="filters-inline">
-          {/* ---------- row 1 ---------- */}
-          <div className="filters-row">
-            {/* Participant */}
-            <div className="filter-group">
+          {/* Participant */}
+          <div className="filter-group">
               <label htmlFor="participant-filter">Participant</label>
               <select
                 id="participant-filter"
@@ -76,10 +74,10 @@ export default function BillingTab({
                   </option>
                 ))}
               </select>
-            </div>
+          </div>
 
-            {/* Management */}
-            <div className="filter-group">
+          {/* Management */}
+          <div className="filter-group">
               <label htmlFor="management-filter">Management</label>
               <select
                 id="management-filter"
@@ -92,10 +90,10 @@ export default function BillingTab({
                 <option value="self_managed">Self Managed</option>
                 <option value="self_funded">Self Funded (Fee-for-service)</option>
               </select>
-            </div>
+          </div>
 
-            {/* Program */}
-            <div className="filter-group">
+          {/* Program */}
+          <div className="filter-group">
               <label htmlFor="program-filter">Program</label>
               <select
                 id="program-filter"
@@ -111,10 +109,10 @@ export default function BillingTab({
                   </option>
                 ))}
               </select>
-            </div>
+          </div>
 
-            {/* Status */}
-            <div className="filter-group">
+          {/* Status */}
+          <div className="filter-group">
               <label htmlFor="status-filter">Status</label>
               <select
                 id="status-filter"
@@ -129,30 +127,29 @@ export default function BillingTab({
                 <option value="paid">Paid</option>
                 <option value="cancelled">Cancelled</option>
               </select>
-            </div>
           </div>
 
-          {/* ---------- row 2 (date range) ---------- */}
-          <div className="filters-row">
-            {/* Date range - Start */}
-            <div className="filter-group">
+          {/* Spacer to align start/end under participant/management */}
+          <div className="filter-group grid-spacer" />
+
+          {/* Date range - Start */}
+          <div className="filter-group">
               <label>Start</label>
               <input
                 type="date"
                 value={dateRange.start}
                 onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
               />
-            </div>
-            {/* Date range - End */}
-            <div className="filter-group">
+          </div>
+          {/* Date range - End */}
+          <div className="filter-group">
               <label>End</label>
               <input
                 type="date"
                 value={dateRange.end}
                 onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
               />
-            </div>
-          </div> {/* end row 2 */}
+          </div>
         </div>
 
         {/* Action buttons (bottom-right) */}

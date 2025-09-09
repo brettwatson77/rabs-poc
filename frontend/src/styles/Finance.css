@@ -403,6 +403,21 @@
 
 .finance-container .action-card span {
   color: inherit;
+/* ------------------------------------------------------------------
+ * Bulk New modal: spacing for date picker & participant select-all
+ * ------------------------------------------------------------------*/
+
+.finance-container .date-input-group {
+  margin-bottom: 10px;
+}
+
+.finance-container .select-all-row {
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px; /* ensure button & count have breathing room */
+}
+
 }
 
 /* ------------------------------------------------------------------
@@ -595,6 +610,30 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap; /* keep inline so table cells don't stack */
+}
+
+/* ------------------------------------------------------------------
+ * Billing toolbar: grid layout for filters (row 1 & row 2 alignment)
+ * ------------------------------------------------------------------*/
+
+.finance-container .toolbar .filters-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) repeat(4, minmax(160px, 1fr));
+  gap: 12px;
+  flex: 1 1 auto; /* let grid grow, pushing actions right */
+}
+
+.finance-container .toolbar .filters-grid .grid-spacer {
+  visibility: hidden; /* occupies space without showing */
+}
+
+@media (max-width: 900px) {
+  .finance-container .toolbar .filters-grid {
+    grid-template-columns: 1fr;
+  }
+  .finance-container .toolbar .filters-grid .grid-spacer {
+    display: none; /* collapse spacer on narrow screens */
+  }
 }
 
 
