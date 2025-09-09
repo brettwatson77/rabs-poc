@@ -141,7 +141,7 @@ export default function RatesTab({
             ))}
             {filteredRates().length === 0 && !ratesLoading && (
               <tr>
-                <td colSpan="6" className="no-results">No rates found</td>
+                <td colSpan="7" className="no-results">No rates found</td>
               </tr>
             )}
           </tbody>

@@ -554,7 +554,7 @@
 .finance-container .ellipsis {
   overflow: hidden;
   text-overflow: ellipsis;
-  display: block;
+  white-space: nowrap; /* keep inline so table cells don't stack */
 }
 
 
