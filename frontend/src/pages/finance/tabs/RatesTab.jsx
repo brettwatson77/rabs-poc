@@ -95,17 +95,31 @@ export default function RatesTab({
                   ${parseFloat(r?.base_rate || 0).toFixed(2)}
                 </td>
                 <td>
-                  {Array.isArray(r?.ratios) && r.ratios.length ? (
-                    <div className="chips-scroll">
-                      {r.ratios.map((ra) => (
-                        <span key={ra.ratio} className="chip">
-                          {`${ra.ratio}=$${parseFloat(ra.rate).toFixed(2)}`}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    '-'
-                  )}
+                  {(() => {
+                    /* ------------------------------------------------------------------
+                     *  Display logic:
+                     *   • Single-rate codes => show “-”
+                     *   • Group codes      => show ratios excluding 1:1
+                     *   • If nothing left  => “-”
+                     * ----------------------------------------------------------------*/
+                    if (r?.single_rate) return '-';
+
+                    const ratioChips = Array.isArray(r?.ratios)
+                      ? r.ratios.filter((ra) => ra.ratio !== '1:1')
+                      : [];
+
+                    if (!ratioChips.length) return '-';
+
+                    return (
+                      <div className="chips-scroll">
+                        {ratioChips.map((ra) => (
+                          <span key={ra.ratio} className="chip">
+                            {`${ra.ratio}=$${parseFloat(ra.rate).toFixed(2)}`}
+                          </span>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </td>
                 <td>
                   <button
