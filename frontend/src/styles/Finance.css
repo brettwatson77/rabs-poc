@@ -654,6 +654,9 @@
 /* Remove unintended offset on search container */
 .finance-container .toolbar .filter-group .search-container {
   margin-top: 0;
+  /* Prevent vertical stretching so input stays aligned */
+  flex: 0 0 auto;
+  width: 100%;
 }
 
 /* Match input/select heights across toolbar for baseline alignment */
@@ -662,6 +665,11 @@
   height: 40px;
   padding-top: 8px;
   padding-bottom: 8px;
+}
+
+/* Ensure no extra margin pushes the search input downward */
+.finance-container .toolbar .filter-group .search-container input {
+  margin: 0;
 }
 
 
