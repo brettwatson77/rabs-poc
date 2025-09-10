@@ -610,7 +610,8 @@ a:hover {
 /* Responsive grid of participant cards */
 .participants-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
+  /* allow 3-column layout on wider screens by reducing min width */
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
   gap: var(--space-lg);
   list-style: none;
   padding: 0;
@@ -675,13 +676,14 @@ a:hover {
 .billing-lines {
   --col-code: 1fr;
   --col-hours: 120px;
+  --col-amount: 140px;
   --col-actions: 72px;
 }
 
 .billing-lines .grid-header,
 .billing-lines .grid-row {
   display: grid;
-  grid-template-columns: var(--col-code) var(--col-hours) var(--col-actions);
+  grid-template-columns: var(--col-code) var(--col-hours) var(--col-amount) var(--col-actions);
   align-items: center;
   gap: 8px;
 }
@@ -702,5 +704,36 @@ a:hover {
   .participants-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* ------------------------------------------------------------------------- */
+/* Program Template Wizard – Staff/Vehicles Placeholder Cards                */
+/* ------------------------------------------------------------------------- */
+
+.placeholder-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-md);
+}
+
+.placeholder-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border: 2px dashed var(--glass-border);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.placeholder-item .placeholder-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-right: auto;
+}
+
+/* Emphasised border for staff placeholders */
+.staff-placeholder {
+  border-color: rgba(77, 159, 255, 0.4);
 }
 

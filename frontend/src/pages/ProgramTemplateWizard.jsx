@@ -89,6 +89,11 @@ const ProgramTemplateWizard = () => {
   const [staffPlaceholders, setStaffPlaceholders] = useState([]);
   const [vehiclePlaceholders, setVehiclePlaceholders] = useState([]);
   
+  // Currency formatter helper
+  const formatCurrency = (amount) => {
+    return `$${(parseFloat(amount) || 0).toFixed(2)}`;
+  };
+  
   // Create draft rule on component mount
   useEffect(() => {
     const createDraftRule = async () => {
@@ -735,7 +740,12 @@ const ProgramTemplateWizard = () => {
   const getBillingStats = (rppId) => {
     const lines = Array.isArray(billingLines[rppId]) ? billingLines[rppId] : [];
     const totalHours = lines.reduce((sum, l) => sum + (parseFloat(l.hours) || 0), 0);
-    return { count: lines.length, totalHours };
+    const totalAmount = lines.reduce((sum, l) => {
+      // Use line.amount if available, otherwise calculate from unit_price * hours
+      const lineAmount = l.amount ? parseFloat(l.amount) : (parseFloat(l.unit_price || 0) * parseFloat(l.hours || 0));
+      return sum + lineAmount;
+    }, 0);
+    return { count: lines.length, totalHours, totalAmount };
   };
   
   if (loading) {
@@ -1159,6 +1169,7 @@ const ProgramTemplateWizard = () => {
                       <div className="participant-badges">
                         <span className="badge">{stats.count} lines</span>
                         <span className="badge">{stats.totalHours.toFixed(1)} h</span>
+                        <span className="badge">{formatCurrency(stats.totalAmount)}</span>
                       </div>
                       <div className="participant-actions">
                         <button 
@@ -1243,12 +1254,14 @@ const ProgramTemplateWizard = () => {
                             <div className="grid-header">
                               <div>Code</div>
                               <div>Hours</div>
+                              <div>Amount</div>
                               <div>Actions</div>
                             </div>
                             {billingLines[participant.id].map((line) => (
                               <div className="grid-row" key={line.id}>
                                 <div>{line.code ? `${line.code} — ${line.description || ''}` : line.billing_code_id}</div>
                                 <div>{line.hours}</div>
+                                <div>{formatCurrency(line.amount || (line.unit_price * line.hours))}</div>
                                 <div className="actions-cell">
                                   <button
                                     className="btn btn-icon btn-danger"
@@ -1322,14 +1335,17 @@ const ProgramTemplateWizard = () => {
               ) : (
                 <div className="placeholder-grid">
                   {/* Display existing placeholders first */}
-                  {staffPlaceholders.map(placeholder => (
-                    <div key={placeholder.id} className="placeholder-item">
+                  {staffPlaceholders.map((placeholder, index) => (
+                    <div key={placeholder.id} className="placeholder-item staff-placeholder">
+                      <span className="placeholder-label">Shift {index+1}</span>
                       <select
-                        value={placeholder.mode === 'auto' ? 'auto' : placeholder.staff_id}
+                        value={placeholder.mode === 'auto' ? 'auto' : (placeholder.mode === 'open' ? 'open' : placeholder.staff_id)}
                         onChange={(e) => {
                           const value = e.target.value;
                           if (value === 'auto') {
                             updateStaffPlaceholder(placeholder.id, 'auto');
+                          } else if (value === 'open') {
+                            updateStaffPlaceholder(placeholder.id, 'open');
                           } else {
                             updateStaffPlaceholder(placeholder.id, 'manual', value);
                           }
@@ -1337,6 +1353,7 @@ const ProgramTemplateWizard = () => {
                         className="form-control"
                       >
                         <option value="auto">Auto-assign</option>
+                        <option value="open">Open shift</option>
                         {staffList.map(staff => (
                           <option key={staff.id} value={staff.id}>
                             {staff.first_name} {staff.last_name}
@@ -1356,18 +1373,24 @@ const ProgramTemplateWizard = () => {
                   
                   {/* Add auto placeholders up to staff_required */}
                   {Array.from({ length: Math.max(0, requirements.staff_required - staffPlaceholders.length) }).map((_, index) => (
-                    <div key={`auto-${index}`} className="placeholder-item">
+                    <div key={`auto-${index}`} className="placeholder-item staff-placeholder">
+                      <span className="placeholder-label">Shift {staffPlaceholders.length + index + 1}</span>
                       <select
                         defaultValue="auto"
                         onChange={(e) => {
                           const value = e.target.value;
-                          if (value !== 'auto') {
+                          if (value === 'auto') {
+                            // No-op, it's already auto
+                          } else if (value === 'open') {
+                            addStaffPlaceholder('open');
+                          } else {
                             addStaffPlaceholder('manual', value);
                           }
                         }}
                         className="form-control"
                       >
                         <option value="auto">Auto-assign</option>
+                        <option value="open">Open shift</option>
                         {staffList.map(staff => (
                           <option key={staff.id} value={staff.id}>
                             {staff.first_name} {staff.last_name}
@@ -1389,7 +1412,7 @@ const ProgramTemplateWizard = () => {
               <div className="placeholder-actions">
                 <button
                   className="btn btn-secondary"
-                  onClick={() => addStaffPlaceholder()}
+                  onClick={() => addStaffPlaceholder('auto')}
                   disabled={saving}
                 >
                   <FiPlusCircle /> Add staff slot

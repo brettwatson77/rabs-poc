@@ -420,72 +420,6 @@ router.post('/rules/:id/participants', async (req, res) => {
   }
 });
 
-// POST /templates/rules/:id/participants/:rppId/billing - Add billing for a participant
-router.post('/rules/:id/participants/:rppId/billing', async (req, res) => {
-// ---------------------------------------------------------------------------
-//  Staged billing line helpers (view & delete) – top-level routes
-// ---------------------------------------------------------------------------
-
-// GET  - list staged billing lines for a participant in a rule
-router.get('/rules/:id/participants/:rppId/billing', async (req, res) => {
-  const pool = req.app.locals.pool;
-  const { rppId } = req.params;
-
-  try {
-    const result = await pool.query(
-      `SELECT b.id,
-              b.rule_participant_id,
-              b.billing_code_id,
-              b.hours,
-              br.code,
-              br.description
-         FROM rules_program_participant_billing b
-         JOIN billing_rates br ON br.id = b.billing_code_id
-        WHERE b.rule_participant_id = $1
-        ORDER BY b.created_at ASC`,
-      [rppId]
-    );
-    res.json({ success: true, data: result.rows });
-  } catch (err) {
-    console.error('Error fetching participant billing lines:', err);
-    res
-      .status(500)
-      .json({ success: false, error: 'Failed to fetch billing lines' });
-  }
-});
-
-// DELETE - remove a staged billing line
-router.delete(
-  '/rules/:id/participants/:rppId/billing/:lineId',
-  async (req, res) => {
-    const pool = req.app.locals.pool;
-    const { rppId, lineId } = req.params;
-
-    try {
-      const del = await pool.query(
-        `DELETE FROM rules_program_participant_billing
-          WHERE id = $1
-            AND rule_participant_id = $2
-          RETURNING id`,
-        [lineId, rppId]
-      );
-
-      if (del.rowCount === 0) {
-        return res
-          .status(404)
-          .json({ success: false, error: 'Billing line not found' });
-      }
-
-      res.json({ success: true, data: { id: lineId, deleted: true } });
-    } catch (err) {
-      console.error('Error deleting participant billing line:', err);
-      res
-        .status(500)
-        .json({ success: false, error: 'Failed to delete billing line' });
-    }
-  }
-);
-
 // ---------------------------------------------------------------------------
 //  Billing lines (view / delete) for a participant during wizard staging
 // ---------------------------------------------------------------------------
@@ -501,6 +435,9 @@ router.get('/rules/:id/participants/:rppId/billing', async (req, res) => {
               b.rule_participant_id,
               b.billing_code_id,
               b.hours,
+              b.ratio_label,
+              b.unit_price,
+              (b.unit_price * b.hours) AS amount,
               br.code,
               br.description
          FROM rules_program_participant_billing b
@@ -550,6 +487,8 @@ router.delete(
   }
 );
 
+// POST /templates/rules/:id/participants/:rppId/billing - Add billing for a participant
+router.post('/rules/:id/participants/:rppId/billing', async (req, res) => {
   const pool = req.app.locals.pool;
   const { rppId } = req.params;
 
@@ -597,6 +536,12 @@ router.delete(
         hours numeric(6,2),
         created_at timestamp DEFAULT now()
       );
+      
+      ALTER TABLE rules_program_participant_billing 
+      ADD COLUMN IF NOT EXISTS ratio_label text;
+      
+      ALTER TABLE rules_program_participant_billing 
+      ADD COLUMN IF NOT EXISTS unit_price numeric(10,2);
     `);
 
     const colRes = await client.query(`
@@ -670,18 +615,90 @@ router.delete(
 
     for (const line of validLines) {
       //-----------------------------------------------------------------
-      // 1. Derive rateId (UUID) or plain codePart from incoming value
+      // 1. Derive rateId (UUID) and ratioLabel from incoming value
       //-----------------------------------------------------------------
       const raw = (line.billing_code || '').trim();
       let rateId = null;
       let codePart = null;
-      const uuidMatch = raw.match(
-        /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})/
+      let ratioLabel = '1:1'; // Default to 1:1 if not specified
+      
+      // Check for option_id format: uuid-ratio (e.g. "uuid-1:2")
+      const optionMatch = raw.match(
+        /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})-(.+)$/
       );
-      if (uuidMatch) {
-        rateId = uuidMatch[1];
+      
+      if (optionMatch) {
+        rateId = optionMatch[1];
+        ratioLabel = optionMatch[2]; // Extract ratio part (e.g. "1:2")
       } else {
-        codePart = raw.split(':')[0].trim();
+        // Try to extract just UUID
+        const uuidMatch = raw.match(
+          /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})/
+        );
+        if (uuidMatch) {
+          rateId = uuidMatch[1];
+        } else {
+          codePart = raw.split(':')[0].trim();
+        }
+      }
+
+      let bcId = null;
+      let unitPrice = 0;
+
+      if (rateId) {
+        // Direct UUID mode - fetch the rate record to get the appropriate rate column
+        const rateCheck = await client.query(
+          `SELECT id, code, description, base_rate, 
+                  ratio_1_1, ratio_1_2, ratio_1_3, ratio_1_4, ratio_1_5 
+             FROM billing_rates 
+            WHERE id = $1 
+            LIMIT 1`,
+          [rateId]
+        );
+        
+        if (rateCheck.rowCount === 0) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({
+            success: false,
+            error: `Billing rate '${rateId}' not found`
+          });
+        }
+        
+        bcId = rateCheck.rows[0].id;
+        
+        // Map ratio label to column name
+        const colMap = { 
+          '1:1': 'ratio_1_1',
+          '1:2': 'ratio_1_2',
+          '1:3': 'ratio_1_3',
+          '1:4': 'ratio_1_4',
+          '1:5': 'ratio_1_5' 
+        };
+        const col = colMap[ratioLabel] || 'ratio_1_1';
+        
+        // Get unit price from the appropriate column
+        unitPrice = parseFloat(rateCheck.rows[0][col] || 0) || 0;
+      } else {
+        // Fallback: lookup by code string (most-recent first)
+        const codeLookup = await client.query(
+          `SELECT id, base_rate
+             FROM billing_rates
+            WHERE code = $1
+            ORDER BY updated_at DESC NULLS LAST
+            LIMIT 1`,
+          [codePart]
+        );
+        
+        if (codeLookup.rowCount === 0) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({
+            success: false,
+            error: `Billing code '${codePart}' not found`
+          });
+        }
+        
+        bcId = codeLookup.rows[0].id;
+        unitPrice = parseFloat(codeLookup.rows[0].base_rate || 0) || 0;
       }
 
       if (hasRpp) {
@@ -695,50 +712,13 @@ router.delete(
         );
         inserted.push(result.rows[0]);
       } else if (hasRulePart && hasBillingId) {
-        // Mode B – newer schema with FK to billing_codes
-        let bcId = null;
-
-        if (rateId) {
-          // Direct UUID mode
-          const idCheck = await client.query(
-            `SELECT id FROM billing_rates WHERE id = $1 LIMIT 1`,
-            [rateId]
-          );
-          if (idCheck.rowCount === 0) {
-            await client.query('ROLLBACK');
-            return res.status(400).json({
-              success: false,
-              error: `Billing rate '${rateId}' not found`
-            });
-          }
-          bcId = idCheck.rows[0].id;
-        } else {
-          // Fallback: lookup by code string (most-recent first)
-          const codeLookup = await client.query(
-            `SELECT id
-               FROM billing_rates
-              WHERE code = $1
-              ORDER BY updated_at DESC NULLS LAST
-              LIMIT 1`,
-            [codePart]
-          );
-          if (codeLookup.rowCount === 0) {
-            await client.query('ROLLBACK');
-            return res.status(400).json({
-              success: false,
-              error: `Billing code '${codePart}' not found`
-            });
-          }
-          bcId = codeLookup.rows[0].id;
-        }
-
-        // bcId now guaranteed
+        // Mode B – newer schema with FK to billing_rates
         const result = await client.query(
           `INSERT INTO rules_program_participant_billing
-            (id, rule_participant_id, billing_code_id, hours)
-           VALUES ($1, $2, $3, $4)
-           RETURNING id, rule_participant_id AS link_id, billing_code_id, hours`,
-          [uuidv4(), rppId, bcId, parseFloat(line.hours)]
+            (id, rule_participant_id, billing_code_id, hours, ratio_label, unit_price)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           RETURNING id, rule_participant_id AS link_id, billing_code_id, hours, ratio_label, unit_price`,
+          [uuidv4(), rppId, bcId, parseFloat(line.hours), ratioLabel, unitPrice]
         );
         inserted.push(result.rows[0]);
       } else {
@@ -764,7 +744,6 @@ router.delete(
     client.release();
   }
 });
-
 
 /** -----------------------------------------------------------------------
  *  Placeholders (Staff & Vehicles)
@@ -819,9 +798,10 @@ router.post('/rules/:id/staff-placeholders', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Rule not found' });
     }
 
-    if (!['auto', 'manual'].includes(mode)) {
+    if (!['auto', 'manual', 'open'].includes(mode)) {
       return res.status(400).json({ success: false, error: 'Invalid mode' });
     }
+    
     if (mode === 'manual' && !staff_id) {
       return res
         .status(400)
