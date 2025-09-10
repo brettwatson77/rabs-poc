@@ -603,3 +603,104 @@ a:hover {
 /*  Component-specific styles                                                */
 /* ------------------------------------------------------------------------- */
 
+/* ------------------------------------------------------------------------- */
+/* Program Template Wizard – Participants & Billing Lines                    */
+/* ------------------------------------------------------------------------- */
+
+/* Responsive grid of participant cards */
+.participants-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
+  gap: var(--space-lg);
+  list-style: none;
+  padding: 0;
+  margin-top: var(--space-md);
+}
+
+.participant-item {
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.04);
+  padding: var(--space-md);
+}
+
+.participant-header {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: var(--space-md);
+  cursor: pointer;
+  padding-bottom: var(--space-sm);
+  border-bottom: 1px solid var(--glass-border);
+  margin-bottom: var(--space-md);
+}
+
+.participant-name {
+  font-weight: 600;
+}
+
+.participant-badges {
+  display: flex;
+  gap: 8px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.participant-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-outline-secondary {
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+}
+
+.btn-outline-secondary:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Billing lines grid (uniform columns) */
+.billing-lines {
+  --col-code: 1fr;
+  --col-hours: 120px;
+  --col-actions: 72px;
+}
+
+.billing-lines .grid-header,
+.billing-lines .grid-row {
+  display: grid;
+  grid-template-columns: var(--col-code) var(--col-hours) var(--col-actions);
+  align-items: center;
+  gap: 8px;
+}
+
+.billing-lines .grid-header {
+  font-weight: 600;
+  opacity: 0.85;
+  margin-bottom: 6px;
+}
+
+.billing-lines .actions-cell {
+  display: flex;
+  gap: 6px;
+}
+
+/* Narrow screens: stack participants */
+@media (max-width: 640px) {
+  .participants-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

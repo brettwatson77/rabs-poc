@@ -95,10 +95,11 @@ app.locals.pool = pool;
   `;
 
   const billingTableDDL = `
+    /* Wizard V2 – participant billing lines (modern schema) */
     CREATE TABLE IF NOT EXISTS rules_program_participant_billing (
       id uuid PRIMARY KEY,
-      rpp_id uuid NOT NULL,
-      billing_code text NOT NULL,
+      rule_participant_id uuid NOT NULL,
+      billing_code_id uuid NOT NULL,
       hours numeric(6,2) NOT NULL,
       created_at timestamp DEFAULT now()
     );
@@ -134,6 +135,66 @@ app.locals.pool = pool;
 
     await pool.query(placeholdersDDL);
     console.log('✅ Wizard V2 schema verified/updated');
+
+    // ---------------------------------------------------------------------
+    // Fix FK on rules_program_participant_billing.billing_code_id
+    // Should reference billing_rates(id) (some DBs still point to billing_codes)
+    // ---------------------------------------------------------------------
+    try {
+      const fkCheckSql = `
+        SELECT c.conname,
+               pg_get_constraintdef(c.oid, true) AS definition
+          FROM pg_constraint c
+          JOIN pg_class rel ON rel.oid = c.conrelid
+          JOIN pg_namespace nsp ON nsp.oid = rel.relnamespace
+         WHERE nsp.nspname = 'public'
+           AND rel.relname = 'rules_program_participant_billing'
+           AND c.contype = 'f'
+           AND EXISTS (
+               SELECT 1
+                 FROM pg_attribute a
+                WHERE a.attrelid = c.conrelid
+                  AND a.attnum = ANY (c.conkey)
+                  AND a.attname = 'billing_code_id'
+           );
+      `;
+
+      const { rows: fkRows } = await pool.query(fkCheckSql);
+      let needsDrop = false;
+      for (const r of fkRows) {
+        if (r.definition.includes('REFERENCES public.billing_codes')) {
+          needsDrop = true;
+          // Drop incorrect FK
+          await pool.query(
+            `ALTER TABLE public.rules_program_participant_billing
+               DROP CONSTRAINT IF EXISTS ${r.conname}`
+          );
+          console.log(
+            `🔧 Dropped outdated FK ${r.conname} referencing billing_codes`
+          );
+        }
+      }
+
+      // Ensure correct FK exists
+      const ensureFkSql = `
+        ALTER TABLE public.rules_program_participant_billing
+        ADD CONSTRAINT rules_program_participant_billing_billing_code_id_fkey
+        FOREIGN KEY (billing_code_id)
+        REFERENCES public.billing_rates(id)
+      `;
+      if (needsDrop || fkRows.length === 0) {
+        // Only attempt to add if not already present
+        await pool.query(ensureFkSql);
+        console.log(
+          '✅ FK rules_program_participant_billing.billing_code_id → billing_rates(id) verified/created'
+        );
+      }
+    } catch (fkErr) {
+      console.warn(
+        '⚠️  Unable to audit/repair billing_code_id foreign key:',
+        fkErr.message
+      );
+    }
   } catch (schemaErr) {
     console.error('❌ Failed ensuring Wizard V2 schema:', schemaErr.message);
   }

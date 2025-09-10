@@ -13,10 +13,10 @@ import {
   FiRefreshCw,
   FiList,
   FiTrash2,
-  FiArrowUp,
-  FiArrowDown,
   FiLink,
-  FiX
+  FiX,
+  FiChevronDown,
+  FiChevronRight
 } from 'react-icons/fi';
 
 const ProgramTemplateWizard = () => {
@@ -47,6 +47,10 @@ const ProgramTemplateWizard = () => {
     staff_required: 0,
     vehicles_required: 0
   });
+  const [openParticipants, setOpenParticipants] = useState({});
+  
+  // Toggle participant open state
+  const toggleParticipantOpen = (id) => setOpenParticipants(prev => ({...prev, [id]: !prev[id]}));
 
   // State for new venue form
   const [showNewVenueForm, setShowNewVenueForm] = useState(false);
@@ -75,6 +79,9 @@ const ProgramTemplateWizard = () => {
   const [billingCodes, setBillingCodes] = useState([]);
   const [participantBilling, setParticipantBilling] = useState({});
   const [addedParticipants, setAddedParticipants] = useState([]);
+
+  // Map of rpp_id -> array of staged billing lines
+  const [billingLines, setBillingLines] = useState({});
   
   // State for staff and vehicles
   const [staffList, setStaffList] = useState([]);
@@ -344,47 +351,6 @@ const ProgramTemplateWizard = () => {
     }
   };
 
-  // Update slot order (move up/down)
-  const moveSlot = async (slotId, direction) => {
-    const slotIndex = slots.findIndex(s => s.id === slotId);
-    if (slotIndex === -1) return;
-    
-    // If moving up and already at top, or moving down and already at bottom, do nothing
-    if ((direction === 'up' && slotIndex === 0) || 
-        (direction === 'down' && slotIndex === slots.length - 1)) {
-      return;
-    }
-    
-    // Create a copy of slots and swap positions
-    const newSlots = [...slots];
-    const swapIndex = direction === 'up' ? slotIndex - 1 : slotIndex + 1;
-    
-    // Swap seq values
-    const tempSeq = newSlots[slotIndex].seq;
-    newSlots[slotIndex].seq = newSlots[swapIndex].seq;
-    newSlots[swapIndex].seq = tempSeq;
-    
-    try {
-      setSaving(true);
-      
-      // Delete both slots
-      await api.delete(`/templates/rules/${ruleId}/slots/${newSlots[slotIndex].id}`);
-      await api.delete(`/templates/rules/${ruleId}/slots/${newSlots[swapIndex].id}`);
-      
-      // Re-add both slots with updated seq values
-      await api.post(`/templates/rules/${ruleId}/slots`, newSlots[slotIndex]);
-      await api.post(`/templates/rules/${ruleId}/slots`, newSlots[swapIndex]);
-      
-      // Refresh slots
-      fetchSlots(ruleId);
-    } catch (err) {
-      console.error('Error reordering slots:', err);
-      toast.error('Failed to reorder time slots');
-    } finally {
-      setSaving(false);
-    }
-  };
-
   // Add staff placeholder
   const addStaffPlaceholder = async (mode = 'auto', staffId = null) => {
     if (!ruleId) return;
@@ -583,6 +549,9 @@ const ProgramTemplateWizard = () => {
         
         // Refresh requirements after adding participant
         fetchRequirements(ruleId);
+
+        // Prime billing list for this participant
+        fetchParticipantBilling(newParticipant.id);
       } else {
         throw new Error('Failed to add participant');
       }
@@ -626,6 +595,9 @@ const ProgramTemplateWizard = () => {
           ...participantBilling,
           [rppId]: { billing_code: '', hours: '' }
         });
+
+        // Refresh displayed lines
+        fetchParticipantBilling(rppId);
       } else {
         throw new Error('Failed to add billing line');
       }
@@ -722,6 +694,49 @@ const ProgramTemplateWizard = () => {
     return participant ? `${participant.first_name} ${participant.last_name}` : 'Unknown';
   };
 
+  // Fetch staged billing lines for a participant
+  const fetchParticipantBilling = async (rppId) => {
+    if (!ruleId || !rppId) return;
+    try {
+      const response = await api.get(
+        `/templates/rules/${ruleId}/participants/${rppId}/billing`
+      );
+      if (response.data.success && Array.isArray(response.data.data)) {
+        setBillingLines((prev) => ({ ...prev, [rppId]: response.data.data }));
+      }
+    } catch (err) {
+      console.error('Error fetching participant billing lines:', err);
+    }
+  };
+
+  // Delete a staged billing line
+  const deleteBillingLine = async (rppId, lineId) => {
+    if (!ruleId || !rppId || !lineId) return;
+    try {
+      setSaving(true);
+      const resp = await api.delete(
+        `/templates/rules/${ruleId}/participants/${rppId}/billing/${lineId}`
+      );
+      if (resp.data.success) {
+        toast.success('Billing line removed');
+        fetchParticipantBilling(rppId);
+      } else {
+        throw new Error('Delete failed');
+      }
+    } catch (err) {
+      console.error('Error deleting billing line:', err);
+      toast.error('Failed to remove billing line');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Helper to compute billing line stats
+  const getBillingStats = (rppId) => {
+    const lines = Array.isArray(billingLines[rppId]) ? billingLines[rppId] : [];
+    const totalHours = lines.reduce((sum, l) => sum + (parseFloat(l.hours) || 0), 0);
+    return { count: lines.length, totalHours };
+  };
   
   if (loading) {
     return (
@@ -1071,22 +1086,6 @@ const ProgramTemplateWizard = () => {
                       <td>{slot.label || '-'}</td>
                       <td className="actions-cell">
                         <button
-                          className="btn btn-icon"
-                          onClick={() => moveSlot(slot.id, 'up')}
-                          disabled={saving}
-                          title="Move up"
-                        >
-                          <FiArrowUp />
-                        </button>
-                        <button
-                          className="btn btn-icon"
-                          onClick={() => moveSlot(slot.id, 'down')}
-                          disabled={saving}
-                          title="Move down"
-                        >
-                          <FiArrowDown />
-                        </button>
-                        <button
                           className="btn btn-icon btn-danger"
                           onClick={() => deleteSlot(slot.id)}
                           disabled={saving}
@@ -1150,72 +1149,129 @@ const ProgramTemplateWizard = () => {
           {addedParticipants.length === 0 ? (
             <p className="muted">No participants added yet</p>
           ) : (
-            <ul className="participant-list">
-              {addedParticipants.map(participant => (
-                <li key={participant.id} className="participant-item">
-                  <div className="participant-name">{participant.name}</div>
-                  
-                  {/* Billing Lines mini-form */}
-                  <div className="billing-form">
-                    <h5>Billing Lines</h5>
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label>Billing Code</label>
-                        <select
-                          value={participantBilling[participant.id]?.billing_code || ''}
-                          onChange={(e) => setParticipantBilling({
-                            ...participantBilling,
-                            [participant.id]: {
-                              ...participantBilling[participant.id],
-                              billing_code: e.target.value
-                            }
-                          })}
-                          className="form-control"
-                        >
-                          <option value="">Select Code</option>
-                          {billingCodes.map(code => (
-                            <option key={`${code.code}:${code.ratio}`} value={`${code.code}:${code.ratio}`}>
-                              {code.label}
-                            </option>
-                          ))}
-                        </select>
+            <ul className="participant-list participants-grid">
+              {addedParticipants.map(participant => {
+                const stats = getBillingStats(participant.id);
+                return (
+                  <li key={participant.id} className="participant-item">
+                    <div className="participant-header" onClick={() => toggleParticipantOpen(participant.id)}>
+                      <div className="participant-name">{participant.name}</div>
+                      <div className="participant-badges">
+                        <span className="badge">{stats.count} lines</span>
+                        <span className="badge">{stats.totalHours.toFixed(1)} h</span>
                       </div>
-                      <div className="form-group">
-                        <label>Hours</label>
-                        <input
-                          type="number"
-                          value={participantBilling[participant.id]?.hours || ''}
-                          onChange={(e) => setParticipantBilling({
-                            ...participantBilling,
-                            [participant.id]: {
-                              ...participantBilling[participant.id],
-                              hours: e.target.value
-                            }
-                          })}
-                          className="form-control"
-                          min="0.5"
-                          step="0.5"
-                          placeholder="e.g., 3.5"
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>&nbsp;</label>
-                        <button
-                          className="btn btn-primary form-control"
-                          onClick={() => addBillingLine(participant.id)}
-                          disabled={
-                            saving || 
-                            !participantBilling[participant.id]?.billing_code ||
-                            !participantBilling[participant.id]?.hours
-                          }
+                      <div className="participant-actions">
+                        <button 
+                          className="btn btn-sm btn-outline-secondary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleParticipantOpen(participant.id);
+                          }}
+                          title="Add billing line"
                         >
-                          <FiPlusCircle /> Add
+                          + Line
                         </button>
+                        {openParticipants[participant.id] ? <FiChevronDown /> : <FiChevronRight />}
                       </div>
                     </div>
-                  </div>
-                </li>
-              ))}
+                    
+                    {openParticipants[participant.id] && (
+                      <>
+                        {/* Billing Lines mini-form */}
+                        <div className="billing-form">
+                          <h5>Billing Lines</h5>
+                          <div className="form-row">
+                            <div className="form-group">
+                              <label>Billing Code</label>
+                              <select
+                                value={participantBilling[participant.id]?.billing_code || ''}
+                                onChange={(e) => setParticipantBilling({
+                                  ...participantBilling,
+                                  [participant.id]: {
+                                    ...participantBilling[participant.id],
+                                    billing_code: e.target.value
+                                  }
+                                })}
+                                className="form-control"
+                              >
+                                <option value="">Select Code</option>
+                                {billingCodes.map(code => (
+                                  <option key={code.option_id} value={code.option_id}>
+                                    {code.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="form-group">
+                              <label>Hours</label>
+                              <input
+                                type="number"
+                                value={participantBilling[participant.id]?.hours || ''}
+                                onChange={(e) => setParticipantBilling({
+                                  ...participantBilling,
+                                  [participant.id]: {
+                                    ...participantBilling[participant.id],
+                                    hours: e.target.value
+                                  }
+                                })}
+                                className="form-control"
+                                min="0.5"
+                                step="0.5"
+                                placeholder="e.g., 3.5"
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label>&nbsp;</label>
+                              <button
+                                className="btn btn-primary form-control"
+                                onClick={() => addBillingLine(participant.id)}
+                                disabled={
+                                  saving || 
+                                  !participantBilling[participant.id]?.billing_code ||
+                                  !participantBilling[participant.id]?.hours
+                                }
+                              >
+                                <FiPlusCircle /> Add
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Staged lines list */}
+                        {Array.isArray(billingLines[participant.id]) && billingLines[participant.id].length > 0 ? (
+                          <div className="billing-lines">
+                            <div className="grid-header">
+                              <div>Code</div>
+                              <div>Hours</div>
+                              <div>Actions</div>
+                            </div>
+                            {billingLines[participant.id].map((line) => (
+                              <div className="grid-row" key={line.id}>
+                                <div>{line.code ? `${line.code} — ${line.description || ''}` : line.billing_code_id}</div>
+                                <div>{line.hours}</div>
+                                <div className="actions-cell">
+                                  <button
+                                    className="btn btn-icon btn-danger"
+                                    onClick={() => deleteBillingLine(participant.id, line.id)}
+                                    disabled={saving}
+                                    title="Remove"
+                                  >
+                                    <FiTrash2 />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="muted" style={{ marginTop: '6px' }}>
+                            No billing lines yet
+                          </p>
+                        )}
+                      </>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>

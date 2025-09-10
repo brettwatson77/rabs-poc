@@ -273,14 +273,43 @@ router.post('/rules/:id/slots', async (req, res) => {
         [id]
       );
       let nextSeq = seqRows[0]?.maxseq || 0;
+
+      // Determine latest end_time for chronological validation
+      let lastEndTime = null;
+      const { rows: endRows } = await client.query(
+        `SELECT end_time FROM rules_program_slots
+          WHERE rule_id = $1
+          ORDER BY seq DESC
+          LIMIT 1`,
+        [id]
+      );
+      if (endRows.length) lastEndTime = endRows[0].end_time; // time string
       
       for (const slot of slots) {
-        // Fallback: if seq not provided or invalid, auto-assign
-        const providedSeq = parseInt(slot.seq, 10);
-        const seqVal = Number.isFinite(providedSeq) ? providedSeq : ++nextSeq;
-        if (!Number.isFinite(providedSeq)) {
-          // increment nextSeq only when we auto-assign; otherwise keep it in sync
-          // (already done by ++nextSeq)
+        // Always auto-assign seq in order
+        const seqVal = ++nextSeq;
+
+        // Validate time fields
+        if (!slot.start_time || !slot.end_time) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({
+            success: false,
+            error: 'start_time and end_time required'
+          });
+        }
+        if (slot.end_time <= slot.start_time) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({
+            success: false,
+            error: 'Slot end must be after start'
+          });
+        }
+        if (lastEndTime && slot.start_time < lastEndTime) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({
+            success: false,
+            error: 'Slots must be chronological (new start must be >= previous end)'
+          });
         }
         const result = await client.query(`
           INSERT INTO rules_program_slots
@@ -299,6 +328,7 @@ router.post('/rules/:id/slots', async (req, res) => {
         ]);
         
         insertedSlots.push(result.rows[0]);
+        lastEndTime = slot.end_time; // advance pointer
       }
       
       await client.query('COMMIT');
@@ -392,6 +422,134 @@ router.post('/rules/:id/participants', async (req, res) => {
 
 // POST /templates/rules/:id/participants/:rppId/billing - Add billing for a participant
 router.post('/rules/:id/participants/:rppId/billing', async (req, res) => {
+// ---------------------------------------------------------------------------
+//  Staged billing line helpers (view & delete) – top-level routes
+// ---------------------------------------------------------------------------
+
+// GET  - list staged billing lines for a participant in a rule
+router.get('/rules/:id/participants/:rppId/billing', async (req, res) => {
+  const pool = req.app.locals.pool;
+  const { rppId } = req.params;
+
+  try {
+    const result = await pool.query(
+      `SELECT b.id,
+              b.rule_participant_id,
+              b.billing_code_id,
+              b.hours,
+              br.code,
+              br.description
+         FROM rules_program_participant_billing b
+         JOIN billing_rates br ON br.id = b.billing_code_id
+        WHERE b.rule_participant_id = $1
+        ORDER BY b.created_at ASC`,
+      [rppId]
+    );
+    res.json({ success: true, data: result.rows });
+  } catch (err) {
+    console.error('Error fetching participant billing lines:', err);
+    res
+      .status(500)
+      .json({ success: false, error: 'Failed to fetch billing lines' });
+  }
+});
+
+// DELETE - remove a staged billing line
+router.delete(
+  '/rules/:id/participants/:rppId/billing/:lineId',
+  async (req, res) => {
+    const pool = req.app.locals.pool;
+    const { rppId, lineId } = req.params;
+
+    try {
+      const del = await pool.query(
+        `DELETE FROM rules_program_participant_billing
+          WHERE id = $1
+            AND rule_participant_id = $2
+          RETURNING id`,
+        [lineId, rppId]
+      );
+
+      if (del.rowCount === 0) {
+        return res
+          .status(404)
+          .json({ success: false, error: 'Billing line not found' });
+      }
+
+      res.json({ success: true, data: { id: lineId, deleted: true } });
+    } catch (err) {
+      console.error('Error deleting participant billing line:', err);
+      res
+        .status(500)
+        .json({ success: false, error: 'Failed to delete billing line' });
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+//  Billing lines (view / delete) for a participant during wizard staging
+// ---------------------------------------------------------------------------
+
+// GET /templates/rules/:id/participants/:rppId/billing - list staged lines
+router.get('/rules/:id/participants/:rppId/billing', async (req, res) => {
+  const pool = req.app.locals.pool;
+  const { rppId } = req.params;
+
+  try {
+    const result = await pool.query(
+      `SELECT b.id,
+              b.rule_participant_id,
+              b.billing_code_id,
+              b.hours,
+              br.code,
+              br.description
+         FROM rules_program_participant_billing b
+         JOIN billing_rates br ON br.id = b.billing_code_id
+        WHERE b.rule_participant_id = $1
+        ORDER BY b.created_at ASC`,
+      [rppId]
+    );
+    res.json({ success: true, data: result.rows });
+  } catch (err) {
+    console.error('Error fetching participant billing lines:', err);
+    res
+      .status(500)
+      .json({ success: false, error: 'Failed to fetch billing lines' });
+  }
+});
+
+// DELETE /templates/rules/:id/participants/:rppId/billing/:lineId - delete staged line
+router.delete(
+  '/rules/:id/participants/:rppId/billing/:lineId',
+  async (req, res) => {
+    const pool = req.app.locals.pool;
+    const { rppId, lineId } = req.params;
+
+    try {
+      const del = await pool.query(
+        `DELETE FROM rules_program_participant_billing
+          WHERE id = $1
+            AND rule_participant_id = $2
+          RETURNING id`,
+        [lineId, rppId]
+      );
+
+      if (del.rowCount === 0) {
+        return res
+          .status(404)
+          .json({ success: false, error: 'Billing line not found' });
+      }
+
+      res.json({ success: true, data: { id: lineId, deleted: true } });
+    } catch (err) {
+      console.error('Error deleting participant billing line:', err);
+      res
+        .status(500)
+        .json({ success: false, error: 'Failed to delete billing line' });
+    }
+  }
+);
+
   const pool = req.app.locals.pool;
   const { rppId } = req.params;
 
@@ -428,15 +586,169 @@ router.post('/rules/:id/participants/:rppId/billing', async (req, res) => {
     await client.query('BEGIN');
     const inserted = [];
 
-    for (const line of validLines) {
-      const result = await client.query(
-        `INSERT INTO rules_program_participant_billing
-          (id, rpp_id, billing_code, hours)
-         VALUES ($1, $2, $3, $4)
-         RETURNING id, rpp_id, billing_code, hours`,
-        [uuidv4(), rppId, line.billing_code.trim(), parseFloat(line.hours)]
+    // -------------------------------------------------------------------
+    // Ensure table exists & detect schema
+    // -------------------------------------------------------------------
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS rules_program_participant_billing (
+        id uuid PRIMARY KEY,
+        rule_participant_id uuid,
+        billing_code_id uuid,
+        hours numeric(6,2),
+        created_at timestamp DEFAULT now()
       );
-      inserted.push(result.rows[0]);
+    `);
+
+    const colRes = await client.query(`
+        SELECT column_name
+          FROM information_schema.columns
+         WHERE table_name = 'rules_program_participant_billing'
+           AND table_schema = 'public'
+    `);
+    const cols = colRes.rows.map(r => r.column_name);
+    const hasRpp = cols.includes('rpp_id');
+    const hasRulePart = cols.includes('rule_participant_id');
+    const hasBillingId = cols.includes('billing_code_id');
+
+    console.log('[TEMPLATES] Billing insert detected columns:', cols);
+
+    /* -----------------------------------------------------------------
+     * Inline FK audit / repair (idempotent)
+     * Ensures billing_code_id -> billing_rates(id)
+     * Some DBs still have FK to billing_codes which breaks inserts
+     * ----------------------------------------------------------------*/
+    try {
+      // 1. find existing FK constraints on this column
+      const fkQry = `
+        SELECT c.conname,
+               pg_get_constraintdef(c.oid, true) AS def
+          FROM pg_constraint c
+          JOIN pg_class t ON t.oid = c.conrelid
+         WHERE t.relname = 'rules_program_participant_billing'
+           AND c.contype = 'f'
+           AND EXISTS (
+               SELECT 1 FROM pg_attribute a
+                WHERE a.attrelid = c.conrelid
+                  AND a.attnum = ANY (c.conkey)
+                  AND a.attname = 'billing_code_id'
+           )
+      `;
+      const { rows: fkRows } = await client.query(fkQry);
+
+      let dropped = false;
+      for (const r of fkRows) {
+        if (r.def.includes('REFERENCES public.billing_codes')) {
+          await client.query(
+            `ALTER TABLE public.rules_program_participant_billing
+               DROP CONSTRAINT IF EXISTS ${r.conname}`
+          );
+          console.log(
+            `[TEMPLATES] Dropped outdated FK ${r.conname} (→ billing_codes)`
+          );
+          dropped = true;
+        } else if (r.def.includes('REFERENCES public.billing_rates')) {
+          // Correct FK already present – nothing to do
+          dropped = false;
+        }
+      }
+
+      // 2. (Re)create correct FK if missing
+      if (dropped || fkRows.length === 0) {
+        await client.query(`
+          ALTER TABLE public.rules_program_participant_billing
+          ADD CONSTRAINT rules_program_participant_billing_billing_code_id_fkey
+          FOREIGN KEY (billing_code_id)
+          REFERENCES public.billing_rates(id)
+        `);
+        console.log(
+          '[TEMPLATES] Added FK billing_code_id → billing_rates(id)'
+        );
+      }
+    } catch (fkErr) {
+      console.warn('FK audit/repair failed in-route:', fkErr.message);
+    }
+
+    for (const line of validLines) {
+      //-----------------------------------------------------------------
+      // 1. Derive rateId (UUID) or plain codePart from incoming value
+      //-----------------------------------------------------------------
+      const raw = (line.billing_code || '').trim();
+      let rateId = null;
+      let codePart = null;
+      const uuidMatch = raw.match(
+        /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})/
+      );
+      if (uuidMatch) {
+        rateId = uuidMatch[1];
+      } else {
+        codePart = raw.split(':')[0].trim();
+      }
+
+      if (hasRpp) {
+        // Mode A – original schema
+        const result = await client.query(
+          `INSERT INTO rules_program_participant_billing
+            (id, rpp_id, billing_code, hours)
+           VALUES ($1, $2, $3, $4)
+           RETURNING id, rpp_id AS link_id, billing_code, hours`,
+          [uuidv4(), rppId, line.billing_code.trim(), parseFloat(line.hours)]
+        );
+        inserted.push(result.rows[0]);
+      } else if (hasRulePart && hasBillingId) {
+        // Mode B – newer schema with FK to billing_codes
+        let bcId = null;
+
+        if (rateId) {
+          // Direct UUID mode
+          const idCheck = await client.query(
+            `SELECT id FROM billing_rates WHERE id = $1 LIMIT 1`,
+            [rateId]
+          );
+          if (idCheck.rowCount === 0) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({
+              success: false,
+              error: `Billing rate '${rateId}' not found`
+            });
+          }
+          bcId = idCheck.rows[0].id;
+        } else {
+          // Fallback: lookup by code string (most-recent first)
+          const codeLookup = await client.query(
+            `SELECT id
+               FROM billing_rates
+              WHERE code = $1
+              ORDER BY updated_at DESC NULLS LAST
+              LIMIT 1`,
+            [codePart]
+          );
+          if (codeLookup.rowCount === 0) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({
+              success: false,
+              error: `Billing code '${codePart}' not found`
+            });
+          }
+          bcId = codeLookup.rows[0].id;
+        }
+
+        // bcId now guaranteed
+        const result = await client.query(
+          `INSERT INTO rules_program_participant_billing
+            (id, rule_participant_id, billing_code_id, hours)
+           VALUES ($1, $2, $3, $4)
+           RETURNING id, rule_participant_id AS link_id, billing_code_id, hours`,
+          [uuidv4(), rppId, bcId, parseFloat(line.hours)]
+        );
+        inserted.push(result.rows[0]);
+      } else {
+        // Unsupported / unknown schema variant
+        await client.query('ROLLBACK');
+        return res.status(400).json({
+          success: false,
+          error: 'Unsupported billing table schema'
+        });
+      }
     }
 
     await client.query('COMMIT');
@@ -762,7 +1074,11 @@ router.delete('/rules/:id/slots/:slotId', async (req, res) => {
   try {
     // Ensure slot belongs to rule for safety
     const check = await pool.query(
-      `SELECT id FROM rules_program_slots WHERE id = $1 AND rule_id = $2`,
+      // Fetch both id and seq so we can cascade-delete all subsequent slots
+      `SELECT id, seq 
+         FROM rules_program_slots 
+        WHERE id = $1 
+          AND rule_id = $2`,
       [slotId, id]
     );
 
@@ -773,11 +1089,17 @@ router.delete('/rules/:id/slots/:slotId', async (req, res) => {
       });
     }
 
-    await pool.query(`DELETE FROM rules_program_slots WHERE id = $1`, [slotId]);
+    const seqToDelete = check.rows[0].seq;
+    const del = await pool.query(
+      `DELETE FROM rules_program_slots
+        WHERE rule_id = $1
+          AND seq >= $2`,
+      [id, seqToDelete]
+    );
 
     return res.json({
       success: true,
-      data: { id: slotId, deleted: true }
+      data: { cascade: true, deleted_count: del.rowCount }
     });
   } catch (err) {
     console.error('Error deleting slot:', err);
