@@ -10,7 +10,6 @@ import { FiSave, FiX, FiToggleLeft, FiToggleRight } from 'react-icons/fi';
  * @param {Function} props.onSubmit - Function called when form is submitted
  * @param {string} props.submitLabel - Label for the submit button
  * @param {boolean} props.saving - Whether the form is currently saving
- * @param {string} props.mode - 'create' or 'edit'
  * @param {Function} [props.onCancel] - Optional function called when cancel button is clicked
  * @returns {JSX.Element} Venue form component
  */
@@ -20,7 +19,6 @@ const VenueForm = ({
   onSubmit,
   submitLabel = 'Save Venue',
   saving = false,
-  mode = 'create',
   onCancel
 }) => {
   // Safe values with defaults
@@ -37,6 +35,37 @@ const VenueForm = ({
     venue_type: '',
     notes: '',
     is_active: true,
+    features: {
+      // Accessibility
+      wheelchair_access: false,
+      accessible_restroom: false,
+      hearing_loop: false,
+      vision_aids: false,
+      elevator: false,
+      ramps: false,
+      // Amenities / ICT
+      wifi: false,
+      projector: false,
+      sound_system: false,
+      whiteboard: false,
+      stage: false,
+      // Kitchen / Catering
+      kitchen: false,
+      fridge: false,
+      microwave: false,
+      kettle: false,
+      dishwasher: false,
+      // Safety
+      first_aid_kit: false,
+      defibrillator: false,
+      fire_extinguisher: false,
+      // Parking / Transport
+      onsite_parking: false,
+      accessible_parking: false,
+      street_parking: false,
+      // Merge any provided values last
+      ...(value.features || {})
+    },
     ...value
   };
 
@@ -68,6 +97,59 @@ const VenueForm = ({
 
   // Check if form is valid
   const isValid = venue.name && venue.name.trim() !== '';
+
+  /* ------------------------------------------------------------------ */
+  /* Feature helpers                                                    */
+  /* ------------------------------------------------------------------ */
+
+  const featureGroups = {
+    Accessibility: [
+      'wheelchair_access',
+      'accessible_restroom',
+      'hearing_loop',
+      'vision_aids',
+      'elevator',
+      'ramps'
+    ],
+    'Amenities / ICT': [
+      'wifi',
+      'projector',
+      'sound_system',
+      'whiteboard',
+      'stage'
+    ],
+    'Kitchen / Catering': [
+      'kitchen',
+      'fridge',
+      'microwave',
+      'kettle',
+      'dishwasher'
+    ],
+    Safety: ['first_aid_kit', 'defibrillator', 'fire_extinguisher'],
+    'Parking / Transport': [
+      'onsite_parking',
+      'accessible_parking',
+      'street_parking'
+    ]
+  };
+
+  const formatLabel = (key) =>
+    key
+      .split('_')
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+
+  const toggleFeature = (key, checked) => {
+    const updatedFeatures = {
+      ...venue.features,
+      [key]: checked
+    };
+
+    onChange({
+      ...venue,
+      features: updatedFeatures
+    });
+  };
 
   return (
     <div className="venue-form">
@@ -174,17 +256,31 @@ const VenueForm = ({
           </div>
         </div>
 
-        <div className="form-group">
-          <label htmlFor="venue-accessibility">Accessibility Features</label>
-          <input
-            id="venue-accessibility"
-            type="text"
-            className="form-control"
-            value={venue.accessibility_features || ''}
-            onChange={(e) => handleChange('accessibility_features', e.target.value)}
-            placeholder="Enter accessibility features (e.g., wheelchair_access, hearing_loop)"
-          />
-        </div>
+        {/* ---------------------------------------------------------------- */}
+        {/* Facilities & Features (checkbox groups)                           */}
+        {/* ---------------------------------------------------------------- */}
+
+        {Object.entries(featureGroups).map(([groupName, keys]) => (
+          <div key={groupName} className="form-group">
+            <h4 style={{ marginBottom: '6px' }}>{groupName}</h4>
+            <div className="form-row">
+              {keys.map((key) => (
+                <label
+                  key={key}
+                  className="checkbox-label"
+                  style={{ flex: '1 1 200px', marginBottom: '6px' }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={!!venue.features[key]}
+                    onChange={(e) => toggleFeature(key, e.target.checked)}
+                  />{' '}
+                  {formatLabel(key)}
+                </label>
+              ))}
+            </div>
+          </div>
+        ))}
 
         <div className="form-group">
           <label htmlFor="venue-type">Venue Type</label>

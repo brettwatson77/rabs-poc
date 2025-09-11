@@ -27,7 +27,8 @@ router.get('/', async (req, res) => {
         postcode,
         capacity,
         facilities,
-        active,
+        features,
+        COALESCE(is_active, active, true) AS is_active,
         created_at,
         updated_at,
         location_lat,
@@ -70,7 +71,8 @@ router.get('/:id', async (req, res) => {
         postcode,
         capacity,
         facilities,
-        active,
+        features,
+        COALESCE(is_active, active, true) AS is_active,
         created_at,
         updated_at,
         location_lat,
@@ -114,6 +116,8 @@ router.post('/', async (req, res) => {
       contact_phone,
       contact_email,
       capacity,
+      facilities,
+      features,
       accessibility_features,
       venue_type,
       is_active
@@ -130,7 +134,8 @@ router.post('/', async (req, res) => {
     const query = `
       INSERT INTO venues (
         name, address, postcode, contact_phone, contact_email,
-        capacity, accessibility_features, venue_type, is_active
+        capacity, facilities, features, accessibility_features,
+        venue_type, is_active
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING id, name, address, postcode, contact_phone, contact_email,
@@ -144,6 +149,8 @@ router.post('/', async (req, res) => {
       contact_phone || null,
       contact_email || null,
       capacity || null,
+      facilities || '{}',
+      features || '{}',
       accessibility_features || null,
       venue_type || null,
       is_active !== undefined ? is_active : true
@@ -226,6 +233,19 @@ router.put('/:id', async (req, res) => {
       updates.push(`capacity = $${paramIndex++}`);
       values.push(capacity);
     }
+
+    // ------------------------------------------------------------------
+    // NEW: Facilities (text[]) + Features (jsonb)
+    // ------------------------------------------------------------------
+    if (req.body.facilities !== undefined) {
+      updates.push(`facilities = $${paramIndex++}`);
+      values.push(req.body.facilities);
+    }
+
+    if (req.body.features !== undefined) {
+      updates.push(`features = $${paramIndex++}`);
+      values.push(req.body.features);
+    }
     
     if (accessibility_features !== undefined) {
       updates.push(`accessibility_features = $${paramIndex++}`);
@@ -254,8 +274,12 @@ router.put('/:id', async (req, res) => {
       UPDATE venues
       SET ${updates.join(', ')}
       WHERE id = $${paramIndex}
-      RETURNING id, name, address, postcode, contact_phone, contact_email,
-                capacity, accessibility_features, venue_type, is_active
+      RETURNING id, name, address, suburb, state, postcode, contact_phone,
+                contact_email, capacity, facilities, features,
+                accessibility_features, venue_type,
+                COALESCE(is_active, true) AS is_active,
+                status, location_lat, location_lng,
+                created_at, updated_at
     `;
     
     values.push(id);

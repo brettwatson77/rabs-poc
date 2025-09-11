@@ -137,6 +137,52 @@ app.locals.pool = pool;
     console.log('✅ Wizard V2 schema verified/updated');
 
     // ---------------------------------------------------------------------
+    // Venues – facilities & features columns for rich checkbox UI
+    // ---------------------------------------------------------------------
+    const venuesDDL = `
+      DO $$ BEGIN
+        -- features jsonb column
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'venues' AND column_name = 'features'
+        ) THEN
+          ALTER TABLE venues
+            ADD COLUMN features jsonb NOT NULL DEFAULT '{}'::jsonb;
+        END IF;
+
+        -- facilities text[] column
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'venues' AND column_name = 'facilities'
+        ) THEN
+          ALTER TABLE venues
+            ADD COLUMN facilities text[] NOT NULL DEFAULT '{}'::text[];
+        END IF;
+
+        -- is_active boolean column
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'venues' AND column_name = 'is_active'
+        ) THEN
+          ALTER TABLE venues
+            ADD COLUMN is_active boolean NOT NULL DEFAULT true;
+        END IF;
+
+        -- accessibility_features text column (legacy compatibility)
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'venues' AND column_name = 'accessibility_features'
+        ) THEN
+          ALTER TABLE venues
+            ADD COLUMN accessibility_features text;
+        END IF;
+      END $$;
+    `;
+
+    await pool.query(venuesDDL);
+    console.log('✅ Venues columns verified/updated');
+
+    // ---------------------------------------------------------------------
     // Fix FK on rules_program_participant_billing.billing_code_id
     // Should reference billing_rates(id) (some DBs still point to billing_codes)
     // ---------------------------------------------------------------------
