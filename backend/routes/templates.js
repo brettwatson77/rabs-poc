@@ -420,6 +420,64 @@ router.post('/rules/:id/participants', async (req, res) => {
   }
 });
 
+// DELETE /templates/rules/:id/participants/:rppId - remove participant & cascade billing
+router.delete('/rules/:id/participants/:rppId', async (req, res) => {
+  const pool = req.app.locals.pool;
+  const { id: ruleId, rppId } = req.params;
+
+  const client = await pool.connect();
+  try {
+    // Validate rule exists
+    if (!(await ruleExists(pool, ruleId))) {
+      client.release();
+      return res
+        .status(404)
+        .json({ success: false, error: 'Rule not found' });
+    }
+
+    // Validate participant belongs to rule
+    const chk = await pool.query(
+      `SELECT id FROM rules_program_participants
+        WHERE id = $1 AND rule_id = $2`,
+      [rppId, ruleId]
+    );
+    if (chk.rowCount === 0) {
+      client.release();
+      return res
+        .status(404)
+        .json({ success: false, error: 'Participant not found in rule' });
+    }
+
+    await client.query('BEGIN');
+
+    // Cascade delete billing lines (support both possible FK columns)
+    await client.query(
+      `DELETE FROM rules_program_participant_billing
+        WHERE rule_participant_id = $1
+           OR rpp_id = $1`,
+      [rppId]
+    );
+
+    // Delete participant link
+    await client.query(
+      `DELETE FROM rules_program_participants
+        WHERE id = $1 AND rule_id = $2`,
+      [rppId, ruleId]
+    );
+
+    await client.query('COMMIT');
+    res.json({ success: true, data: { id: rppId, deleted: true } });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Error deleting participant:', err);
+    res
+      .status(500)
+      .json({ success: false, error: 'Failed to delete participant' });
+  } finally {
+    client.release();
+  }
+});
+
 // ---------------------------------------------------------------------------
 //  Billing lines (view / delete) for a participant during wizard staging
 // ---------------------------------------------------------------------------
@@ -868,8 +926,34 @@ router.get('/rules/:id/vehicle-placeholders', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Rule not found' });
     }
 
+    // Ensure pc_participant_ids column exists
+    await pool.query(`
+      ALTER TABLE rules_program_vehicle_placeholders 
+      ADD COLUMN IF NOT EXISTS pc_participant_ids uuid[] DEFAULT '{}'::uuid[]
+    `);
+    /* --------------------------------------------------------------
+     * Repair mode CHECK constraint so it also allows 'pc'
+     * (older DB may only allow 'auto' & 'manual')
+     * ------------------------------------------------------------ */
+    try {
+      await pool.query(`
+        ALTER TABLE rules_program_vehicle_placeholders
+        DROP CONSTRAINT IF EXISTS rules_program_vehicle_placeholders_mode_check;
+      `);
+      await pool.query(`
+        ALTER TABLE rules_program_vehicle_placeholders
+        ADD CONSTRAINT rules_program_vehicle_placeholders_mode_check
+        CHECK (mode IN ('auto','manual','pc'));
+      `);
+    } catch (e) {
+      console.warn(
+        '[TEMPLATES] Could not repair vehicle placeholders mode check:',
+        e.message
+      );
+    }
+
     const result = await pool.query(
-      `SELECT id, rule_id, slot_index, mode, vehicle_id, created_at
+      `SELECT id, rule_id, slot_index, mode, vehicle_id, pc_participant_ids, created_at
          FROM rules_program_vehicle_placeholders
         WHERE rule_id = $1
         ORDER BY created_at ASC`,
@@ -887,33 +971,132 @@ router.get('/rules/:id/vehicle-placeholders', async (req, res) => {
 router.post('/rules/:id/vehicle-placeholders', async (req, res) => {
   const pool = req.app.locals.pool;
   const { id } = req.params;
-  const { mode = 'auto', vehicle_id = null, slot_index = 0 } = req.body || {};
+  const { 
+    mode = 'auto', 
+    vehicle_id = null, 
+    slot_index = 0,
+    pc_participant_ids = []
+  } = req.body || {};
 
   try {
     if (!(await ruleExists(pool, id))) {
       return res.status(404).json({ success: false, error: 'Rule not found' });
     }
 
-    if (!['auto', 'manual'].includes(mode)) {
+    if (!['auto', 'manual', 'pc'].includes(mode)) {
       return res.status(400).json({ success: false, error: 'Invalid mode' });
     }
+    
     if (mode === 'manual' && !vehicle_id) {
       return res
         .status(400)
         .json({ success: false, error: 'vehicle_id required for manual mode' });
     }
 
+    // Ensure pc_participant_ids column exists
+    await pool.query(`
+      ALTER TABLE rules_program_vehicle_placeholders 
+      ADD COLUMN IF NOT EXISTS pc_participant_ids uuid[] DEFAULT '{}'::uuid[]
+    `);
+
     const result = await pool.query(
       `INSERT INTO rules_program_vehicle_placeholders
-        (id, rule_id, slot_index, mode, vehicle_id)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id, rule_id, slot_index, mode, vehicle_id, created_at`,
-      [uuidv4(), id, slot_index, mode, mode === 'manual' ? vehicle_id : null]
+        (id, rule_id, slot_index, mode, vehicle_id, pc_participant_ids)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, rule_id, slot_index, mode, vehicle_id, pc_participant_ids, created_at`,
+      [
+        uuidv4(), 
+        id, 
+        slot_index, 
+        mode, 
+        mode === 'manual' ? vehicle_id : null,
+        mode === 'pc' ? pc_participant_ids : null
+      ]
     );
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (err) {
     console.error('Error inserting vehicle placeholder:', err);
     res.status(500).json({ success: false, error: 'Failed to add placeholder' });
+  }
+});
+
+// PATCH - Update vehicle placeholder
+router.patch('/rules/:id/vehicle-placeholders/:phId', async (req, res) => {
+  const pool = req.app.locals.pool;
+  const { id, phId } = req.params;
+  const { 
+    mode,
+    vehicle_id,
+    pc_participant_ids
+  } = req.body || {};
+
+  try {
+    if (!(await ruleExists(pool, id))) {
+      return res.status(404).json({ success: false, error: 'Rule not found' });
+    }
+
+    // Ensure pc_participant_ids column exists
+    await pool.query(`
+      ALTER TABLE rules_program_vehicle_placeholders 
+      ADD COLUMN IF NOT EXISTS pc_participant_ids uuid[] DEFAULT '{}'::uuid[]
+    `);
+
+    // Check if placeholder exists
+    const checkResult = await pool.query(
+      `SELECT id FROM rules_program_vehicle_placeholders
+       WHERE id = $1 AND rule_id = $2`,
+      [phId, id]
+    );
+
+    if (checkResult.rowCount === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Vehicle placeholder not found' 
+      });
+    }
+
+    // Build update query dynamically
+    const updates = [];
+    const values = [phId, id];
+    let paramIndex = 3;
+
+    if (mode !== undefined) {
+      if (!['auto', 'manual', 'pc'].includes(mode)) {
+        return res.status(400).json({ success: false, error: 'Invalid mode' });
+      }
+      updates.push(`mode = $${paramIndex++}`);
+      values.push(mode);
+    }
+
+    if (vehicle_id !== undefined) {
+      updates.push(`vehicle_id = $${paramIndex++}`);
+      values.push(vehicle_id);
+    }
+
+    if (pc_participant_ids !== undefined) {
+      updates.push(`pc_participant_ids = $${paramIndex++}`);
+      values.push(pc_participant_ids);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'No fields to update' 
+      });
+    }
+
+    const result = await pool.query(
+      `UPDATE rules_program_vehicle_placeholders
+       SET ${updates.join(', ')}
+       WHERE id = $1 AND rule_id = $2
+       RETURNING id, rule_id, slot_index, mode, vehicle_id, pc_participant_ids, created_at`,
+      values
+    );
+
+    res.json({ success: true, data: result.rows[0] });
+  } catch (err) {
+    console.error('Error updating vehicle placeholder:', err);
+    res.status(500).json({ success: false, error: 'Failed to update placeholder' });
   }
 });
 
@@ -1021,6 +1204,49 @@ router.post('/rules/:id/finalize', async (req, res) => {
         success: false,
         error: 'Rule not found'
       });
+    }
+
+    /* ------------------------------------------------------------------
+     * Validation: if there are ZERO organisational vehicles we must
+     * ensure every participant is assigned to some personal car.
+     * ------------------------------------------------------------------*/
+    // 1. Load all vehicle placeholders for this rule
+    const { rows: vrows } = await pool.query(
+      `SELECT mode, pc_participant_ids
+         FROM rules_program_vehicle_placeholders
+        WHERE rule_id = $1`,
+      [id]
+    );
+
+    const orgVehicleCount = vrows.filter((r) => r.mode !== 'pc').length;
+
+    if (orgVehicleCount === 0) {
+      // Build set of participant ids assigned to any PC
+      const assignedSet = new Set();
+      vrows.forEach((r) => {
+        if (r.mode === 'pc' && Array.isArray(r.pc_participant_ids)) {
+          r.pc_participant_ids.forEach((pid) => assignedSet.add(pid));
+        }
+      });
+
+      // Fetch all participants linked to this rule
+      const { rows: prows } = await pool.query(
+        `SELECT participant_id
+           FROM rules_program_participants
+          WHERE rule_id = $1`,
+        [id]
+      );
+
+      const missing = prows.filter(
+        (p) => !assignedSet.has(p.participant_id)
+      );
+
+      if (missing.length > 0) {
+        return res.status(400).json({
+          success: false,
+          error: `${missing.length} participant(s) are not assigned to a personal car while there are no organisational vehicles`
+        });
+      }
     }
     
     // Update the rule to active status

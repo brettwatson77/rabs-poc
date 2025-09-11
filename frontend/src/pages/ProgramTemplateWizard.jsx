@@ -10,13 +10,17 @@ import {
   FiClock,
   FiCheckCircle,
   FiAlertCircle,
-  FiRefreshCw,
   FiList,
   FiTrash2,
   FiLink,
   FiX,
   FiChevronDown,
-  FiChevronRight
+  FiChevronRight,
+  FiMapPin,
+  FiRepeat,
+  FiUserCheck,
+  FiTruck,
+  FiCheck
 } from 'react-icons/fi';
 
 const ProgramTemplateWizard = () => {
@@ -48,6 +52,14 @@ const ProgramTemplateWizard = () => {
     vehicles_required: 0
   });
   const [openParticipants, setOpenParticipants] = useState({});
+  const [lastUpdated, setLastUpdated] = useState(new Date());
+  
+  // State for PC functionality
+  const [pcMenuOpenId, setPcMenuOpenId] = useState(null);
+  const [pcSelections, setPcSelections] = useState({});
+  
+  // Helper to update last updated timestamp
+  const updateLastUpdated = () => setLastUpdated(new Date());
   
   // Toggle participant open state
   const toggleParticipantOpen = (id) => setOpenParticipants(prev => ({...prev, [id]: !prev[id]}));
@@ -93,6 +105,44 @@ const ProgramTemplateWizard = () => {
   const formatCurrency = (amount) => {
     return `$${(parseFloat(amount) || 0).toFixed(2)}`;
   };
+
+  // Derive day of week from anchor date
+  useEffect(() => {
+    if (anchorDate) {
+      const date = new Date(anchorDate);
+      if (!isNaN(date.getTime())) {
+        // getDay returns 0 for Sunday, but we want 1-7 where 1 is Monday and 7 is Sunday
+        const day = date.getDay();
+        const adjustedDay = day === 0 ? 7 : day;
+        setDayOfWeek(adjustedDay);
+      }
+    }
+  }, [anchorDate]);
+  
+  // Auto-prefill next time slot based on last slot's end time
+  useEffect(() => {
+    if (slots.length > 0) {
+      // Sort slots by sequence
+      const sortedSlots = [...slots].sort((a, b) => a.seq - b.seq);
+      const lastSlot = sortedSlots[sortedSlots.length - 1];
+      
+      // Set next slot's start time to last slot's end time
+      const startTime = lastSlot.end_time;
+      
+      // Calculate end time as start time + 1 hour (bounded to 23:59)
+      let [hours, minutes] = startTime.split(':').map(Number);
+      hours += 1;
+      if (hours >= 24) hours = 23;
+      if (hours === 23 && minutes > 0) minutes = 59;
+      const endTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+      
+      setNewSlot(prev => ({
+        ...prev,
+        start_time: startTime,
+        end_time: endTime
+      }));
+    }
+  }, [slots]);
   
   // Create draft rule on component mount
   useEffect(() => {
@@ -207,12 +257,52 @@ const ProgramTemplateWizard = () => {
       const response = await api.get(`/templates/rules/${id}/vehicle-placeholders`);
       if (response.data.success && response.data.data) {
         setVehiclePlaceholders(response.data.data);
+        
+        // Initialize pcSelections with existing pc_participant_ids
+        const newSelections = { ...pcSelections };
+        response.data.data.forEach(placeholder => {
+          if (placeholder.mode === 'pc' && placeholder.pc_participant_ids) {
+            newSelections[placeholder.id] = new Set(placeholder.pc_participant_ids);
+          }
+        });
+        setPcSelections(newSelections);
       }
     } catch (err) {
       console.error('Error fetching vehicle placeholders:', err);
       // Don't show toast for initial fetch
     }
   };
+
+  /* --------------------------------------------------------------------- */
+  /* Auto-fill vehicle placeholders to satisfy requirements                */
+  /* --------------------------------------------------------------------- */
+  useEffect(() => {
+    if (!ruleId) return;
+    const needed = Math.max(
+      0,
+      requirements.vehicles_required - vehiclePlaceholders.length
+    );
+    if (needed > 0) {
+      (async () => {
+        try {
+          setSaving(true);
+          for (let i = 0; i < needed; i++) {
+            await api.post(
+              `/templates/rules/${ruleId}/vehicle-placeholders`,
+              { mode: 'auto', vehicle_id: null }
+            );
+          }
+          // refresh local list
+          fetchVehiclePlaceholders(ruleId);
+        } catch (e) {
+          console.error('Auto-fill vehicle placeholders failed:', e);
+        } finally {
+          setSaving(false);
+        }
+      })();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ruleId, requirements.vehicles_required, vehiclePlaceholders.length]);
 
   // Fetch billing codes
   const fetchBillingCodes = async () => {
@@ -285,6 +375,7 @@ const ProgramTemplateWizard = () => {
           is_active: true
         });
         toast.success('New venue created');
+        updateLastUpdated();
       } else {
         throw new Error('Failed to create venue');
       }
@@ -314,14 +405,9 @@ const ProgramTemplateWizard = () => {
       
       if (response.data.success) {
         toast.success('Time slot added');
-        // Reset form and refresh slots
-        setNewSlot({
-          slot_type: 'activity',
-          start_time: '09:00',
-          end_time: '15:00',
-          label: ''
-        });
+        // Fetch updated slots - the useEffect will auto-update the next slot times
         fetchSlots(ruleId);
+        updateLastUpdated();
       } else {
         throw new Error('Failed to add slot');
       }
@@ -345,12 +431,81 @@ const ProgramTemplateWizard = () => {
         toast.success('Time slot deleted');
         // Refresh slots
         fetchSlots(ruleId);
+        updateLastUpdated();
       } else {
         throw new Error('Failed to delete slot');
       }
     } catch (err) {
       console.error('Error deleting slot:', err);
       toast.error('Failed to delete time slot');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Helper to add staff placeholders up to requirements + 1 extra
+  const addExtraStaffShift = async () => {
+    if (!ruleId) return;
+    
+    try {
+      setSaving(true);
+      
+      // Calculate how many placeholders we need to add to meet requirements + 1
+      const requiredCount = requirements.staff_required;
+      const currentCount = staffPlaceholders.length;
+      const toAdd = Math.max(0, requiredCount - currentCount + 1);
+      
+      if (toAdd <= 0) {
+        // We already have enough placeholders, just add one more
+        await addStaffPlaceholder('auto');
+      } else {
+        // Add placeholders to meet requirements + 1 extra
+        for (let i = 0; i < toAdd; i++) {
+          await api.post(`/templates/rules/${ruleId}/staff-placeholders`, {
+            mode: 'auto',
+            staff_id: null
+          });
+        }
+        fetchStaffPlaceholders(ruleId);
+        updateLastUpdated();
+      }
+    } catch (err) {
+      console.error('Error adding staff shifts:', err);
+      toast.error('Failed to add staff shifts');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Helper to add vehicle placeholders up to requirements + 1 extra
+  const addExtraVehicleSlot = async () => {
+    if (!ruleId) return;
+    
+    try {
+      setSaving(true);
+      
+      // Calculate how many placeholders we need to add to meet requirements + 1
+      const requiredCount = requirements.vehicles_required;
+      const currentCount = vehiclePlaceholders.length;
+      const toAdd = Math.max(0, requiredCount - currentCount + 1);
+      
+      if (toAdd <= 0) {
+        // We already have enough placeholders, just add one more
+        await addVehiclePlaceholder('auto');
+      } else {
+        // Add placeholders to meet requirements + 1 extra
+        for (let i = 0; i < toAdd; i++) {
+          await api.post(`/templates/rules/${ruleId}/vehicle-placeholders`, {
+            mode: 'auto',
+            vehicle_id: null
+          });
+        }
+        fetchVehiclePlaceholders(ruleId);
+        updateLastUpdated();
+      }
+    } catch (err) {
+      console.error('Error adding vehicle slots:', err);
+      toast.error('Failed to add vehicle slots');
     } finally {
       setSaving(false);
     }
@@ -369,6 +524,7 @@ const ProgramTemplateWizard = () => {
       
       if (response.data.success) {
         fetchStaffPlaceholders(ruleId);
+        updateLastUpdated();
       } else {
         throw new Error('Failed to add staff placeholder');
       }
@@ -396,6 +552,7 @@ const ProgramTemplateWizard = () => {
       });
       
       fetchStaffPlaceholders(ruleId);
+      updateLastUpdated();
     } catch (err) {
       console.error('Error updating staff placeholder:', err);
       toast.error('Failed to update staff assignment');
@@ -414,6 +571,7 @@ const ProgramTemplateWizard = () => {
       
       if (response.data.success) {
         fetchStaffPlaceholders(ruleId);
+        updateLastUpdated();
       } else {
         throw new Error('Failed to delete staff placeholder');
       }
@@ -438,6 +596,7 @@ const ProgramTemplateWizard = () => {
       
       if (response.data.success) {
         fetchVehiclePlaceholders(ruleId);
+        updateLastUpdated();
       } else {
         throw new Error('Failed to add vehicle placeholder');
       }
@@ -465,6 +624,7 @@ const ProgramTemplateWizard = () => {
       });
       
       fetchVehiclePlaceholders(ruleId);
+      updateLastUpdated();
     } catch (err) {
       console.error('Error updating vehicle placeholder:', err);
       toast.error('Failed to update vehicle assignment');
@@ -483,12 +643,155 @@ const ProgramTemplateWizard = () => {
       
       if (response.data.success) {
         fetchVehiclePlaceholders(ruleId);
+        updateLastUpdated();
       } else {
         throw new Error('Failed to delete vehicle placeholder');
       }
     } catch (err) {
       console.error('Error deleting vehicle placeholder:', err);
       toast.error('Failed to remove vehicle placeholder');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Convert vehicle placeholder to personal car
+  const convertToPC = async (placeholderId) => {
+    if (!ruleId) return;
+    
+    try {
+      setSaving(true);
+      const response = await api.patch(`/templates/rules/${ruleId}/vehicle-placeholders/${placeholderId}`, {
+        mode: 'pc',
+        vehicle_id: null,
+        pc_participant_ids: []
+      });
+      
+      if (response.data.success) {
+        // Initialize empty selection set for this placeholder
+        setPcSelections(prev => ({
+          ...prev,
+          [placeholderId]: new Set()
+        }));
+        fetchVehiclePlaceholders(ruleId);
+        updateLastUpdated();
+        toast.success('Converted to personal car');
+      } else {
+        throw new Error('Failed to convert to personal car');
+      }
+    } catch (err) {
+      console.error('Error converting to personal car:', err);
+      toast.error('Failed to convert to personal car');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Revert personal car to organizational vehicle
+  const revertPcToOrg = async (placeholderId) => {
+    if (!ruleId) return;
+    try {
+      setSaving(true);
+      await api.patch(`/templates/rules/${ruleId}/vehicle-placeholders/${placeholderId}`, {
+        mode: 'auto',
+        vehicle_id: null,
+        pc_participant_ids: []
+      });
+      setPcMenuOpenId(null);
+      fetchVehiclePlaceholders(ruleId);
+      updateLastUpdated();
+      toast.success('Reverted to organisational vehicle');
+    } catch (err) {
+      console.error('Error reverting vehicle placeholder:', err);
+      toast.error('Failed to revert to organisational vehicle');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Toggle PC participant selection menu
+  const togglePcMenu = (placeholderId) => {
+    setPcMenuOpenId(pcMenuOpenId === placeholderId ? null : placeholderId);
+  };
+
+  // Toggle participant selection for a PC
+  const togglePcSelection = (placeholderId, participantId) => {
+    setPcSelections(prev => {
+      const currentSelections = prev[placeholderId] || new Set();
+      const newSelections = new Set(currentSelections);
+      
+      if (newSelections.has(participantId)) {
+        newSelections.delete(participantId);
+      } else {
+        newSelections.add(participantId);
+      }
+      
+      return {
+        ...prev,
+        [placeholderId]: newSelections
+      };
+    });
+  };
+
+  // Save PC participant selections
+  const savePcSelections = async (placeholderId) => {
+    if (!ruleId) return;
+    
+    try {
+      setSaving(true);
+      const selectedIds = Array.from(pcSelections[placeholderId] || []);
+      
+      const response = await api.patch(`/templates/rules/${ruleId}/vehicle-placeholders/${placeholderId}`, {
+        pc_participant_ids: selectedIds
+      });
+      
+      if (response.data.success) {
+        fetchVehiclePlaceholders(ruleId);
+        updateLastUpdated();
+        setPcMenuOpenId(null); // Close menu
+        toast.success('Participants assigned to personal car');
+      } else {
+        throw new Error('Failed to assign participants');
+      }
+    } catch (err) {
+      console.error('Error assigning participants to PC:', err);
+      toast.error('Failed to assign participants');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Delete participant
+  const deleteParticipant = async (rppId) => {
+    if (!ruleId || !rppId) return;
+    
+    try {
+      setSaving(true);
+      const response = await api.delete(`/templates/rules/${ruleId}/participants/${rppId}`);
+      
+      if (response.data.success) {
+        toast.success('Participant removed');
+        // Remove from local state
+        const participant = addedParticipants.find(p => p.id === rppId);
+        if (participant) {
+          setAddedParticipantIds(prev => prev.filter(id => id !== participant.participant_id));
+          setAddedParticipants(prev => prev.filter(p => p.id !== rppId));
+          // Clean up billing lines
+          setBillingLines(prev => {
+            const newState = {...prev};
+            delete newState[rppId];
+            return newState;
+          });
+        }
+        // Refresh requirements
+        fetchRequirements(ruleId);
+        updateLastUpdated();
+      } else {
+        throw new Error('Failed to remove participant');
+      }
+    } catch (err) {
+      console.error('Error removing participant:', err);
+      toast.error('Failed to remove participant');
     } finally {
       setSaving(false);
     }
@@ -524,6 +827,23 @@ const ProgramTemplateWizard = () => {
     return `${hour12}:${minutes} ${ampm}`;
   };
   
+  // Get day name from day number
+  const getDayName = (day) => {
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    return days[day - 1] || '';
+  };
+  
+  // Get recurrence pattern name
+  const getRecurrencePatternName = (pattern) => {
+    const patterns = {
+      'one_off': 'One-off',
+      'weekly': 'Weekly',
+      'fortnightly': 'Fortnightly',
+      'monthly': 'Monthly'
+    };
+    return patterns[pattern] || pattern;
+  };
+  
   // Add participant to program
   const addParticipant = async () => {
     if (!ruleId || !selectedParticipantId) return;
@@ -557,6 +877,8 @@ const ProgramTemplateWizard = () => {
 
         // Prime billing list for this participant
         fetchParticipantBilling(newParticipant.id);
+        
+        updateLastUpdated();
       } else {
         throw new Error('Failed to add participant');
       }
@@ -603,6 +925,7 @@ const ProgramTemplateWizard = () => {
 
         // Refresh displayed lines
         fetchParticipantBilling(rppId);
+        updateLastUpdated();
       } else {
         throw new Error('Failed to add billing line');
       }
@@ -617,6 +940,22 @@ const ProgramTemplateWizard = () => {
   // Finalize program and trigger syncRethread
   const finalizeProgram = async () => {
     if (!ruleId) return;
+    
+    // Frontend guard: if no org vehicles, ensure all participants assigned to some PC
+    const orgVehiclesCount = vehiclePlaceholders.filter(p => p.mode !== 'pc').length;
+    if (orgVehiclesCount === 0) {
+      const assignedSet = new Set();
+      vehiclePlaceholders.forEach(p => {
+        if (p.mode === 'pc' && Array.isArray(p.pc_participant_ids)) {
+          p.pc_participant_ids.forEach(id => assignedSet.add(id));
+        }
+      });
+      const missing = addedParticipants.filter(p => !assignedSet.has(p.participant_id));
+      if (missing.length > 0) {
+        toast.error(`Finalize blocked: ${missing.length} participant(s) are not assigned to a personal car and there are no organisational vehicles.`);
+        return;
+      }
+    }
     
     try {
       setSaving(true);
@@ -667,16 +1006,6 @@ const ProgramTemplateWizard = () => {
     }
   };
   
-  // Day of week options
-  const dayOptions = [
-    { value: 1, label: 'Monday' },
-    { value: 2, label: 'Tuesday' },
-    { value: 3, label: 'Wednesday' },
-    { value: 4, label: 'Thursday' },
-    { value: 5, label: 'Friday' },
-    { value: 6, label: 'Saturday' },
-    { value: 7, label: 'Sunday' }
-  ];
   // Recurrence pattern options
   const patternOptions = [
     { value: 'one_off', label: 'One-off' },
@@ -725,6 +1054,7 @@ const ProgramTemplateWizard = () => {
       if (resp.data.success) {
         toast.success('Billing line removed');
         fetchParticipantBilling(rppId);
+        updateLastUpdated();
       } else {
         throw new Error('Delete failed');
       }
@@ -772,6 +1102,32 @@ const ProgramTemplateWizard = () => {
   // Calculate shift length from slots
   const shiftLength = calculateShiftLength();
   
+  // Compute program revenue - sum of all billing line totals across participants
+  const programRevenue = addedParticipants.reduce((total, p) => {
+    return total + getBillingStats(p.id).totalAmount;
+  }, 0);
+
+  // Calculate PC count
+  const pcCount = vehiclePlaceholders.filter(p => p.mode === 'pc').length;
+
+  // Build list of assigned vehicle registrations/names (excluding PC mode)
+  const assignedVehiclesDisplay = vehiclePlaceholders
+    .filter(p => p.mode === 'manual' && p.vehicle_id)
+    .map(p => {
+      const vehicle = vehiclesList.find(v => v.id === p.vehicle_id);
+      return vehicle ? (vehicle.registration || vehicle.name) : null;
+    })
+    .filter(Boolean)
+    .join(', ');
+  
+  // Compute set of participants assigned to any PC
+  const assignedToAnyPC = new Set();
+  vehiclePlaceholders.forEach(p => {
+    if (p.mode === 'pc' && Array.isArray(p.pc_participant_ids)) {
+      p.pc_participant_ids.forEach(id => assignedToAnyPC.add(id));
+    }
+  });
+  
   return (
     <div className="program-template-wizard">
       <div className="page-header">
@@ -787,14 +1143,67 @@ const ProgramTemplateWizard = () => {
         </div>
       </div>
       
-      {/* Program Details */}
-      <div className="glass-card mb-4">
+      {/* Requirements chip bar */}
+      <div className="requirements-chip-bar">
+        <div className="req-chip">
+          <FiCalendar /> <span>{getDayName(dayOfWeek)}</span>
+        </div>
+        <div className="req-chip">
+          <FiRepeat /> <span>{getRecurrencePatternName(recurrencePattern)}</span>
+        </div>
+        <div className="req-chip">
+          <FiUsers /> <span>{requirements.participant_count} participants</span>
+        </div>
+        <div className="req-chip">
+          <FiUserCheck /> <span>{requirements.staff_required} staff</span>
+        </div>
+        <div className="req-chip">
+          <FiTruck /> <span>{Math.max(0, requirements.vehicles_required - pcCount)} vehicles</span>
+        </div>
+        {pcCount > 0 && (
+          <div className="req-chip">
+            <FiTruck /> <span>{pcCount} pc</span>
+          </div>
+        )}
+        <div className="req-chip">
+          <FiList /> <span>{slots.length} slots</span>
+        </div>
+        {shiftLength && (
+          <div className="req-chip">
+            <FiClock />{' '}
+            <span>{`${formatTime(shiftLength.start)} – ${formatTime(
+              shiftLength.end
+            )}`}</span>
+          </div>
+        )}
+        <div className="req-chip">
+          <FiCheckCircle /> <span>{formatCurrency(programRevenue)}</span>
+        </div>
+        {assignedVehiclesDisplay && (
+          <div className="req-chip">
+            <FiTruck /> <span>{assignedVehiclesDisplay}</span>
+          </div>
+        )}
+        <div className="req-chip" title={lastUpdated.toLocaleString()}>
+          <FiClock /> <span>{lastUpdated.toLocaleDateString()}</span>
+        </div>
+        {venues.find(v => v.id === venueId) && (
+          <div className="req-chip venue-chip">
+            <FiMapPin /> <span>{venues.find(v => v.id === venueId)?.name}</span>
+          </div>
+        )}
+      </div>
+      
+      {/* Program Details - Full width */}
+      <div className="glass-card mb-4 program-details">
         <div className="card-header">
           <h3><FiCalendar /> Program Details</h3>
         </div>
         <div className="card-body">
-          <div className="form-grid">
-            <div className="form-group">
+          {/* two-pane layout to decouple column heights */}
+          <div className="details-split">
+            <div className="details-left">
+              <div className="form-group">
               <label htmlFor="ruleName">Program Name</label>
               <input
                 type="text"
@@ -804,20 +1213,9 @@ const ProgramTemplateWizard = () => {
                 className="form-control"
               />
             </div>
-            
-            <div className="form-group">
-              <label htmlFor="ruleDescription">Description & shift notes</label>
-              <textarea
-                id="ruleDescription"
-                value={ruleDescription}
-                onChange={(e) => setRuleDescription(e.target.value)}
-                className="form-control"
-                rows="2"
-              />
-            </div>
-            
-            <div className="form-group">
-              <label htmlFor="anchorDate">Initial Start Date</label>
+              
+              <div className="form-group">
+              <label htmlFor="anchorDate">Start Date</label>
               <input
                 type="date"
                 id="anchorDate"
@@ -827,23 +1225,7 @@ const ProgramTemplateWizard = () => {
               />
             </div>
 
-            {(recurrencePattern === 'weekly' || recurrencePattern === 'fortnightly') && (
               <div className="form-group">
-                <label htmlFor="dayOfWeek">Day of Week</label>
-                <select
-                  id="dayOfWeek"
-                  value={dayOfWeek}
-                  onChange={(e) => setDayOfWeek(e.target.value)}
-                  className="form-control"
-                >
-                  {dayOptions.map(day => (
-                    <option key={day.value} value={day.value}>{day.label}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            <div className="form-group">
               <label htmlFor="recurrencePattern">Repeat Pattern</label>
               <select
                 id="recurrencePattern"
@@ -856,8 +1238,8 @@ const ProgramTemplateWizard = () => {
                 ))}
               </select>
             </div>
-
-            <div className="form-group">
+            
+              <div className="form-group">
               <label htmlFor="venueId">Venue</label>
               {!showNewVenueForm ? (
                 <div className="input-group">
@@ -962,16 +1344,6 @@ const ProgramTemplateWizard = () => {
                       placeholder="Enter venue type"
                     />
                   </div>
-                  <div className="form-group checkbox-group">
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={newVenue.is_active}
-                        onChange={(e) => setNewVenue({...newVenue, is_active: e.target.checked})}
-                      />{' '}
-                      Active
-                    </label>
-                  </div>
                   <div className="form-actions">
                     <button 
                       className="btn btn-secondary"
@@ -991,20 +1363,21 @@ const ProgramTemplateWizard = () => {
                 </div>
               )}
             </div>
+            </div>{/* end details-left */}
 
-            <div className="form-group checkbox-group">
-              <label>
-                {/* (auto-assign staff checkbox removed) */}
-              </label>
+            <div className="details-right">
+              <div className="form-group">
+              <label htmlFor="ruleDescription">Description & shift notes</label>
+              <textarea
+                id="ruleDescription"
+                value={ruleDescription}
+                onChange={(e) => setRuleDescription(e.target.value)}
+                className="form-control"
+                rows="6"
+              />
             </div>
-
-            <div className="form-group checkbox-group">
-              <label>
-                {/* (auto-assign vehicles checkbox removed) */}
-              </label>
-            </div>
+            </div>{/* end details-right */}
           </div>
-          
         </div>
       </div>
       
@@ -1016,7 +1389,6 @@ const ProgramTemplateWizard = () => {
         <div className="card-body">
           {/* Add new slot form */}
           <div className="add-slot-form">
-            <h4>Add Time Slot</h4>
             <div className="form-row">
               <div className="form-group">
                 <label>Start</label>
@@ -1061,7 +1433,7 @@ const ProgramTemplateWizard = () => {
               <div className="form-group">
                 <label>&nbsp;</label>
                 <button
-                  className="btn btn-primary form-control"
+                  className="btn btn-primary"
                   onClick={addSlot}
                   disabled={saving || !newSlot.start_time || !newSlot.end_time}
                 >
@@ -1073,7 +1445,7 @@ const ProgramTemplateWizard = () => {
           
           {/* Slots table */}
           <div className="slots-table-container">
-            <h4>Time Slots</h4>
+            <h4>Schedule</h4>
             {slots.length === 0 ? (
               <p className="muted">No time slots added yet</p>
             ) : (
@@ -1092,7 +1464,7 @@ const ProgramTemplateWizard = () => {
                     <tr key={slot.id}>
                       <td>{formatTime(slot.start_time)}</td>
                       <td>{formatTime(slot.end_time)}</td>
-                      <td>{slot.slot_type}</td>
+                      <td>{slot.slot_type.charAt(0).toUpperCase() + slot.slot_type.slice(1)}</td>
                       <td>{slot.label || '-'}</td>
                       <td className="actions-cell">
                         <button
@@ -1126,33 +1498,30 @@ const ProgramTemplateWizard = () => {
           <h3><FiUsers /> Participants</h3>
         </div>
         <div className="card-body">
-          <div className="form-group">
-            <label htmlFor="participantSelect">Add Participant</label>
-            <div className="input-group">
-              <select
-                id="participantSelect"
-                value={selectedParticipantId}
-                onChange={(e) => setSelectedParticipantId(e.target.value)}
-                className="form-control"
-              >
-                <option value="">Select Participant</option>
-                {participants
-                  .filter(p => !addedParticipantIds.includes(p.id))
-                  .map(participant => (
-                    <option key={participant.id} value={participant.id}>
-                      {participant.first_name} {participant.last_name}
-                    </option>
-                  ))
-                }
-              </select>
-              <button 
-                className="btn btn-primary"
-                onClick={addParticipant}
-                disabled={saving || !selectedParticipantId}
-              >
-                <FiPlusCircle /> Add
-              </button>
-            </div>
+          <div className="participant-select-row">
+            <select
+              id="participantSelect"
+              value={selectedParticipantId}
+              onChange={(e) => setSelectedParticipantId(e.target.value)}
+              className="form-control"
+            >
+              <option value="">Select Participant</option>
+              {participants
+                .filter(p => !addedParticipantIds.includes(p.id))
+                .map(participant => (
+                  <option key={participant.id} value={participant.id}>
+                    {participant.first_name} {participant.last_name}
+                  </option>
+                ))
+              }
+            </select>
+            <button 
+              className="btn btn-primary"
+              onClick={addParticipant}
+              disabled={saving || !selectedParticipantId}
+            >
+              <FiPlusCircle /> Add
+            </button>
           </div>
           
           <h4>Added Participants ({addedParticipants.length})</h4>
@@ -1173,14 +1542,14 @@ const ProgramTemplateWizard = () => {
                       </div>
                       <div className="participant-actions">
                         <button 
-                          className="btn btn-sm btn-outline-secondary"
+                          className="btn btn-icon btn-danger"
                           onClick={(e) => {
                             e.stopPropagation();
-                            toggleParticipantOpen(participant.id);
+                            deleteParticipant(participant.id);
                           }}
-                          title="Add billing line"
+                          title="Remove participant"
                         >
-                          + Line
+                          <FiTrash2 />
                         </button>
                         {openParticipants[participant.id] ? <FiChevronDown /> : <FiChevronRight />}
                       </div>
@@ -1190,7 +1559,6 @@ const ProgramTemplateWizard = () => {
                       <>
                         {/* Billing Lines mini-form */}
                         <div className="billing-form">
-                          <h5>Billing Lines</h5>
                           <div className="form-row">
                             <div className="form-group">
                               <label>Billing Code</label>
@@ -1213,7 +1581,7 @@ const ProgramTemplateWizard = () => {
                                 ))}
                               </select>
                             </div>
-                            <div className="form-group">
+                            <div className="form-group hours-group">
                               <label>Hours</label>
                               <input
                                 type="number"
@@ -1225,16 +1593,16 @@ const ProgramTemplateWizard = () => {
                                     hours: e.target.value
                                   }
                                 })}
-                                className="form-control"
+                                className="form-control hours-input"
                                 min="0.5"
                                 step="0.5"
                                 placeholder="e.g., 3.5"
                               />
                             </div>
-                            <div className="form-group">
+                            <div className="form-group button-group">
                               <label>&nbsp;</label>
                               <button
-                                className="btn btn-primary form-control"
+                                className="btn btn-primary"
                                 onClick={() => addBillingLine(participant.id)}
                                 disabled={
                                   saving || 
@@ -1259,9 +1627,9 @@ const ProgramTemplateWizard = () => {
                             </div>
                             {billingLines[participant.id].map((line) => (
                               <div className="grid-row" key={line.id}>
-                                <div>{line.code ? `${line.code} — ${line.description || ''}` : line.billing_code_id}</div>
-                                <div>{line.hours}</div>
-                                <div>{formatCurrency(line.amount || (line.unit_price * line.hours))}</div>
+                                <div className="code-cell">{line.code ? `${line.code} — ${line.description || ''}` : line.billing_code_id}</div>
+                                <div className="hours-cell">{line.hours}</div>
+                                <div className="amount-cell">{formatCurrency(line.amount || (line.unit_price * line.hours))}</div>
                                 <div className="actions-cell">
                                   <button
                                     className="btn btn-icon btn-danger"
@@ -1290,45 +1658,24 @@ const ProgramTemplateWizard = () => {
         </div>
       </div>
       
-      {/* Requirements */}
+      {/* Resources (Staff & Vehicles) */}
       <div className="glass-card mb-4">
         <div className="card-header">
-          <h3><FiList /> Requirements</h3>
-          <button 
-            className="btn btn-icon" 
-            onClick={() => fetchRequirements(ruleId)} 
-            title="Refresh Requirements"
-          >
-            <FiRefreshCw />
-          </button>
+          <h3><FiUsers /> Resources</h3>
         </div>
         <div className="card-body">
-          <div className="requirements-grid">
-            <div className="requirement-item">
-              <strong>Participants:</strong> {requirements.participant_count}
-            </div>
-            <div className="requirement-item">
-              <strong>WPU Total:</strong> {requirements.wpu_total}
-            </div>
-            <div className="requirement-item">
-              <strong>Staff Required:</strong> {requirements.staff_required}
-            </div>
-            <div className="requirement-item">
-              <strong>Vehicles Required:</strong> {requirements.vehicles_required}
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      {/* Staff & Vehicles */}
-      <div className="glass-card mb-4">
-        <div className="card-header">
-          <h3><FiUsers /> Staff & Vehicles</h3>
-        </div>
-        <div className="card-body">
-          {/* Staff Placeholders */}
+          {/* Staff Roster */}
           <div className="section-container">
-            <h4>Staff Placeholders</h4>
+            <div className="section-header">
+              <h4>Roster</h4>
+              <button
+                className="btn btn-primary"
+                onClick={addExtraStaffShift}
+                disabled={saving}
+              >
+                <FiPlusCircle /> Add shift
+              </button>
+            </div>
             <div className="placeholders-list">
               {staffPlaceholders.length === 0 && requirements.staff_required === 0 ? (
                 <p className="muted">No staff required yet</p>
@@ -1360,14 +1707,25 @@ const ProgramTemplateWizard = () => {
                           </option>
                         ))}
                       </select>
-                      <button
-                        className="btn btn-icon btn-danger"
-                        onClick={() => deleteStaffPlaceholder(placeholder.id)}
-                        disabled={saving}
-                        title="Remove"
-                      >
-                        <FiX />
-                      </button>
+                      {index >= requirements.staff_required && (
+                        <button
+                          className="btn btn-icon btn-danger"
+                          onClick={() => deleteStaffPlaceholder(placeholder.id)}
+                          disabled={saving}
+                          title="Remove"
+                        >
+                          <FiX />
+                        </button>
+                      )}
+                      {index < requirements.staff_required && (
+                        <button
+                          className="btn btn-icon btn-disabled"
+                          disabled={true}
+                          title="Required placeholder"
+                        >
+                          <FiX style={{ opacity: 0.3 }} />
+                        </button>
+                      )}
                     </div>
                   ))}
                   
@@ -1408,101 +1766,165 @@ const ProgramTemplateWizard = () => {
                   ))}
                 </div>
               )}
-              
-              <div className="placeholder-actions">
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => addStaffPlaceholder('auto')}
-                  disabled={saving}
-                >
-                  <FiPlusCircle /> Add staff slot
-                </button>
-              </div>
             </div>
           </div>
           
-          {/* Vehicle Placeholders */}
+          {/* Vehicles */}
           <div className="section-container">
-            <h4>Vehicle Placeholders</h4>
+            <div className="section-header">
+              <h4>Vehicles</h4>
+              <button
+                className="btn btn-primary"
+                onClick={addExtraVehicleSlot}
+                disabled={saving}
+              >
+                <FiPlusCircle /> Add vehicle
+              </button>
+            </div>
             <div className="placeholders-list">
               {vehiclePlaceholders.length === 0 && requirements.vehicles_required === 0 ? (
                 <p className="muted">No vehicles required yet</p>
               ) : (
                 <div className="placeholder-grid">
                   {/* Display existing placeholders first */}
-                  {vehiclePlaceholders.map(placeholder => (
+                  {vehiclePlaceholders.map((placeholder, index) => (
                     <div key={placeholder.id} className="placeholder-item">
-                      <select
-                        value={placeholder.mode === 'auto' ? 'auto' : placeholder.vehicle_id}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          if (value === 'auto') {
-                            updateVehiclePlaceholder(placeholder.id, 'auto');
-                          } else {
-                            updateVehiclePlaceholder(placeholder.id, 'manual', value);
-                          }
-                        }}
-                        className="form-control"
-                      >
-                        <option value="auto">Auto-assign</option>
-                        {vehiclesList.map(vehicle => (
-                          <option key={vehicle.id} value={vehicle.id}>
-                            {vehicle.name} {vehicle.capacity_total ? `(${vehicle.capacity_total} seats)` : ''}
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        className="btn btn-icon btn-danger"
-                        onClick={() => deleteVehiclePlaceholder(placeholder.id)}
-                        disabled={saving}
-                        title="Remove"
-                      >
-                        <FiX />
-                      </button>
-                    </div>
-                  ))}
-                  
-                  {/* Add auto placeholders up to vehicles_required */}
-                  {Array.from({ length: Math.max(0, requirements.vehicles_required - vehiclePlaceholders.length) }).map((_, index) => (
-                    <div key={`auto-${index}`} className="placeholder-item">
-                      <select
-                        defaultValue="auto"
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          if (value !== 'auto') {
-                            addVehiclePlaceholder('manual', value);
-                          }
-                        }}
-                        className="form-control"
-                      >
-                        <option value="auto">Auto-assign</option>
-                        {vehiclesList.map(vehicle => (
-                          <option key={vehicle.id} value={vehicle.id}>
-                            {vehicle.name} {vehicle.capacity_total ? `(${vehicle.capacity_total} seats)` : ''}
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        className="btn btn-icon btn-disabled"
-                        disabled={true}
-                        title="Default placeholder"
-                      >
-                        <FiX style={{ opacity: 0.3 }} />
-                      </button>
+                      {placeholder.mode === 'pc' ? (
+                        <>
+                          <span className="placeholder-label">Personal car</span>
+                          <button
+                            className="btn btn-secondary"
+                            onClick={() => togglePcMenu(placeholder.id)}
+                            disabled={saving}
+                          >
+                            Assign participants
+                          </button>
+                          
+                          {/* PC participant selection menu */}
+                          {pcMenuOpenId === placeholder.id && (
+                            <div className="pc-menu">
+                              <div className="pc-menu-header">
+                                Select participants for this personal car:
+                              </div>
+                              <div className="pc-menu-items">
+                                {addedParticipants.length === 0 ? (
+                                  <div className="pc-menu-empty">No participants added yet</div>
+                                ) : (
+                                  addedParticipants.map(participant => {
+                                    const isAssignedAnywhere = assignedToAnyPC.has(participant.participant_id);
+                                    const isSelectedHere = pcSelections[placeholder.id]?.has(participant.participant_id);
+                                    return (
+                                      <div 
+                                        key={participant.id} 
+                                        className={`pc-item ${isAssignedAnywhere ? 'assigned-any' : ''}`}
+                                        onClick={() => togglePcSelection(placeholder.id, participant.participant_id)}
+                                      >
+                                        {isSelectedHere && (
+                                          <FiCheck className="pc-item-check" />
+                                        )}
+                                        <span>{participant.name}</span>
+                                      </div>
+                                    );
+                                  })
+                                )}
+                              </div>
+                              <div style={{borderTop:'1px solid var(--glass-border)', margin:'8px 0'}} />
+                              <button className="btn btn-danger" onClick={() => revertPcToOrg(placeholder.id)} disabled={saving}>
+                                Revert to organisational vehicle
+                              </button>
+                              <div className="pc-menu-actions">
+                                <button
+                                  className="btn btn-secondary"
+                                  onClick={() => setPcMenuOpenId(null)}
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  className="btn btn-primary"
+                                  onClick={() => savePcSelections(placeholder.id)}
+                                  disabled={saving}
+                                >
+                                  <FiSave /> Save
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {index >= requirements.vehicles_required && (
+                            <button
+                              className="btn btn-icon btn-danger"
+                              onClick={() => deleteVehiclePlaceholder(placeholder.id)}
+                              disabled={saving}
+                              title="Remove"
+                            >
+                              <FiX />
+                            </button>
+                          )}
+                          {index < requirements.vehicles_required && (
+                            <button
+                              className="btn btn-icon btn-disabled"
+                              disabled={true}
+                              title="Required placeholder"
+                            >
+                              <FiX style={{ opacity: 0.3 }} />
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <select
+                            value={placeholder.mode === 'auto' ? 'auto' : placeholder.vehicle_id}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              if (value === 'auto') {
+                                updateVehiclePlaceholder(placeholder.id, 'auto');
+                              } else {
+                                updateVehiclePlaceholder(placeholder.id, 'manual', value);
+                              }
+                            }}
+                            className="form-control"
+                          >
+                            <option value="auto">Auto-assign</option>
+                            {vehiclesList.map(vehicle => (
+                              <option key={vehicle.id} value={vehicle.id}>
+                                {vehicle.name} {vehicle.capacity_total ? `(${vehicle.capacity_total} seats)` : ''}
+                              </option>
+                            ))}
+                          </select>
+                          
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => convertToPC(placeholder.id)}
+                            disabled={saving}
+                          >
+                            Convert to PC
+                          </button>
+                          
+                          {index >= requirements.vehicles_required && (
+                            <button
+                              className="btn btn-icon btn-danger"
+                              onClick={() => deleteVehiclePlaceholder(placeholder.id)}
+                              disabled={saving}
+                              title="Remove"
+                            >
+                              <FiX />
+                            </button>
+                          )}
+                          {index < requirements.vehicles_required && (
+                            <button
+                              className="btn btn-icon btn-disabled"
+                              disabled={true}
+                              title="Required placeholder"
+                            >
+                              <FiX style={{ opacity: 0.3 }} />
+                            </button>
+                          )}
+                        </>
+                      )}
                     </div>
                   ))}
                 </div>
               )}
-              
-              <div className="placeholder-actions">
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => addVehiclePlaceholder()}
-                  disabled={saving}
-                >
-                  <FiPlusCircle /> Add vehicle
-                </button>
-              </div>
             </div>
           </div>
         </div>
@@ -1514,15 +1936,7 @@ const ProgramTemplateWizard = () => {
           <h3><FiCheckCircle /> Finalize</h3>
         </div>
         <div className="card-body">
-          <p>
-          When you are ready to finalize this program, click the button below.
-            This will:
-          </p>
-          <ul>
-            <li>Set the program to active status</li>
-            <li>Generate instances for all applicable dates in the window</li>
-            <li>Create dashboard cards for each time slot</li>
-          </ul>
+          <p>When you are ready to finalize this program, click the button below.</p>
           <div className="form-actions">
             <button 
               className="btn btn-primary btn-lg"
