@@ -556,7 +556,7 @@ const Vehicles = () => {
             {currentVehicles.map(vehicle => (
               <div 
                 key={vehicle.id} 
-                className={`vehicle-card glass-card ${selectedVehicle?.id === vehicle.id ? 'selected' : ''}`}
+                className={`vehicle-card glass-card fuel-${(vehicle.fuel_type || '').toLowerCase()} ${selectedVehicle?.id === vehicle.id ? 'selected' : ''}`}
                 onClick={() => setSelectedVehicle(vehicle)}
               >
                 <div className="vehicle-header">
@@ -570,6 +570,13 @@ const Vehicles = () => {
                     {/* fuel type chip */}
                     <span className="badge fuel-tag">
                       {vehicle.fuel_type}
+                    </span>
+                    {/* capacity chips */}
+                    <span className="badge cap-chip">
+                      Pax {vehicle.capacity_participants ?? vehicle.capacity ?? 0}
+                    </span>
+                    <span className="badge cap-chip">
+                      Staff {vehicle.capacity_staff ?? 1}
                     </span>
                   </div>
                 </div>
@@ -797,6 +804,19 @@ const Vehicles = () => {
                         <div className="detail-item">
                           <div className="detail-label">Capacity</div>
                           <div className="detail-value">{selectedVehicle.capacity} seats</div>
+                        </div>
+                        {/* Added split capacity fields */}
+                        <div className="detail-item">
+                          <div className="detail-label">Participant Capacity</div>
+                          <div className="detail-value">
+                            {selectedVehicle.capacity_participants ?? selectedVehicle.capacity ?? 0}
+                          </div>
+                        </div>
+                        <div className="detail-item">
+                          <div className="detail-label">Staff Capacity</div>
+                          <div className="detail-value">
+                            {selectedVehicle.capacity_staff ?? 1}
+                          </div>
                         </div>
                       </div>
                     </div>

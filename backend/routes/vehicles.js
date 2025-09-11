@@ -66,6 +66,9 @@ const ALLOWED_KEYS = [
   'registration_expiry',
   'wheelchair_accessible',
   'max_height',
+  // New capacity split fields (participants vs staff)
+  'capacity_participants',
+  'capacity_staff',
 ];
 
 /**
@@ -78,7 +81,14 @@ function sanitizeVehicleBody(body = {}) {
       let value = body[key];
       // Coerce numerics
       if (
-        ['capacity', 'wheelchair_capacity', 'year', 'max_height'].includes(key) &&
+        [
+          'capacity',
+          'wheelchair_capacity',
+          'capacity_participants',
+          'capacity_staff',
+          'year',
+          'max_height',
+        ].includes(key) &&
         value !== null
       ) {
         value = parseInt(value, 10);

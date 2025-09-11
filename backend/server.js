@@ -183,6 +183,34 @@ app.locals.pool = pool;
     console.log('✅ Venues columns verified/updated');
 
     // ---------------------------------------------------------------------
+    // Vehicles – capacity split columns (participants vs staff)
+    // ---------------------------------------------------------------------
+    const vehiclesDDL = `
+      DO $$ BEGIN
+        -- capacity_participants integer column
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'vehicles' AND column_name = 'capacity_participants'
+        ) THEN
+          ALTER TABLE vehicles
+            ADD COLUMN capacity_participants integer NOT NULL DEFAULT 0;
+        END IF;
+
+        -- capacity_staff integer column
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'vehicles' AND column_name = 'capacity_staff'
+        ) THEN
+          ALTER TABLE vehicles
+            ADD COLUMN capacity_staff integer NOT NULL DEFAULT 0;
+        END IF;
+      END $$;
+    `;
+
+    await pool.query(vehiclesDDL);
+    console.log('✅ Vehicles capacity columns verified/updated');
+
+    // ---------------------------------------------------------------------
     // Fix FK on rules_program_participant_billing.billing_code_id
     // Should reference billing_rates(id) (some DBs still point to billing_codes)
     // ---------------------------------------------------------------------

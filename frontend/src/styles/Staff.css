@@ -78,7 +78,7 @@
   gap: 12px;
   margin-top: 4px;
   padding-top: 6px;
-  border-top: 1px dashed rgba(255,255,255,0.08);
+  border-top: 1px solid rgba(255,255,255,0.08);
 }
 
 .staff-page .staff-contact {
@@ -91,7 +91,7 @@
 .staff-page .contact-item {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .staff-page .contact-icon {
@@ -392,11 +392,19 @@
  * ------------------------------------------------------------------*/
 .staff-page .staff-actions{display:flex;gap:8px;}
 .staff-page .staff-actions .action-btn{
-  width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;
-  border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.05);
+  width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;
+  border-radius:8px;
+  border:1px solid rgba(255,255,255,0.10);
+  background:rgba(255,255,255,0.04);
+  transition:background 160ms ease, box-shadow 160ms ease;
+  outline:none;
 }
-.staff-page .staff-actions .action-btn:hover{background:rgba(255,255,255,0.08);}
-.staff-page .staff-actions .action-btn svg{width:16px;height:16px;color:#ffffff;}
+.staff-page .staff-actions .action-btn:hover,
+.staff-page .staff-actions .action-btn:focus-visible{
+  background:rgba(255,255,255,0.08);
+  box-shadow:0 0 0 2px rgba(124,124,249,0.35) inset;
+}
+.staff-page .staff-actions .action-btn svg{width:18px;height:18px;color:#ffffff;}
 
 /* Slightly enlarge house icon so it appears visually balanced with phone icon */
 .staff-page .contact-item.address .contact-icon{

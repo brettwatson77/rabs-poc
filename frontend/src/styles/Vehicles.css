@@ -20,9 +20,24 @@
 .vehicles-page .vehicle-card.selected .badge { background: rgba(0,0,0,0.08); border-color: rgba(0,0,0,0.1); color:#111; }
 
 /* Footer actions colour cues */
-.vehicles-page .vehicle-actions .action-btn { width:34px; height:34px; border-radius:8px; border:1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.05); display:inline-flex; align-items:center; justify-content:center; }
-.vehicles-page .vehicle-actions .action-btn:hover { background: rgba(255,255,255,0.08); }
-.vehicles-page .vehicle-actions .action-btn svg { width:16px; height:16px; }
+.vehicles-page .vehicle-actions .action-btn{
+  width:44px;
+  height:44px;
+  border-radius:8px;
+  border:1px solid rgba(255,255,255,0.10);
+  background:rgba(255,255,255,0.04);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  transition:background 160ms ease, box-shadow 160ms ease;
+  outline:none;
+}
+.vehicles-page .vehicle-actions .action-btn:hover,
+.vehicles-page .vehicle-actions .action-btn:focus-visible{
+  background:rgba(255,255,255,0.08);
+  box-shadow:0 0 0 2px rgba(124,124,249,0.35) inset;
+}
+.vehicles-page .vehicle-actions .action-btn svg{ width:18px; height:18px; }
 
 /* Make delete icon red and give its button a red-tinted hover */
 .vehicles-page .vehicle-actions .action-btn.delete svg{
@@ -31,6 +46,25 @@
 .vehicles-page .vehicle-actions .action-btn.delete:hover{
   background:rgba(255,107,107,0.18);
   border-color:rgba(255,107,107,0.3);
+}
+
+/* ------------------------------------------------------------------
+ * Fuel colour coding for fuel-tag chip
+ * ------------------------------------------------------------------*/
+.vehicles-page .vehicle-card.fuel-diesel .badge.fuel-tag{
+  background:rgba(255,136,0,0.16);
+  border-color:rgba(255,136,0,0.35);
+  color:#ffae42;
+}
+.vehicles-page .vehicle-card.fuel-petrol .badge.fuel-tag{
+  background:rgba(255,221,0,0.16);
+  border-color:rgba(255,221,0,0.40);
+  color:#ffe066;
+}
+.vehicles-page .vehicle-card.fuel-electric .badge.fuel-tag{
+  background:rgba(77,159,255,0.18);
+  border-color:rgba(77,159,255,0.40);
+  color:#7cb3ff;
 }
 
 /* Modal sizing & overlay */

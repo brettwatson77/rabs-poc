@@ -28,7 +28,7 @@
 }
 
 /* Badges near name */
-.participants-page .participant-badges { display:flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.participants-page .participant-badges { display:flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
 
 /* Name + meta */
 .participants-page .participant-info { grid-column: 2; grid-row: 1; align-self:center; }
@@ -48,9 +48,9 @@
 .participants-page .support-flag-icon svg { width:16px; height:16px; opacity: 0.9; }
 
 /* Footer row */
-.participants-page .participant-footer { grid-column: 1 / -1; grid-row: 3; display:flex; align-items:center; justify-content: space-between; gap: 12px; margin-top: 4px; padding-top: 6px; border-top: 1px dashed rgba(255,255,255,0.08); }
+.participants-page .participant-footer { grid-column: 1 / -1; grid-row: 3; display:flex; align-items:center; justify-content: space-between; gap: 12px; margin-top: 4px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.08); }
 .participants-page .participant-contact { display:flex; align-items:center; gap: 10px; color: rgba(255,255,255,0.78); }
-.participants-page .contact-item { display:flex; align-items:center; gap:6px; }
+.participants-page .contact-item { display:flex; align-items:center; gap:8px; }
 .participants-page .contact-icon { width: 16px; height: 16px; opacity: 0.8; }
 
 /* Slightly enlarge house icon so it appears visually balanced with phone icon */
@@ -62,11 +62,19 @@
 /* Footer actions */
 .participants-page .participant-actions { display:flex; gap:8px; }
 .participants-page .participant-actions .action-btn { 
-  width: 34px; height: 34px; display:inline-flex; align-items:center; justify-content:center; 
-  border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.05);
+  width: 44px; height: 44px; display:inline-flex; align-items:center; justify-content:center; 
+  border-radius: 8px; 
+  border: 1px solid rgba(255,255,255,0.10); 
+  background: rgba(255,255,255,0.04);
+  transition: background 160ms ease, box-shadow 160ms ease;
+  outline: none;
 }
-.participants-page .participant-actions .action-btn:hover { background: rgba(255,255,255,0.08); }
-.participants-page .participant-actions .action-btn svg { width: 16px; height: 16px; }
+.participants-page .participant-actions .action-btn:hover,
+.participants-page .participant-actions .action-btn:focus-visible { 
+  background: rgba(255,255,255,0.08); 
+  box-shadow: 0 0 0 2px rgba(124,124,249,0.35) inset; 
+}
+.participants-page .participant-actions .action-btn svg { width: 18px; height: 18px; }
 
 /* Search/filter tweaks inside page */
 .participants-page .search-filter-bar { margin-bottom: 12px; }
