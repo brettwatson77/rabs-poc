@@ -130,7 +130,7 @@ a:hover {
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
-  padding: var(--space-lg);
+  padding: var(--space-md);
   transition: transform var(--transition-normal), box-shadow var(--transition-normal);
 }
 
@@ -746,7 +746,7 @@ a:hover {
   align-items: center;
   gap: var(--space-sm);
   padding: var(--space-sm) var(--space-md);
-  border: 2px dashed var(--glass-border);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.04);
 }
