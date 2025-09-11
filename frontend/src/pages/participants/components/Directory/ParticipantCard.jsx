@@ -57,20 +57,22 @@ const ParticipantCard = ({ participant, selected, onClick, onEdit, onDelete }) =
         <div className="participant-avatar">
           {participant.first_name?.[0]}{participant.last_name?.[0]}
         </div>
-        <div className="participant-badges">
-          <span className={`badge ${getStatusBadge(participant.status)}`}>
-            {participant.status}
-          </span>
-          <span className={`badge ${getSupportLevelBadge(participant.support_level)}`}>
-            {participant.support_level}
-          </span>
-        </div>
       </div>
       
       <div className="participant-info">
-        <h3 className="participant-name">
-          {participant.first_name} {participant.last_name}
-        </h3>
+        <div className="participant-title">
+          <h3 className="participant-name">
+            {participant.first_name} {participant.last_name}
+          </h3>
+          <div className="participant-badges">
+            <span className={`badge ${getStatusBadge(participant.status)}`}>
+              {participant.status}
+            </span>
+            <span className={`badge ${getSupportLevelBadge(participant.support_level)}`}>
+              {participant.support_level}
+            </span>
+          </div>
+        </div>
         <p className="participant-ndis">
           <span>NDIS:</span> {participant.ndis_number || 'N/A'}
         </p>
