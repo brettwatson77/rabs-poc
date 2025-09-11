@@ -662,6 +662,33 @@ a:hover {
   background: rgba(255, 255, 255, 0.06);
 }
 
+/* Colour variants for badges / pills */
+.badge-green {
+  background: rgba(76, 175, 80, 0.18);
+  color: #81c784;
+  border-color: rgba(76, 175, 80, 0.35);
+}
+.badge-red {
+  background: rgba(244, 67, 54, 0.18);
+  color: #e57373;
+  border-color: rgba(244, 67, 54, 0.35);
+}
+.badge-yellow {
+  background: rgba(255, 213, 79, 0.18);
+  color: #ffd54f;
+  border-color: rgba(255, 213, 79, 0.35);
+}
+.badge-blue {
+  background: rgba(86, 163, 255, 0.18);
+  color: #90caf9;
+  border-color: rgba(86, 163, 255, 0.35);
+}
+.badge-gray {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.78);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
 .participant-actions {
   display: flex;
   align-items: center;
