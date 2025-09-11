@@ -448,9 +448,15 @@ const Venues = () => {
                         className="action-btn edit"
                         title="Edit venue"
                         aria-label="Edit venue"
-                        onClick={(e) => {
+                        onClick={async (e) => {
                           e.stopPropagation();
-                          setEditVenue(venue);
+                          try {
+                            const res = await api.get(`/venues/${venue.id}`);
+                            setEditVenue(res.data.data || venue);
+                          } catch (error) {
+                            console.error("Failed to fetch venue details:", error);
+                            setEditVenue(venue);
+                          }
                         }}
                       >
                         <FiEdit2 />
@@ -511,15 +517,40 @@ const Venues = () => {
                         
                         return keyFeatures.map(({ key, icon, label, alt }) => {
                           // Check both primary key and alternative key if provided
-                          if (features[key] || (alt && features[alt])) {
-                            return (
-                              <div key={key} className="facility-icon" title={label}>
-                                {icon}
-                              </div>
-                            );
-                          }
-                          return null;
-                        }).filter(Boolean);
+                          const isEnabled = features[key] || (alt && features[alt]);
+                          return (
+                            <div 
+                              key={key} 
+                              className={`facility-icon ${isEnabled ? 'true' : 'false'}`} 
+                              title={label}
+                            >
+                              {icon}
+                            </div>
+                          );
+                        });
+                      })()}
+                      
+                      {/* Capacity chip */}
+                      <span className="capacity-chip" title="Capacity">
+                        Cap {venue.capacity ?? '—'}
+                      </span>
+                      
+                      {/* Risk assessment indicator */}
+                      {(() => {
+                        const hasRiskAssessment = features.risk_assessment || 
+                                                features.risk_assessed || 
+                                                features.risk_assessment_completed;
+                        
+                        if (hasRiskAssessment === true) {
+                          return (
+                            <span className="risk-chip ok" title="Risk assessment on file">✔</span>
+                          );
+                        } else if (hasRiskAssessment === false) {
+                          return (
+                            <span className="risk-chip bad" title="Risk assessment missing">✖</span>
+                          );
+                        }
+                        return null;
                       })()}
                     </div>
                   </div>
@@ -564,8 +595,14 @@ const Venues = () => {
                   className="action-btn edit"
                   title="Edit venue"
                   aria-label="Edit venue"
-                  onClick={() => {
-                    setEditVenue(selectedVenue);
+                  onClick={async () => {
+                    try {
+                      const res = await api.get(`/venues/${selectedVenue.id}`);
+                      setEditVenue(res.data.data || selectedVenue);
+                    } catch (error) {
+                      console.error("Failed to fetch venue details:", error);
+                      setEditVenue(selectedVenue);
+                    }
                   }}
                 >
                   <FiEdit2 />

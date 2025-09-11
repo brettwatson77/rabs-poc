@@ -29,6 +29,36 @@
 .venues-page .modal-content { width: clamp(820px, 85vw, 1100px); max-height: 92vh; overflow-y: auto; border-radius: 12px; }
 .venues-page .modal-header .modal-close svg { color:#fff; }
 
+/* ------------------------------------------------------------------*/
+/*  Modal inline actions (edit / activate / delete)                   */
+/* ------------------------------------------------------------------*/
+.venues-page .modal-actions{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.venues-page .modal-actions .action-btn{
+  width:44px;
+  height:44px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:8px;
+  border:1px solid rgba(255,255,255,0.10);
+  background:rgba(255,255,255,0.04);
+  transition:background 160ms ease, box-shadow 160ms ease;
+}
+.venues-page .modal-actions .action-btn:hover,
+.venues-page .modal-actions .action-btn:focus-visible{
+  background:rgba(255,255,255,0.08);
+  box-shadow:0 0 0 2px rgba(124,124,249,0.35) inset;
+  outline:none;
+}
+.venues-page .modal-actions .action-btn svg{
+  width:18px;
+  height:18px;
+}
+
 /* Sections */
 .venues-page .detail-section { margin: 12px; }
 .venues-page .badge-list { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -167,6 +197,58 @@
   width:16px;
   height:16px;
   color:#ffffff;
+}
+
+/* True / false colour variants for icons */
+.venues-page .facility-icon.true{
+  background:rgba(77,159,255,0.16);
+  border-color:rgba(77,159,255,0.35);
+}
+.venues-page .facility-icon.false{
+  opacity:0.35;
+}
+
+/* ------------------------------------------------------------------
+ * Capacity chip & Risk indicator
+ * ------------------------------------------------------------------*/
+
+.venues-page .capacity-chip{
+  margin-left:6px;
+  padding:3px 8px;
+  border-radius:8px;
+  font-size:12px;
+  background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.10);
+  color:#ffffff;
+}
+.venues-page .venue-card.selected .capacity-chip{
+  background:rgba(0,0,0,0.06);
+  border-color:rgba(0,0,0,0.12);
+  color:#111;
+}
+
+.venues-page .risk-chip{
+  margin-left:6px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:22px;
+  height:22px;
+  border-radius:6px;
+  border:1px solid rgba(255,255,255,0.12);
+  background:rgba(255,255,255,0.06);
+  font-weight:700;
+  font-size:12px;
+}
+.venues-page .risk-chip.ok{
+  color:#2ecc71;
+  border-color:rgba(46,204,113,0.35);
+  background:rgba(46,204,113,0.16);
+}
+.venues-page .risk-chip.bad{
+  color:#ff6b6b;
+  border-color:rgba(255,107,107,0.35);
+  background:rgba(255,107,107,0.16);
 }
 /* Invert colours on selected card */
 .venues-page .venue-card.selected .facility-icon{
