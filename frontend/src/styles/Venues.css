@@ -40,37 +40,107 @@
 .venues-page .map-wrapper iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 
 /* ------------------------------------------------------------------*/
-/* Utilisation (middle row)                                           */
+/*  Card header & status chip                                         */
 /* ------------------------------------------------------------------*/
 
-.venues-page .venue-middle { margin: 8px 12px 10px; }
-.venues-page .util-stats { 
-  display: flex; 
-  gap: 12px; 
-  align-items: center; 
-  justify-content: space-between; 
-  font-size: 12px; 
-  opacity: 0.9; 
+.venues-page .venue-header{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:6px;
 }
-.venues-page .util-stats .feather,
-.venues-page .util-stats svg { 
-  width: 14px; 
-  height: 14px; 
-  vertical-align: middle; 
-  margin-right: 6px; 
+.venues-page .venue-title{
+  display:flex;
+  flex-direction:column;
+  min-width:0;               /* allow truncation */
 }
-.venues-page .util-bar { 
-  position: relative; 
-  height: 8px; 
-  border-radius: 999px; 
-  background: rgba(255,255,255,0.08); 
-  overflow: hidden; 
-  margin-top: 6px; 
+.venues-page .venue-title .venue-name{
+  margin:0;
+  font-size:18px;
+  font-weight:600;
+  line-height:1.25;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
-.venues-page .util-fill { 
-  height: 100%; 
-  background: linear-gradient(90deg, rgba(124,124,249,0.85), rgba(76,201,240,0.85)); 
-  box-shadow: 0 0 10px rgba(124,124,249,0.45); 
+
+.venues-page .status-chip{
+  display:inline-flex;
+  align-items:center;
+  padding:3px 8px;
+  border-radius:8px;
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:-0.01em;
+  margin-top:4px;
+  width:max-content;
+}
+.venues-page .status-chip.active{
+  background:rgba(46,204,113,0.18);
+  color:#2ecc71;
+  border:1px solid rgba(46,204,113,0.35);
+}
+.venues-page .status-chip.inactive{
+  background:rgba(255,107,107,0.18);
+  color:#ff6b6b;
+  border:1px solid rgba(255,107,107,0.35);
+}
+
+/* ------------------------------------------------------------------*/
+/*  Card action buttons                                               */
+/* ------------------------------------------------------------------*/
+
+.venues-page .venue-actions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.venues-page .venue-actions .action-btn{
+  width:44px;
+  height:44px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:8px;
+  border:1px solid rgba(255,255,255,0.10);
+  background:rgba(255,255,255,0.04);
+  transition:background 160ms ease, box-shadow 160ms ease;
+}
+.venues-page .venue-actions .action-btn:hover,
+.venues-page .venue-actions .action-btn:focus-visible{
+  background:rgba(255,255,255,0.08);
+  box-shadow:0 0 0 2px rgba(124,124,249,0.35) inset;
+  outline:none;
+}
+.venues-page .venue-actions .action-btn svg{
+  width:18px;
+  height:18px;
+}
+/* delete / deactivate action tint */
+.venues-page .venue-actions .action-btn.delete svg{
+  color:#ff6b6b;
+}
+.venues-page .venue-actions .action-btn.delete:hover{
+  background:rgba(255,107,107,0.20);
+  border-color:rgba(255,107,107,0.40);
+}
+
+/* activate action tint */
+.venues-page .venue-actions .action-btn.activate svg{
+  color:#2ecc71;
+}
+
+/* ------------------------------------------------------------------*/
+/*  Address line truncation                                           */
+/* ------------------------------------------------------------------*/
+
+.venues-page .venue-address{
+  margin:0;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  font-size:14px;
 }
 
 /* Pagination */
@@ -80,4 +150,15 @@
 @media (max-width: 920px){
   .venues-page .venues-grid { grid-template-columns: 1fr; }
   .venues-page .modal-content { width: 95vw; }
+}
+
+/* ------------------------------------------------------------------*/
+/*  Venue Form modal sizing                                           */
+/* ------------------------------------------------------------------*/
+
+.venues-page .venue-form-modal{
+  width:clamp(600px, 75vw, 800px);
+  max-height:92vh;
+  overflow-y:auto;
+  border-radius:12px;
 }

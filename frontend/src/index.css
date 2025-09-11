@@ -1092,6 +1092,21 @@ a:hover {
   gap: 8px;
 }
 
+/* Spacing & alignment for “Revert vehicle” button */
+.pc-revert-btn {
+  margin-bottom: 8px;      /* vertical rhythm separation */
+  align-self: stretch;     /* take full pop-over width */
+  width: 100%;             /* full-width button */
+  justify-content: center; /* center the label inside inline-flex button */
+}
+
+/* Ensure pop-over occupies full width on very narrow screens */
+@media (max-width: 420px) {
+  .pc-menu {
+    width: 100%;
+  }
+}
+
 /* Highlight participants already assigned to any personal car */
 .pc-item.assigned-any span {
   color: var(--accent-green);

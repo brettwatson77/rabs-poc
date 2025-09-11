@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
-import { useQuery } from 'react-query';
-import api from '../api/api';
-import { format, startOfWeek, endOfWeek } from 'date-fns';
+import { useQuery, useMutation, useQueryClient } from 'react-query';
+import api, { 
+  createVenue as apiCreateVenue, 
+  updateVenue as apiUpdateVenue, 
+  deleteVenue as apiDeleteVenue 
+} from '../api/api';
 import { 
   FiMapPin, 
   FiSearch, 
@@ -26,9 +29,11 @@ import {
   FiCheck, 
   FiAlertTriangle,
   FiEdit2,
-  FiCalendar
+  FiPlus,
+  FiTrash2
 } from 'react-icons/fi';
 import { FaWheelchair } from 'react-icons/fa';
+import VenueForm from '../components/VenueForm';
 
 // Page-specific styles
 import '../styles/Venues.css';
@@ -38,16 +43,29 @@ const Venues = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
     capacity: 'all',
-    accessibility: 'all',
-    availability: 'all'
+    accessibility: 'all'
   });
   const [selectedVenue, setSelectedVenue] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [currentWeekStart] = useState(() => {
-    const today = new Date();
-    return startOfWeek(today, { weekStartsOn: 1 }); // Week starts on Monday
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editVenue, setEditVenue] = useState(null);
+  const [newVenue, setNewVenue] = useState({
+    name: '',
+    address: '',
+    suburb: '',
+    state: '',
+    postcode: '',
+    capacity: '',
+    contact_phone: '',
+    contact_email: '',
+    accessibility_features: '',
+    venue_type: '',
+    notes: '',
+    is_active: true
   });
+  
   const venuesPerPage = 24;
+  const queryClient = useQueryClient();
 
   // Fetch venues data
   const { 
@@ -63,29 +81,59 @@ const Venues = () => {
     }
   );
 
-  // Fetch bookings data
-  const { 
-    data: bookingsData
-  } = useQuery(
-    ['venueBookings', currentWeekStart],
-    async () => {
-      const endDate = format(endOfWeek(currentWeekStart, { weekStartsOn: 1 }), 'yyyy-MM-dd');
-      const response = await api.get('/venues/bookings', {
-        params: {
-          start_date: format(currentWeekStart, 'yyyy-MM-dd'),
-          end_date: endDate
-        }
-      });
-      return response.data;
+  // Setup mutations
+  const createMutation = useMutation(
+    (venueData) => apiCreateVenue(venueData),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['venues']);
+        setShowAddModal(false);
+        setNewVenue({
+          name: '',
+          address: '',
+          suburb: '',
+          state: '',
+          postcode: '',
+          capacity: '',
+          contact_phone: '',
+          contact_email: '',
+          accessibility_features: '',
+          venue_type: '',
+          notes: '',
+          is_active: true
+        });
+      }
     }
   );
 
-  // Helper function to get weekly bookings count for a venue
-  const getWeeklyBookingsCount = (venueId) => {
-    if (!bookingsData?.data) return 0;
-    
-    return bookingsData.data.filter(booking => booking.venue_id === venueId).length;
-  };
+  const updateMutation = useMutation(
+    ({ id, data }) => apiUpdateVenue(id, data),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['venues']);
+        setEditVenue(null);
+        if (selectedVenue) {
+          // Refresh the selected venue data
+          const updatedVenue = queryClient.getQueryData(['venues'])?.data?.find(
+            v => v.id === selectedVenue.id
+          );
+          if (updatedVenue) {
+            setSelectedVenue(updatedVenue);
+          }
+        }
+      }
+    }
+  );
+
+  const deleteMutation = useMutation(
+    (venueId) => apiDeleteVenue(venueId),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['venues']);
+        setSelectedVenue(null);
+      }
+    }
+  );
 
   // Filter venues based on search term and filters
   const filteredVenues = venuesData?.data?.filter(venue => {
@@ -104,56 +152,64 @@ const Venues = () => {
       (filters.accessibility === 'hearing' && venue.accessibility_features?.includes('hearing_loop')) ||
       (filters.accessibility === 'vision' && venue.accessibility_features?.includes('vision_aids'));
     
-    const matchesAvailability = filters.availability === 'all' || 
-      (filters.availability === 'available' && isVenueAvailable(venue)) ||
-      (filters.availability === 'unavailable' && !isVenueAvailable(venue));
-    
-    return matchesSearch && matchesCapacity && matchesAccessibility && matchesAvailability;
+    return matchesSearch && matchesCapacity && matchesAccessibility;
   }) || [];
-
-  // Determine if a venue is available today (used in filters and status display)
-  const isVenueAvailable = (venue) => {
-    // Only active venues can be available
-    if (venue.status !== 'active') return false;
-
-    const today = new Date();
-    const dayOfWeek = format(today, 'EEEE').toLowerCase(); // e.g. 'monday'
-    const todayStr = format(today, 'yyyy-MM-dd');
-
-    // If venue is closed today according to operating hours
-    if (!venue.operating_hours?.[dayOfWeek]?.is_open) return false;
-
-    // If the venue has an existing booking for today
-    return !bookingsData?.data?.some(
-      (booking) => booking.venue_id === venue.id && booking.start_date === todayStr
-    );
-  };
 
   // Currency formatter
   const formatCurrency = (amount) => {
     if (amount === null || amount === undefined) return '$0.00';
     return `$${parseFloat(amount).toFixed(2)}`;
   };
-  // Get status badge class
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case 'active':
-        return 'badge-green';
-      case 'maintenance':
-        return 'badge-yellow';
-      case 'closed':
-        return 'badge-red';
-      case 'reserved':
-        return 'badge-blue';
-      default:
-        return 'badge-gray';
-    }
-  };
 
   // Format status for display
   const formatStatus = (status) => {
     if (!status) return 'Unknown';
     return status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+  };
+
+  // Format address for display
+  const formatAddress = (venue) => {
+    if (!venue) return '';
+    return [venue.address, venue.suburb, venue.state, venue.postcode]
+      .filter(Boolean)
+      .join(', ');
+  };
+
+  // Check if venue is active (best effort)
+  const isVenueActive = (venue) => {
+    return venue.is_active ?? venue.active ?? (venue.status ? venue.status === 'active' : true);
+  };
+
+  // Handle venue deactivation or deletion
+  const handleDeleteVenue = (venue, e) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    
+    // If we can soft deactivate
+    if ('is_active' in venue || 'active' in venue) {
+      updateMutation.mutate({
+        id: venue.id,
+        data: { is_active: false }
+      });
+    } else {
+      // Hard delete with confirmation
+      if (window.confirm(`Are you sure you want to delete "${venue.name}"? This cannot be undone.`)) {
+        deleteMutation.mutate(venue.id);
+      }
+    }
+  };
+
+  // Handle venue activation
+  const handleActivateVenue = (venue, e) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    
+    updateMutation.mutate({
+      id: venue.id,
+      data: { is_active: true }
+    });
   };
 
   // Pagination logic
@@ -222,299 +278,436 @@ const Venues = () => {
   };
 
   // Render directory tab content
-const renderDirectoryTab = () => (
-  <div className="directory-tab">
-    {/* Page Header */}
-    <header className="page-header">
-      <h2>Venues</h2>
-    </header>
+  const renderDirectoryTab = () => (
+    <div className="directory-tab">
+      {/* Page Header */}
+      <header className="page-header">
+        <h2>Venues</h2>
+      </header>
 
-    {/* Global search / filter bar */}
-    <div className="search-filter-bar glass-panel">
-      {/* Search */}
-      <div className="search-container">
-        <FiSearch className="search-icon" />
-        <input
-          type="text"
-          placeholder="Search venues..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="search-input"
-        />
-      </div>
+      {/* Global search / filter bar */}
+      <div className="search-filter-bar glass-panel">
+        {/* Search */}
+        <div className="search-container">
+          <FiSearch className="search-icon" />
+          <input
+            type="text"
+            placeholder="Search venues..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="search-input"
+          />
+        </div>
 
-      {/* Filters */}
-      <div className="filter-container">
-        <div className="filter-dropdown glass-panel">
-          {/* Capacity */}
-          <div className="filter-group">
-            <label htmlFor="capacity-filter">Capacity</label>
-            <select
-              id="capacity-filter"
-              value={filters.capacity}
-              onChange={(e) =>
-                setFilters({ ...filters, capacity: e.target.value })
-              }
-            >
-              <option value="all">All</option>
-              <option value="small">Small</option>
-              <option value="medium">Medium</option>
-              <option value="large">Large</option>
-            </select>
-          </div>
+        {/* Filters */}
+        <div className="filter-container">
+          <div className="filter-dropdown glass-panel">
+            {/* Capacity */}
+            <div className="filter-group">
+              <label htmlFor="capacity-filter">Capacity</label>
+              <select
+                id="capacity-filter"
+                value={filters.capacity}
+                onChange={(e) =>
+                  setFilters({ ...filters, capacity: e.target.value })
+                }
+              >
+                <option value="all">All</option>
+                <option value="small">Small</option>
+                <option value="medium">Medium</option>
+                <option value="large">Large</option>
+              </select>
+            </div>
 
-          {/* Accessibility */}
-          <div className="filter-group">
-            <label htmlFor="access-filter">Accessibility</label>
-            <select
-              id="access-filter"
-              value={filters.accessibility}
-              onChange={(e) =>
-                setFilters({ ...filters, accessibility: e.target.value })
-              }
-            >
-              <option value="all">All</option>
-              <option value="wheelchair">Wheelchair</option>
-              <option value="hearing">Hearing</option>
-              <option value="vision">Vision</option>
-            </select>
-          </div>
-
-          {/* Availability */}
-          <div className="filter-group">
-            <label htmlFor="availability-filter">Availability</label>
-            <select
-              id="availability-filter"
-              value={filters.availability}
-              onChange={(e) =>
-                setFilters({ ...filters, availability: e.target.value })
-              }
-            >
-              <option value="all">All</option>
-              <option value="available">Available</option>
-              <option value="unavailable">Unavailable</option>
-            </select>
+            {/* Accessibility */}
+            <div className="filter-group">
+              <label htmlFor="access-filter">Accessibility</label>
+              <select
+                id="access-filter"
+                value={filters.accessibility}
+                onChange={(e) =>
+                  setFilters({ ...filters, accessibility: e.target.value })
+                }
+              >
+                <option value="all">All</option>
+                <option value="wheelchair">Wheelchair</option>
+                <option value="hearing">Hearing</option>
+                <option value="vision">Vision</option>
+              </select>
+            </div>
           </div>
         </div>
-      </div>
 
-    </div>
-
-    {/* Venues Grid */}
-    {venuesLoading ? (
-      <div className="loading-container">
-        <div className="loading-spinner"></div>
-        <p>Loading venues...</p>
-      </div>
-    ) : venuesError ? (
-      <div className="error-container glass-panel">
-        <FiAlertCircle className="error-icon" />
-        <p>Error loading venues: {venuesError.message}</p>
-        <button className="btn btn-primary" onClick={() => refetchVenues()}>
-          <FiRefreshCw /> Try Again
+        {/* Add Venue Button */}
+        <button 
+          className="create-btn"
+          onClick={() => setShowAddModal(true)}
+        >
+          <FiPlus /> Add Venue
         </button>
       </div>
-    ) : filteredVenues.length === 0 ? (
-      <div className="empty-state glass-panel">
-        <FiMapPin className="empty-icon" />
-        <h3>No venues found</h3>
-        <p>Try adjusting your search.</p>
-      </div>
-    ) : (
-      <>
-        <div className="venues-grid">
-          {currentVenues.map((venue) => {
-            // Calculate booking stats
-            const weeklyBookings = getWeeklyBookingsCount(venue.id);
-            const capacity = venue.capacity || 0;
-            const utilPercentage = capacity > 0 ? Math.min(100, Math.max(0, (weeklyBookings / 7) * 100)) : 0;
-            
-            return (
-              <div
-                key={venue.id}
-                className={`venue-card glass-card ${selectedVenue?.id === venue.id ? 'selected' : ''}`}
-                onClick={() => setSelectedVenue(venue)}
-              >
-                <div className="venue-header">
-                  <h3 className="venue-name">{venue.name}</h3>
-                  <span className={`badge ${getStatusBadge(venue.status)}`}>
-                    {formatStatus(venue.status)}
-                  </span>
-                </div>
-                <div className="venue-info">
-                  <p className="venue-address">
-                    <FiMapPin className="icon" /> {venue.address}, {venue.suburb} {venue.state} {venue.postcode}
-                  </p>
-                </div>
-                
-                {/* Middle row with utilisation bar */}
-                <div className="venue-middle">
-                  <div className="util-stats">
-                    <span><FiCalendar /> This week: {weeklyBookings} bookings</span>
-                    {capacity > 0 && <span>Capacity: {capacity}</span>}
-                  </div>
-                  <div className="util-bar">
-                    <div className="util-fill" style={{ width: `${utilPercentage}%` }}></div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+
+      {/* Venues Grid */}
+      {venuesLoading ? (
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>Loading venues...</p>
         </div>
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="pagination-container">
-            <button
-              className="pagination-btn"
-              onClick={handlePrevPage}
-              disabled={currentPage === 1}
-            >
-              <FiArrowLeft /> Previous
-            </button>
-            <div className="pagination-info">
-              Page {currentPage} of {totalPages}
-            </div>
-            <button
-              className="pagination-btn"
-              onClick={handleNextPage}
-              disabled={currentPage === totalPages}
-            >
-              Next <FiArrowRight />
-            </button>
-          </div>
-        )}
-      </>
-    )}
-
-    {/* Venue Detail Modal */}
-    {selectedVenue && (
-      <div className="modal-overlay" onClick={() => setSelectedVenue(null)}>
-        <div className="modal-content venue-detail-modal glass-panel" onClick={(e) => e.stopPropagation()}>
-          <div className="modal-header">
-            <h3>{selectedVenue.name}</h3>
-            <button className="modal-close" onClick={() => setSelectedVenue(null)}>
-              <FiX />
-            </button>
-          </div>
-
-          {/* Address & Contact */}
-          <div className="detail-section glass-card">
-            <h4>Address & Contact</h4>
-            <p>
-              <FiMapPin /> {selectedVenue.address}, {selectedVenue.suburb} {selectedVenue.state}{' '}
-              {selectedVenue.postcode}
-            </p>
-            {selectedVenue.contact_name && (
-              <p>
-                <FiUser /> {selectedVenue.contact_name}
-              </p>
-            )}
-            {selectedVenue.contact_phone && (
-              <p>
-                <FiPhone /> <a href={`tel:${selectedVenue.contact_phone}`}>{selectedVenue.contact_phone}</a>
-              </p>
-            )}
-            {selectedVenue.contact_email && (
-              <p>
-                <FiMail />{' '}
-                <a href={`mailto:${selectedVenue.contact_email}`}>{selectedVenue.contact_email}</a>
-              </p>
-            )}
-          </div>
-
-          {/* Google Maps */}
-          <div className="detail-section glass-card">
-            <h4>Location Map</h4>
-            <div className="map-wrapper">
-              <iframe
-                title="venue-map"
-                src={`https://www.google.com/maps?q=${encodeURIComponent(
-                  `${selectedVenue.address}, ${selectedVenue.suburb} ${selectedVenue.state} ${selectedVenue.postcode}`
-                )}&output=embed`}
-                loading="lazy"
-              ></iframe>
-            </div>
-          </div>
-
-          {/* Facilities & Accessibility */}
-          <div className="detail-section glass-card">
-            <h4>Facilities & Accessibility</h4>
-            <div className="badge-list">
-              {selectedVenue.facilities?.map((f, i) => (
-                <span key={i} className="badge badge-blue">
-                  {getFacilityIcon(f)} {f.replace(/_/g, ' ')}
-                </span>
-              ))}
-              {selectedVenue.accessibility_features?.map((a, i) => (
-                <span key={i} className="badge badge-green">
-                  {getAccessibilityIcon(a)} {a.replace(/_/g, ' ')}
-                </span>
-              ))}
-              {(!selectedVenue.facilities || selectedVenue.facilities.length === 0) &&
-                (!selectedVenue.accessibility_features ||
-                  selectedVenue.accessibility_features.length === 0) && (
-                  <p className="text-muted">No facilities or accessibility features listed.</p>
-                )}
-            </div>
+      ) : venuesError ? (
+        <div className="error-container glass-panel">
+          <FiAlertCircle className="error-icon" />
+          <p>Error loading venues: {venuesError.message}</p>
+          <button className="btn btn-primary" onClick={() => refetchVenues()}>
+            <FiRefreshCw /> Try Again
+          </button>
+        </div>
+      ) : filteredVenues.length === 0 ? (
+        <div className="empty-state glass-panel">
+          <FiMapPin className="empty-icon" />
+          <h3>No venues found</h3>
+          <p>Try adjusting your search.</p>
+        </div>
+      ) : (
+        <>
+          <div className="venues-grid">
+            {currentVenues.map((venue) => {
+              const active = isVenueActive(venue);
+              
+              return (
+                <div
+                  key={venue.id}
+                  className={`venue-card glass-card ${selectedVenue?.id === venue.id ? 'selected' : ''}`}
+                  onClick={() => setSelectedVenue(venue)}
+                >
+                  <div className="venue-header">
+                    <div className="venue-title">
+                      <h3 className="venue-name">{venue.name}</h3>
+                      <span className={`status-chip ${active ? 'active' : 'inactive'}`}>
+                        {active ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                    <div className="venue-actions">
+                      <button 
+                        className="action-btn edit"
+                        title="Edit venue"
+                        aria-label="Edit venue"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditVenue(venue);
+                        }}
+                      >
+                        <FiEdit2 />
+                      </button>
+                      {active ? (
+                        <button 
+                          className="action-btn delete"
+                          title="Deactivate venue"
+                          aria-label="Deactivate venue"
+                          onClick={(e) => handleDeleteVenue(venue, e)}
+                        >
+                          <FiX />
+                        </button>
+                      ) : (
+                        <>
+                          <button 
+                            className="action-btn activate"
+                            title="Activate venue"
+                            aria-label="Activate venue"
+                            onClick={(e) => handleActivateVenue(venue, e)}
+                          >
+                            <FiCheck />
+                          </button>
+                          <button 
+                            className="action-btn delete"
+                            title="Delete venue permanently"
+                            aria-label="Delete venue permanently"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm(`Are you sure you want to permanently delete "${venue.name}"?`)) {
+                                deleteMutation.mutate(venue.id);
+                              }
+                            }}
+                          >
+                            <FiTrash2 />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="venue-info">
+                    <p className="venue-address">
+                      <FiMapPin className="icon" /> {formatAddress(venue)}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
-          {/* Pricing */}
-          <div className="detail-section glass-card">
-            <h4>Pricing</h4>
-            <p>
-              Hourly Rate: <strong>{formatCurrency(selectedVenue.hourly_rate)}</strong>
-            </p>
-            <p>
-              Daily Rate: <strong>{formatCurrency(selectedVenue.daily_rate)}</strong>
-            </p>
-          </div>
-
-          {/* Hazards */}
-          <div className="detail-section glass-card">
-            <h4>Hazards</h4>
-            {selectedVenue.hazards && selectedVenue.hazards.length > 0 ? (
-              <ul className="hazard-list">
-                {selectedVenue.hazards.map((h, i) => (
-                  <li key={i}>
-                    <FiAlertTriangle /> {h}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-muted">No hazards recorded.</p>
-            )}
-          </div>
-
-          {/* Operating Hours */}
-          {selectedVenue.operating_hours && (
-            <div className="detail-section glass-card">
-              <h4>Operating Hours</h4>
-              <ul className="hours-list">
-                {Object.entries(selectedVenue.operating_hours).map(([day, info]) => (
-                  <li key={day}>
-                    <strong>{day.charAt(0).toUpperCase() + day.slice(1)}:</strong>{' '}
-                    {info.is_open ? `${info.open} – ${info.close}` : 'Closed'}
-                  </li>
-                ))}
-              </ul>
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="pagination-container">
+              <button
+                className="pagination-btn"
+                onClick={handlePrevPage}
+                disabled={currentPage === 1}
+              >
+                <FiArrowLeft /> Previous
+              </button>
+              <div className="pagination-info">
+                Page {currentPage} of {totalPages}
+              </div>
+              <button
+                className="pagination-btn"
+                onClick={handleNextPage}
+                disabled={currentPage === totalPages}
+              >
+                Next <FiArrowRight />
+              </button>
             </div>
           )}
+        </>
+      )}
+
+      {/* Venue Detail Modal */}
+      {selectedVenue && (
+        <div className="modal-overlay" onClick={() => setSelectedVenue(null)}>
+          <div className="modal-content venue-detail-modal glass-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>{selectedVenue.name}</h3>
+              <div className="modal-actions">
+                <button 
+                  className="action-btn edit"
+                  title="Edit venue"
+                  aria-label="Edit venue"
+                  onClick={() => {
+                    setEditVenue(selectedVenue);
+                  }}
+                >
+                  <FiEdit2 />
+                </button>
+                {isVenueActive(selectedVenue) ? (
+                  <button 
+                    className="action-btn delete"
+                    title="Deactivate venue"
+                    aria-label="Deactivate venue"
+                    onClick={() => handleDeleteVenue(selectedVenue)}
+                  >
+                    <FiX />
+                  </button>
+                ) : (
+                  <>
+                    <button 
+                      className="action-btn activate"
+                      title="Activate venue"
+                      aria-label="Activate venue"
+                      onClick={() => handleActivateVenue(selectedVenue)}
+                    >
+                      <FiCheck />
+                    </button>
+                    <button 
+                      className="action-btn delete"
+                      title="Delete venue permanently"
+                      aria-label="Delete venue permanently"
+                      onClick={() => {
+                        if (window.confirm(`Are you sure you want to permanently delete "${selectedVenue.name}"?`)) {
+                          deleteMutation.mutate(selectedVenue.id);
+                        }
+                      }}
+                    >
+                      <FiTrash2 />
+                    </button>
+                  </>
+                )}
+                <button className="modal-close" onClick={() => setSelectedVenue(null)}>
+                  <FiX />
+                </button>
+              </div>
+            </div>
+
+            {/* Status Chip */}
+            <div className="status-section">
+              <span className={`status-chip ${isVenueActive(selectedVenue) ? 'active' : 'inactive'}`}>
+                {isVenueActive(selectedVenue) ? 'Active' : 'Inactive'}
+              </span>
+            </div>
+
+            {/* Address & Contact */}
+            <div className="detail-section glass-card">
+              <h4>Address & Contact</h4>
+              <p>
+                <FiMapPin /> {formatAddress(selectedVenue)}
+              </p>
+              {selectedVenue.contact_name && (
+                <p>
+                  <FiUser /> {selectedVenue.contact_name}
+                </p>
+              )}
+              {selectedVenue.contact_phone && (
+                <p>
+                  <FiPhone /> <a href={`tel:${selectedVenue.contact_phone}`}>{selectedVenue.contact_phone}</a>
+                </p>
+              )}
+              {selectedVenue.contact_email && (
+                <p>
+                  <FiMail />{' '}
+                  <a href={`mailto:${selectedVenue.contact_email}`}>{selectedVenue.contact_email}</a>
+                </p>
+              )}
+            </div>
+
+            {/* Google Maps */}
+            <div className="detail-section glass-card">
+              <h4>Location Map</h4>
+              <div className="map-wrapper">
+                <iframe
+                  title="venue-map"
+                  src={`https://www.google.com/maps?q=${encodeURIComponent(
+                    formatAddress(selectedVenue)
+                  )}&output=embed`}
+                  loading="lazy"
+                ></iframe>
+              </div>
+            </div>
+
+            {/* Facilities & Accessibility */}
+            <div className="detail-section glass-card">
+              <h4>Facilities & Accessibility</h4>
+              <div className="badge-list">
+                {selectedVenue.facilities?.map((f, i) => (
+                  <span key={i} className="badge badge-blue">
+                    {getFacilityIcon(f)} {f.replace(/_/g, ' ')}
+                  </span>
+                ))}
+                {selectedVenue.accessibility_features?.split(',').map((a, i) => (
+                  <span key={i} className="badge badge-green">
+                    {getAccessibilityIcon(a.trim())} {a.trim().replace(/_/g, ' ')}
+                  </span>
+                ))}
+                {(!selectedVenue.facilities || selectedVenue.facilities.length === 0) &&
+                  (!selectedVenue.accessibility_features ||
+                    selectedVenue.accessibility_features.length === 0) && (
+                  <p className="text-muted">No facilities or accessibility features listed.</p>
+                )}
+              </div>
+            </div>
+
+            {/* Capacity */}
+            <div className="detail-section glass-card">
+              <h4>Capacity</h4>
+              <p>
+                Maximum Capacity: <strong>{selectedVenue.capacity || 'Not specified'}</strong>
+              </p>
+            </div>
+
+            {/* Pricing */}
+            {(selectedVenue.hourly_rate || selectedVenue.daily_rate) && (
+              <div className="detail-section glass-card">
+                <h4>Pricing</h4>
+                {selectedVenue.hourly_rate && (
+                  <p>
+                    Hourly Rate: <strong>{formatCurrency(selectedVenue.hourly_rate)}</strong>
+                  </p>
+                )}
+                {selectedVenue.daily_rate && (
+                  <p>
+                    Daily Rate: <strong>{formatCurrency(selectedVenue.daily_rate)}</strong>
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Hazards */}
+            <div className="detail-section glass-card">
+              <h4>Hazards</h4>
+              {selectedVenue.hazards && selectedVenue.hazards.length > 0 ? (
+                <ul className="hazard-list">
+                  {selectedVenue.hazards.map((h, i) => (
+                    <li key={i}>
+                      <FiAlertTriangle /> {h}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-muted">No hazards recorded.</p>
+              )}
+            </div>
+
+            {/* Operating Hours */}
+            {selectedVenue.operating_hours && (
+              <div className="detail-section glass-card">
+                <h4>Operating Hours</h4>
+                <ul className="hours-list">
+                  {Object.entries(selectedVenue.operating_hours).map(([day, info]) => (
+                    <li key={day}>
+                      <strong>{day.charAt(0).toUpperCase() + day.slice(1)}:</strong>{' '}
+                      {info.is_open ? `${info.open} – ${info.close}` : 'Closed'}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
-    )}
-  </div>
-);
+      )}
 
-/* -------------------------------------------------------------------------- */
-/*                               Page Rendering                               */
-/* -------------------------------------------------------------------------- */
+      {/* Add Venue Modal */}
+      {showAddModal && (
+        <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
+          <div className="modal-content venue-form-modal glass-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Add New Venue</h3>
+              <button className="modal-close" onClick={() => setShowAddModal(false)}>
+                <FiX />
+              </button>
+            </div>
+            <VenueForm
+              value={newVenue}
+              onChange={setNewVenue}
+              onSubmit={() => createMutation.mutate(newVenue)}
+              submitLabel="Create Venue"
+              saving={createMutation.isLoading}
+              mode="create"
+              onCancel={() => setShowAddModal(false)}
+            />
+          </div>
+        </div>
+      )}
 
-return (
-  <div className="venues-page">
-    {renderDirectoryTab()}
-  </div>
-);
+      {/* Edit Venue Modal */}
+      {editVenue && (
+        <div className="modal-overlay" onClick={() => setEditVenue(null)}>
+          <div className="modal-content venue-form-modal glass-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Edit Venue</h3>
+              <button className="modal-close" onClick={() => setEditVenue(null)}>
+                <FiX />
+              </button>
+            </div>
+            <VenueForm
+              value={editVenue}
+              onChange={setEditVenue}
+              onSubmit={() => updateMutation.mutate({ id: editVenue.id, data: editVenue })}
+              submitLabel="Update Venue"
+              saving={updateMutation.isLoading}
+              mode="edit"
+              onCancel={() => setEditVenue(null)}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  /* -------------------------------------------------------------------------- */
+  /*                               Page Rendering                               */
+  /* -------------------------------------------------------------------------- */
+
+  return (
+    <div className="venues-page">
+      {renderDirectoryTab()}
+    </div>
+  );
 };
 
 export default Venues;

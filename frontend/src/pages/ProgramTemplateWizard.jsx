@@ -22,6 +22,9 @@ import {
   FiTruck,
   FiCheck
 } from 'react-icons/fi';
+import { ProgramFormProvider } from '../features/programs/context/ProgramFormContext';
+import ProgramDetailsPanel from '../features/programs/components/ProgramDetailsPanel';
+import TimeSlotsEditor from '../features/programs/components/TimeSlotsEditor';
 
 const ProgramTemplateWizard = () => {
   const navigate = useNavigate();
@@ -1129,817 +1132,13 @@ const ProgramTemplateWizard = () => {
   });
   
   return (
-    <div className="program-template-wizard">
-      <div className="page-header">
-        <h2 className="page-title">Program Template Wizard</h2>
-        <div className="page-actions">
-          <button 
-            className="btn btn-primary"
-            onClick={finalizeProgram}
-            disabled={saving || requirements.participant_count === 0}
-          >
-            <FiCheckCircle /> Finalize Program
-          </button>
-        </div>
-      </div>
-      
-      {/* Requirements chip bar */}
-      <div className="requirements-chip-bar">
-        <div className="req-chip">
-          <FiCalendar /> <span>{getDayName(dayOfWeek)}</span>
-        </div>
-        <div className="req-chip">
-          <FiRepeat /> <span>{getRecurrencePatternName(recurrencePattern)}</span>
-        </div>
-        <div className="req-chip">
-          <FiUsers /> <span>{requirements.participant_count} participants</span>
-        </div>
-        <div className="req-chip">
-          <FiUserCheck /> <span>{requirements.staff_required} staff</span>
-        </div>
-        <div className="req-chip">
-          <FiTruck /> <span>{Math.max(0, requirements.vehicles_required - pcCount)} vehicles</span>
-        </div>
-        {pcCount > 0 && (
-          <div className="req-chip">
-            <FiTruck /> <span>{pcCount} pc</span>
-          </div>
-        )}
-        <div className="req-chip">
-          <FiList /> <span>{slots.length} slots</span>
-        </div>
-        {shiftLength && (
-          <div className="req-chip">
-            <FiClock />{' '}
-            <span>{`${formatTime(shiftLength.start)} – ${formatTime(
-              shiftLength.end
-            )}`}</span>
-          </div>
-        )}
-        <div className="req-chip">
-          <FiCheckCircle /> <span>{formatCurrency(programRevenue)}</span>
-        </div>
-        {assignedVehiclesDisplay && (
-          <div className="req-chip">
-            <FiTruck /> <span>{assignedVehiclesDisplay}</span>
-          </div>
-        )}
-        <div className="req-chip" title={lastUpdated.toLocaleString()}>
-          <FiClock /> <span>{lastUpdated.toLocaleDateString()}</span>
-        </div>
-        {venues.find(v => v.id === venueId) && (
-          <div className="req-chip venue-chip">
-            <FiMapPin /> <span>{venues.find(v => v.id === venueId)?.name}</span>
-          </div>
-        )}
-      </div>
-      
-      {/* Program Details - Full width */}
-      <div className="glass-card mb-4 program-details">
-        <div className="card-header">
-          <h3><FiCalendar /> Program Details</h3>
-        </div>
-        <div className="card-body">
-          {/* two-pane layout to decouple column heights */}
-          <div className="details-split">
-            <div className="details-left">
-              <div className="form-group">
-              <label htmlFor="ruleName">Program Name</label>
-              <input
-                type="text"
-                id="ruleName"
-                value={ruleName}
-                onChange={(e) => setRuleName(e.target.value)}
-                className="form-control"
-              />
-            </div>
-              
-              <div className="form-group">
-              <label htmlFor="anchorDate">Start Date</label>
-              <input
-                type="date"
-                id="anchorDate"
-                value={anchorDate}
-                onChange={(e) => setAnchorDate(e.target.value)}
-                className="form-control"
-              />
-            </div>
-
-              <div className="form-group">
-              <label htmlFor="recurrencePattern">Repeat Pattern</label>
-              <select
-                id="recurrencePattern"
-                value={recurrencePattern}
-                onChange={(e) => setRecurrencePattern(e.target.value)}
-                className="form-control"
-              >
-                {patternOptions.map(p => (
-                  <option key={p.value} value={p.value}>{p.label}</option>
-                ))}
-              </select>
-            </div>
-            
-              <div className="form-group">
-              <label htmlFor="venueId">Venue</label>
-              {!showNewVenueForm ? (
-                <div className="input-group">
-                  <select
-                    id="venueId"
-                    value={venueId}
-                    onChange={(e) => {
-                      if (e.target.value === '__new__') {
-                        setShowNewVenueForm(true);
-                      } else {
-                        setVenueId(e.target.value);
-                      }
-                    }}
-                    className="form-control"
-                  >
-                    <option value="">Select Venue</option>
-                    {venues.map(venue => (
-                      <option key={venue.id} value={venue.id}>{venue.name}</option>
-                    ))}
-                    <option value="__new__">+ New venue</option>
-                  </select>
-                </div>
-              ) : (
-                <div className="new-venue-form">
-                  <div className="form-group">
-                    <label>Venue Name *</label>
-                    <input
-                      type="text"
-                      value={newVenue.name}
-                      onChange={(e) => setNewVenue({...newVenue, name: e.target.value})}
-                      className="form-control"
-                      placeholder="Enter venue name"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Address *</label>
-                    <input
-                      type="text"
-                      value={newVenue.address}
-                      onChange={(e) => setNewVenue({...newVenue, address: e.target.value})}
-                      className="form-control"
-                      placeholder="Enter address"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Postcode</label>
-                    <input
-                      type="text"
-                      value={newVenue.postcode}
-                      onChange={(e) => setNewVenue({...newVenue, postcode: e.target.value})}
-                      className="form-control"
-                      placeholder="Enter postcode"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Contact Phone</label>
-                    <input
-                      type="text"
-                      value={newVenue.contact_phone}
-                      onChange={(e) => setNewVenue({...newVenue, contact_phone: e.target.value})}
-                      className="form-control"
-                      placeholder="Enter contact phone"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Contact Email</label>
-                    <input
-                      type="email"
-                      value={newVenue.contact_email}
-                      onChange={(e) => setNewVenue({...newVenue, contact_email: e.target.value})}
-                      className="form-control"
-                      placeholder="Enter contact email"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Capacity</label>
-                    <input
-                      type="number"
-                      value={newVenue.capacity}
-                      onChange={(e) => setNewVenue({...newVenue, capacity: e.target.value})}
-                      className="form-control"
-                      placeholder="Enter capacity"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Accessibility Features</label>
-                    <input
-                      type="text"
-                      value={newVenue.accessibility_features}
-                      onChange={(e) => setNewVenue({...newVenue, accessibility_features: e.target.value})}
-                      className="form-control"
-                      placeholder="Enter accessibility features"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Venue Type</label>
-                    <input
-                      type="text"
-                      value={newVenue.venue_type}
-                      onChange={(e) => setNewVenue({...newVenue, venue_type: e.target.value})}
-                      className="form-control"
-                      placeholder="Enter venue type"
-                    />
-                  </div>
-                  <div className="form-actions">
-                    <button 
-                      className="btn btn-secondary"
-                      onClick={() => setShowNewVenueForm(false)}
-                      disabled={saving}
-                    >
-                      Cancel
-                    </button>
-                    <button 
-                      className="btn btn-primary"
-                      onClick={createVenue}
-                      disabled={saving || !newVenue.name.trim() || !newVenue.address.trim()}
-                    >
-                      <FiSave /> Save Venue
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-            </div>{/* end details-left */}
-
-            <div className="details-right">
-              <div className="form-group">
-              <label htmlFor="ruleDescription">Description & shift notes</label>
-              <textarea
-                id="ruleDescription"
-                value={ruleDescription}
-                onChange={(e) => setRuleDescription(e.target.value)}
-                className="form-control"
-                rows="6"
-              />
-            </div>
-            </div>{/* end details-right */}
-          </div>
-        </div>
-      </div>
-      
-      {/* Time Slots */}
-      <div className="glass-card mb-4">
-        <div className="card-header">
-          <h3><FiClock /> Time Slots</h3>
-        </div>
-        <div className="card-body">
-          {/* Add new slot form */}
-          <div className="add-slot-form">
-            <div className="form-row">
-              <div className="form-group">
-                <label>Start</label>
-                <input
-                  type="time"
-                  value={newSlot.start_time}
-                  onChange={(e) => setNewSlot({...newSlot, start_time: e.target.value})}
-                  className="form-control"
-                />
-              </div>
-              <div className="form-group">
-                <label>End</label>
-                <input
-                  type="time"
-                  value={newSlot.end_time}
-                  onChange={(e) => setNewSlot({...newSlot, end_time: e.target.value})}
-                  className="form-control"
-                />
-              </div>
-              <div className="form-group">
-                <label>Type</label>
-                <select
-                  value={newSlot.slot_type}
-                  onChange={(e) => setNewSlot({...newSlot, slot_type: e.target.value})}
-                  className="form-control"
-                >
-                  {slotTypeOptions.map(option => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Label (optional)</label>
-                <input
-                  type="text"
-                  value={newSlot.label}
-                  onChange={(e) => setNewSlot({...newSlot, label: e.target.value})}
-                  className="form-control"
-                  placeholder="e.g., Morning pickup"
-                />
-              </div>
-              <div className="form-group">
-                <label>&nbsp;</label>
-                <button
-                  className="btn btn-primary"
-                  onClick={addSlot}
-                  disabled={saving || !newSlot.start_time || !newSlot.end_time}
-                >
-                  <FiPlusCircle /> Add Row
-                </button>
-              </div>
-            </div>
-          </div>
-          
-          {/* Slots table */}
-          <div className="slots-table-container">
-            <h4>Schedule</h4>
-            {slots.length === 0 ? (
-              <p className="muted">No time slots added yet</p>
-            ) : (
-              <table className="slots-table">
-                <thead>
-                  <tr>
-                    <th>Start</th>
-                    <th>End</th>
-                    <th>Type</th>
-                    <th>Label</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {slots.sort((a, b) => a.seq - b.seq).map((slot) => (
-                    <tr key={slot.id}>
-                      <td>{formatTime(slot.start_time)}</td>
-                      <td>{formatTime(slot.end_time)}</td>
-                      <td>{slot.slot_type.charAt(0).toUpperCase() + slot.slot_type.slice(1)}</td>
-                      <td>{slot.label || '-'}</td>
-                      <td className="actions-cell">
-                        <button
-                          className="btn btn-icon btn-danger"
-                          onClick={() => deleteSlot(slot.id)}
-                          disabled={saving}
-                          title="Delete"
-                        >
-                          <FiTrash2 />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-          
-          {/* Shift length display */}
-          {shiftLength && (
-            <div className="shift-length">
-              <strong>Shift Length:</strong> {formatTime(shiftLength.start)} to {formatTime(shiftLength.end)}
-            </div>
-          )}
-        </div>
-      </div>
-      
-      {/* Participants */}
-      <div className="glass-card mb-4">
-        <div className="card-header">
-          <h3><FiUsers /> Participants</h3>
-        </div>
-        <div className="card-body">
-          <div className="participant-select-row">
-            <select
-              id="participantSelect"
-              value={selectedParticipantId}
-              onChange={(e) => setSelectedParticipantId(e.target.value)}
-              className="form-control"
-            >
-              <option value="">Select Participant</option>
-              {participants
-                .filter(p => !addedParticipantIds.includes(p.id))
-                .map(participant => (
-                  <option key={participant.id} value={participant.id}>
-                    {participant.first_name} {participant.last_name}
-                  </option>
-                ))
-              }
-            </select>
+    <ProgramFormProvider value={{}}>
+      <div className="program-template-wizard">
+        <div className="page-header">
+          <h2 className="page-title">Program Template Wizard</h2>
+          <div className="page-actions">
             <button 
               className="btn btn-primary"
-              onClick={addParticipant}
-              disabled={saving || !selectedParticipantId}
-            >
-              <FiPlusCircle /> Add
-            </button>
-          </div>
-          
-          <h4>Added Participants ({addedParticipants.length})</h4>
-          {addedParticipants.length === 0 ? (
-            <p className="muted">No participants added yet</p>
-          ) : (
-            <ul className="participant-list participants-grid">
-              {addedParticipants.map(participant => {
-                const stats = getBillingStats(participant.id);
-                return (
-                  <li key={participant.id} className="participant-item">
-                    <div className="participant-header" onClick={() => toggleParticipantOpen(participant.id)}>
-                      <div className="participant-name">{participant.name}</div>
-                      <div className="participant-badges">
-                        <span className="badge">{stats.count} lines</span>
-                        <span className="badge">{stats.totalHours.toFixed(1)} h</span>
-                        <span className="badge">{formatCurrency(stats.totalAmount)}</span>
-                      </div>
-                      <div className="participant-actions">
-                        <button 
-                          className="btn btn-icon btn-danger"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteParticipant(participant.id);
-                          }}
-                          title="Remove participant"
-                        >
-                          <FiTrash2 />
-                        </button>
-                        {openParticipants[participant.id] ? <FiChevronDown /> : <FiChevronRight />}
-                      </div>
-                    </div>
-                    
-                    {openParticipants[participant.id] && (
-                      <>
-                        {/* Billing Lines mini-form */}
-                        <div className="billing-form">
-                          <div className="form-row">
-                            <div className="form-group">
-                              <label>Billing Code</label>
-                              <select
-                                value={participantBilling[participant.id]?.billing_code || ''}
-                                onChange={(e) => setParticipantBilling({
-                                  ...participantBilling,
-                                  [participant.id]: {
-                                    ...participantBilling[participant.id],
-                                    billing_code: e.target.value
-                                  }
-                                })}
-                                className="form-control"
-                              >
-                                <option value="">Select Code</option>
-                                {billingCodes.map(code => (
-                                  <option key={code.option_id} value={code.option_id}>
-                                    {code.label}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                            <div className="form-group hours-group">
-                              <label>Hours</label>
-                              <input
-                                type="number"
-                                value={participantBilling[participant.id]?.hours || ''}
-                                onChange={(e) => setParticipantBilling({
-                                  ...participantBilling,
-                                  [participant.id]: {
-                                    ...participantBilling[participant.id],
-                                    hours: e.target.value
-                                  }
-                                })}
-                                className="form-control hours-input"
-                                min="0.5"
-                                step="0.5"
-                                placeholder="e.g., 3.5"
-                              />
-                            </div>
-                            <div className="form-group button-group">
-                              <label>&nbsp;</label>
-                              <button
-                                className="btn btn-primary"
-                                onClick={() => addBillingLine(participant.id)}
-                                disabled={
-                                  saving || 
-                                  !participantBilling[participant.id]?.billing_code ||
-                                  !participantBilling[participant.id]?.hours
-                                }
-                              >
-                                <FiPlusCircle /> Add
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Staged lines list */}
-                        {Array.isArray(billingLines[participant.id]) && billingLines[participant.id].length > 0 ? (
-                          <div className="billing-lines">
-                            <div className="grid-header">
-                              <div>Code</div>
-                              <div>Hours</div>
-                              <div>Amount</div>
-                              <div>Actions</div>
-                            </div>
-                            {billingLines[participant.id].map((line) => (
-                              <div className="grid-row" key={line.id}>
-                                <div className="code-cell">{line.code ? `${line.code} — ${line.description || ''}` : line.billing_code_id}</div>
-                                <div className="hours-cell">{line.hours}</div>
-                                <div className="amount-cell">{formatCurrency(line.amount || (line.unit_price * line.hours))}</div>
-                                <div className="actions-cell">
-                                  <button
-                                    className="btn btn-icon btn-danger"
-                                    onClick={() => deleteBillingLine(participant.id, line.id)}
-                                    disabled={saving}
-                                    title="Remove"
-                                  >
-                                    <FiTrash2 />
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="muted" style={{ marginTop: '6px' }}>
-                            No billing lines yet
-                          </p>
-                        )}
-                      </>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
-      </div>
-      
-      {/* Resources (Staff & Vehicles) */}
-      <div className="glass-card mb-4">
-        <div className="card-header">
-          <h3><FiUsers /> Resources</h3>
-        </div>
-        <div className="card-body">
-          {/* Staff Roster */}
-          <div className="section-container">
-            <div className="section-header">
-              <h4>Roster</h4>
-              <button
-                className="btn btn-primary"
-                onClick={addExtraStaffShift}
-                disabled={saving}
-              >
-                <FiPlusCircle /> Add shift
-              </button>
-            </div>
-            <div className="placeholders-list">
-              {staffPlaceholders.length === 0 && requirements.staff_required === 0 ? (
-                <p className="muted">No staff required yet</p>
-              ) : (
-                <div className="placeholder-grid">
-                  {/* Display existing placeholders first */}
-                  {staffPlaceholders.map((placeholder, index) => (
-                    <div key={placeholder.id} className="placeholder-item staff-placeholder">
-                      <span className="placeholder-label">Shift {index+1}</span>
-                      <select
-                        value={placeholder.mode === 'auto' ? 'auto' : (placeholder.mode === 'open' ? 'open' : placeholder.staff_id)}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          if (value === 'auto') {
-                            updateStaffPlaceholder(placeholder.id, 'auto');
-                          } else if (value === 'open') {
-                            updateStaffPlaceholder(placeholder.id, 'open');
-                          } else {
-                            updateStaffPlaceholder(placeholder.id, 'manual', value);
-                          }
-                        }}
-                        className="form-control"
-                      >
-                        <option value="auto">Auto-assign</option>
-                        <option value="open">Open shift</option>
-                        {staffList.map(staff => (
-                          <option key={staff.id} value={staff.id}>
-                            {staff.first_name} {staff.last_name}
-                          </option>
-                        ))}
-                      </select>
-                      {index >= requirements.staff_required && (
-                        <button
-                          className="btn btn-icon btn-danger"
-                          onClick={() => deleteStaffPlaceholder(placeholder.id)}
-                          disabled={saving}
-                          title="Remove"
-                        >
-                          <FiX />
-                        </button>
-                      )}
-                      {index < requirements.staff_required && (
-                        <button
-                          className="btn btn-icon btn-disabled"
-                          disabled={true}
-                          title="Required placeholder"
-                        >
-                          <FiX style={{ opacity: 0.3 }} />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                  
-                  {/* Add auto placeholders up to staff_required */}
-                  {Array.from({ length: Math.max(0, requirements.staff_required - staffPlaceholders.length) }).map((_, index) => (
-                    <div key={`auto-${index}`} className="placeholder-item staff-placeholder">
-                      <span className="placeholder-label">Shift {staffPlaceholders.length + index + 1}</span>
-                      <select
-                        defaultValue="auto"
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          if (value === 'auto') {
-                            // No-op, it's already auto
-                          } else if (value === 'open') {
-                            addStaffPlaceholder('open');
-                          } else {
-                            addStaffPlaceholder('manual', value);
-                          }
-                        }}
-                        className="form-control"
-                      >
-                        <option value="auto">Auto-assign</option>
-                        <option value="open">Open shift</option>
-                        {staffList.map(staff => (
-                          <option key={staff.id} value={staff.id}>
-                            {staff.first_name} {staff.last_name}
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        className="btn btn-icon btn-disabled"
-                        disabled={true}
-                        title="Default placeholder"
-                      >
-                        <FiX style={{ opacity: 0.3 }} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-          
-          {/* Vehicles */}
-          <div className="section-container">
-            <div className="section-header">
-              <h4>Vehicles</h4>
-              <button
-                className="btn btn-primary"
-                onClick={addExtraVehicleSlot}
-                disabled={saving}
-              >
-                <FiPlusCircle /> Add vehicle
-              </button>
-            </div>
-            <div className="placeholders-list">
-              {vehiclePlaceholders.length === 0 && requirements.vehicles_required === 0 ? (
-                <p className="muted">No vehicles required yet</p>
-              ) : (
-                <div className="placeholder-grid">
-                  {/* Display existing placeholders first */}
-                  {vehiclePlaceholders.map((placeholder, index) => (
-                    <div key={placeholder.id} className="placeholder-item">
-                      {placeholder.mode === 'pc' ? (
-                        <>
-                          <span className="placeholder-label">Personal car</span>
-                          <button
-                            className="btn btn-secondary"
-                            onClick={() => togglePcMenu(placeholder.id)}
-                            disabled={saving}
-                          >
-                            Assign participants
-                          </button>
-                          
-                          {/* PC participant selection menu */}
-                          {pcMenuOpenId === placeholder.id && (
-                            <div className="pc-menu">
-                              <div className="pc-menu-header">
-                                Select participants for this personal car:
-                              </div>
-                              <div className="pc-menu-items">
-                                {addedParticipants.length === 0 ? (
-                                  <div className="pc-menu-empty">No participants added yet</div>
-                                ) : (
-                                  addedParticipants.map(participant => {
-                                    const isAssignedAnywhere = assignedToAnyPC.has(participant.participant_id);
-                                    const isSelectedHere = pcSelections[placeholder.id]?.has(participant.participant_id);
-                                    return (
-                                      <div 
-                                        key={participant.id} 
-                                        className={`pc-item ${isAssignedAnywhere ? 'assigned-any' : ''}`}
-                                        onClick={() => togglePcSelection(placeholder.id, participant.participant_id)}
-                                      >
-                                        {isSelectedHere && (
-                                          <FiCheck className="pc-item-check" />
-                                        )}
-                                        <span>{participant.name}</span>
-                                      </div>
-                                    );
-                                  })
-                                )}
-                              </div>
-                              <div style={{borderTop:'1px solid var(--glass-border)', margin:'8px 0'}} />
-                              <button className="btn btn-danger" onClick={() => revertPcToOrg(placeholder.id)} disabled={saving}>
-                                Revert to organisational vehicle
-                              </button>
-                              <div className="pc-menu-actions">
-                                <button
-                                  className="btn btn-secondary"
-                                  onClick={() => setPcMenuOpenId(null)}
-                                >
-                                  Cancel
-                                </button>
-                                <button
-                                  className="btn btn-primary"
-                                  onClick={() => savePcSelections(placeholder.id)}
-                                  disabled={saving}
-                                >
-                                  <FiSave /> Save
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                          
-                          {index >= requirements.vehicles_required && (
-                            <button
-                              className="btn btn-icon btn-danger"
-                              onClick={() => deleteVehiclePlaceholder(placeholder.id)}
-                              disabled={saving}
-                              title="Remove"
-                            >
-                              <FiX />
-                            </button>
-                          )}
-                          {index < requirements.vehicles_required && (
-                            <button
-                              className="btn btn-icon btn-disabled"
-                              disabled={true}
-                              title="Required placeholder"
-                            >
-                              <FiX style={{ opacity: 0.3 }} />
-                            </button>
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          <select
-                            value={placeholder.mode === 'auto' ? 'auto' : placeholder.vehicle_id}
-                            onChange={(e) => {
-                              const value = e.target.value;
-                              if (value === 'auto') {
-                                updateVehiclePlaceholder(placeholder.id, 'auto');
-                              } else {
-                                updateVehiclePlaceholder(placeholder.id, 'manual', value);
-                              }
-                            }}
-                            className="form-control"
-                          >
-                            <option value="auto">Auto-assign</option>
-                            {vehiclesList.map(vehicle => (
-                              <option key={vehicle.id} value={vehicle.id}>
-                                {vehicle.name} {vehicle.capacity_total ? `(${vehicle.capacity_total} seats)` : ''}
-                              </option>
-                            ))}
-                          </select>
-                          
-                          <button
-                            className="btn btn-secondary btn-sm"
-                            onClick={() => convertToPC(placeholder.id)}
-                            disabled={saving}
-                          >
-                            Convert to PC
-                          </button>
-                          
-                          {index >= requirements.vehicles_required && (
-                            <button
-                              className="btn btn-icon btn-danger"
-                              onClick={() => deleteVehiclePlaceholder(placeholder.id)}
-                              disabled={saving}
-                              title="Remove"
-                            >
-                              <FiX />
-                            </button>
-                          )}
-                          {index < requirements.vehicles_required && (
-                            <button
-                              className="btn btn-icon btn-disabled"
-                              disabled={true}
-                              title="Required placeholder"
-                            >
-                              <FiX style={{ opacity: 0.3 }} />
-                            </button>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      {/* Finalize */}
-      <div className="glass-card mb-4">
-        <div className="card-header">
-          <h3><FiCheckCircle /> Finalize</h3>
-        </div>
-        <div className="card-body">
-          <p>When you are ready to finalize this program, click the button below.</p>
-          <div className="form-actions">
-            <button 
-              className="btn btn-primary btn-lg"
               onClick={finalizeProgram}
               disabled={saving || requirements.participant_count === 0}
             >
@@ -1947,8 +1146,555 @@ const ProgramTemplateWizard = () => {
             </button>
           </div>
         </div>
+        
+        {/* Requirements chip bar */}
+        <div className="requirements-chip-bar">
+          <div className="req-chip">
+            <FiCalendar /> <span>{getDayName(dayOfWeek)}</span>
+          </div>
+          <div className="req-chip">
+            <FiRepeat /> <span>{getRecurrencePatternName(recurrencePattern)}</span>
+          </div>
+          <div className="req-chip">
+            <FiUsers /> <span>{requirements.participant_count} participants</span>
+          </div>
+          <div className="req-chip">
+            <FiUserCheck /> <span>{requirements.staff_required} staff</span>
+          </div>
+          <div className="req-chip">
+            <FiTruck /> <span>{Math.max(0, requirements.vehicles_required - pcCount)} vehicles</span>
+          </div>
+          {pcCount > 0 && (
+            <div className="req-chip">
+              <FiTruck /> <span>{pcCount} pc</span>
+            </div>
+          )}
+          <div className="req-chip">
+            <FiList /> <span>{slots.length} slots</span>
+          </div>
+          {shiftLength && (
+            <div className="req-chip">
+              <FiClock />{' '}
+              <span>{`${formatTime(shiftLength.start)} – ${formatTime(
+                shiftLength.end
+              )}`}</span>
+            </div>
+          )}
+          <div className="req-chip">
+            <FiCheckCircle /> <span>{formatCurrency(programRevenue)}</span>
+          </div>
+          {assignedVehiclesDisplay && (
+            <div className="req-chip">
+              <FiTruck /> <span>{assignedVehiclesDisplay}</span>
+            </div>
+          )}
+          <div className="req-chip" title={lastUpdated.toLocaleString()}>
+            <FiClock /> <span>{lastUpdated.toLocaleDateString()}</span>
+          </div>
+          {venues.find(v => v.id === venueId) && (
+            <div className="req-chip venue-chip">
+              <FiMapPin /> <span>{venues.find(v => v.id === venueId)?.name}</span>
+            </div>
+          )}
+        </div>
+        
+        {/* Program Details - Using extracted component */}
+        <ProgramDetailsPanel
+          ruleName={ruleName}
+          setRuleName={setRuleName}
+          ruleDescription={ruleDescription}
+          setRuleDescription={setRuleDescription}
+          anchorDate={anchorDate}
+          setAnchorDate={setAnchorDate}
+          recurrencePattern={recurrencePattern}
+          setRecurrencePattern={setRecurrencePattern}
+          venueId={venueId}
+          setVenueId={setVenueId}
+          venues={venues}
+          showNewVenueForm={showNewVenueForm}
+          setShowNewVenueForm={setShowNewVenueForm}
+          newVenue={newVenue}
+          setNewVenue={setNewVenue}
+          patternOptions={patternOptions}
+          createVenue={createVenue}
+          saving={saving}
+        />
+        
+        {/* Time Slots - Using extracted component */}
+        <TimeSlotsEditor
+          slots={slots}
+          newSlot={newSlot}
+          setNewSlot={setNewSlot}
+          addSlot={addSlot}
+          deleteSlot={deleteSlot}
+          formatTime={formatTime}
+          shiftLength={shiftLength}
+          slotTypeOptions={slotTypeOptions}
+          saving={saving}
+        />
+        
+        {/* Participants */}
+        <div className="glass-card mb-4">
+          <div className="card-header">
+            <h3><FiUsers /> Participants</h3>
+          </div>
+          <div className="card-body">
+            <div className="participant-select-row">
+              <select
+                id="participantSelect"
+                value={selectedParticipantId}
+                onChange={(e) => setSelectedParticipantId(e.target.value)}
+                className="form-control"
+              >
+                <option value="">Select Participant</option>
+                {participants
+                  .filter(p => !addedParticipantIds.includes(p.id))
+                  .map(participant => (
+                    <option key={participant.id} value={participant.id}>
+                      {participant.first_name} {participant.last_name}
+                    </option>
+                  ))
+                }
+              </select>
+              <button 
+                className="btn btn-primary"
+                onClick={addParticipant}
+                disabled={saving || !selectedParticipantId}
+              >
+                <FiPlusCircle /> Add
+              </button>
+            </div>
+            
+            <h4>Added Participants ({addedParticipants.length})</h4>
+            {addedParticipants.length === 0 ? (
+              <p className="muted">No participants added yet</p>
+            ) : (
+              <ul className="participant-list participants-grid">
+                {addedParticipants.map(participant => {
+                  const stats = getBillingStats(participant.id);
+                  return (
+                    <li key={participant.id} className="participant-item">
+                      <div className="participant-header" onClick={() => toggleParticipantOpen(participant.id)}>
+                        <div className="participant-name">{participant.name}</div>
+                        <div className="participant-badges">
+                          <span className="badge">{stats.count} lines</span>
+                          <span className="badge">{stats.totalHours.toFixed(1)} h</span>
+                          <span className="badge">{formatCurrency(stats.totalAmount)}</span>
+                        </div>
+                        <div className="participant-actions">
+                          <button 
+                            className="btn btn-icon btn-danger"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteParticipant(participant.id);
+                            }}
+                            title="Remove participant"
+                          >
+                            <FiTrash2 />
+                          </button>
+                          {openParticipants[participant.id] ? <FiChevronDown /> : <FiChevronRight />}
+                        </div>
+                      </div>
+                      
+                      {openParticipants[participant.id] && (
+                        <>
+                          {/* Billing Lines mini-form */}
+                          <div className="billing-form">
+                            <div className="form-row">
+                              <div className="form-group">
+                                <label>Billing Code</label>
+                                <select
+                                  value={participantBilling[participant.id]?.billing_code || ''}
+                                  onChange={(e) => setParticipantBilling({
+                                    ...participantBilling,
+                                    [participant.id]: {
+                                      ...participantBilling[participant.id],
+                                      billing_code: e.target.value
+                                    }
+                                  })}
+                                  className="form-control"
+                                >
+                                  <option value="">Select Code</option>
+                                  {billingCodes.map(code => (
+                                    <option key={code.option_id} value={code.option_id}>
+                                      {code.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div className="form-group hours-group">
+                                <label>Hours</label>
+                                <input
+                                  type="number"
+                                  value={participantBilling[participant.id]?.hours || ''}
+                                  onChange={(e) => setParticipantBilling({
+                                    ...participantBilling,
+                                    [participant.id]: {
+                                      ...participantBilling[participant.id],
+                                      hours: e.target.value
+                                    }
+                                  })}
+                                  className="form-control hours-input"
+                                  min="0.5"
+                                  step="0.5"
+                                  placeholder="e.g., 3.5"
+                                />
+                              </div>
+                              <div className="form-group button-group">
+                                <label>&nbsp;</label>
+                                <button
+                                  className="btn btn-primary"
+                                  onClick={() => addBillingLine(participant.id)}
+                                  disabled={
+                                    saving || 
+                                    !participantBilling[participant.id]?.billing_code ||
+                                    !participantBilling[participant.id]?.hours
+                                  }
+                                >
+                                  <FiPlusCircle /> Add
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Staged lines list */}
+                          {Array.isArray(billingLines[participant.id]) && billingLines[participant.id].length > 0 ? (
+                            <div className="billing-lines">
+                              <div className="grid-header">
+                                <div>Code</div>
+                                <div>Hours</div>
+                                <div>Amount</div>
+                                <div>Actions</div>
+                              </div>
+                              {billingLines[participant.id].map((line) => (
+                                <div className="grid-row" key={line.id}>
+                                  <div className="code-cell">{line.code ? `${line.code} — ${line.description || ''}` : line.billing_code_id}</div>
+                                  <div className="hours-cell">{line.hours}</div>
+                                  <div className="amount-cell">{formatCurrency(line.amount || (line.unit_price * line.hours))}</div>
+                                  <div className="actions-cell">
+                                    <button
+                                      className="btn btn-icon btn-danger"
+                                      onClick={() => deleteBillingLine(participant.id, line.id)}
+                                      disabled={saving}
+                                      title="Remove"
+                                    >
+                                      <FiTrash2 />
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="muted" style={{ marginTop: '6px' }}>
+                              No billing lines yet
+                            </p>
+                          )}
+                        </>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </div>
+        
+        {/* Resources (Staff & Vehicles) */}
+        <div className="glass-card mb-4">
+          <div className="card-header">
+            <h3><FiUsers /> Resources</h3>
+          </div>
+          <div className="card-body">
+            {/* Staff Roster */}
+            <div className="section-container">
+              <div className="section-header">
+                <h4>Roster</h4>
+                <button
+                  className="btn btn-primary"
+                  onClick={addExtraStaffShift}
+                  disabled={saving}
+                >
+                  <FiPlusCircle /> Add shift
+                </button>
+              </div>
+              <div className="placeholders-list">
+                {staffPlaceholders.length === 0 && requirements.staff_required === 0 ? (
+                  <p className="muted">No staff required yet</p>
+                ) : (
+                  <div className="placeholder-grid">
+                    {/* Display existing placeholders first */}
+                    {staffPlaceholders.map((placeholder, index) => (
+                      <div key={placeholder.id} className="placeholder-item staff-placeholder">
+                        <span className="placeholder-label">Shift {index+1}</span>
+                        <select
+                          value={placeholder.mode === 'auto' ? 'auto' : (placeholder.mode === 'open' ? 'open' : placeholder.staff_id)}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (value === 'auto') {
+                              updateStaffPlaceholder(placeholder.id, 'auto');
+                            } else if (value === 'open') {
+                              updateStaffPlaceholder(placeholder.id, 'open');
+                            } else {
+                              updateStaffPlaceholder(placeholder.id, 'manual', value);
+                            }
+                          }}
+                          className="form-control"
+                        >
+                          <option value="auto">Auto-assign</option>
+                          <option value="open">Open shift</option>
+                          {staffList.map(staff => (
+                            <option key={staff.id} value={staff.id}>
+                              {staff.first_name} {staff.last_name}
+                            </option>
+                          ))}
+                        </select>
+                        {index >= requirements.staff_required && (
+                          <button
+                            className="btn btn-icon btn-danger"
+                            onClick={() => deleteStaffPlaceholder(placeholder.id)}
+                            disabled={saving}
+                            title="Remove"
+                          >
+                            <FiX />
+                          </button>
+                        )}
+                        {index < requirements.staff_required && (
+                          <button
+                            className="btn btn-icon btn-disabled"
+                            disabled={true}
+                            title="Required placeholder"
+                          >
+                            <FiX style={{ opacity: 0.3 }} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    
+                    {/* Add auto placeholders up to staff_required */}
+                    {Array.from({ length: Math.max(0, requirements.staff_required - staffPlaceholders.length) }).map((_, index) => (
+                      <div key={`auto-${index}`} className="placeholder-item staff-placeholder">
+                        <span className="placeholder-label">Shift {staffPlaceholders.length + index + 1}</span>
+                        <select
+                          defaultValue="auto"
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (value === 'auto') {
+                              // No-op, it's already auto
+                            } else if (value === 'open') {
+                              addStaffPlaceholder('open');
+                            } else {
+                              addStaffPlaceholder('manual', value);
+                            }
+                          }}
+                          className="form-control"
+                        >
+                          <option value="auto">Auto-assign</option>
+                          <option value="open">Open shift</option>
+                          {staffList.map(staff => (
+                            <option key={staff.id} value={staff.id}>
+                              {staff.first_name} {staff.last_name}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          className="btn btn-icon btn-disabled"
+                          disabled={true}
+                          title="Default placeholder"
+                        >
+                          <FiX style={{ opacity: 0.3 }} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* Vehicles */}
+            <div className="section-container">
+              <div className="section-header">
+                <h4>Vehicles</h4>
+                <button
+                  className="btn btn-primary"
+                  onClick={addExtraVehicleSlot}
+                  disabled={saving}
+                >
+                  <FiPlusCircle /> Add vehicle
+                </button>
+              </div>
+              <div className="placeholders-list">
+                {vehiclePlaceholders.length === 0 && requirements.vehicles_required === 0 ? (
+                  <p className="muted">No vehicles required yet</p>
+                ) : (
+                  <div className="placeholder-grid">
+                    {/* Display existing placeholders first */}
+                    {vehiclePlaceholders.map((placeholder, index) => (
+                      <div key={placeholder.id} className="placeholder-item">
+                        {placeholder.mode === 'pc' ? (
+                          <>
+                            <span className="placeholder-label">Personal car</span>
+                            <button
+                              className="btn btn-secondary"
+                              onClick={() => togglePcMenu(placeholder.id)}
+                              disabled={saving}
+                            >
+                              Assign participants
+                            </button>
+                            
+                            {/* PC participant selection menu */}
+                            {pcMenuOpenId === placeholder.id && (
+                              <div className="pc-menu">
+                                <div className="pc-menu-header">
+                                  Select participants for this personal car:
+                                </div>
+                                <div className="pc-menu-items">
+                                  {addedParticipants.length === 0 ? (
+                                    <div className="pc-menu-empty">No participants added yet</div>
+                                  ) : (
+                                    addedParticipants.map(participant => {
+                                      const isAssignedAnywhere = assignedToAnyPC.has(participant.participant_id);
+                                      const isSelectedHere = pcSelections[placeholder.id]?.has(participant.participant_id);
+                                      return (
+                                        <div 
+                                          key={participant.id} 
+                                          className={`pc-item ${isAssignedAnywhere ? 'assigned-any' : ''}`}
+                                          onClick={() => togglePcSelection(placeholder.id, participant.participant_id)}
+                                        >
+                                          {isSelectedHere && (
+                                            <FiCheck className="pc-item-check" />
+                                          )}
+                                          <span>{participant.name}</span>
+                                        </div>
+                                      );
+                                    })
+                                  )}
+                                </div>
+                                <div style={{borderTop:'1px solid var(--glass-border)', margin:'8px 0'}} />
+                                <button
+                                  className="btn btn-danger pc-revert-btn"
+                                  onClick={() => revertPcToOrg(placeholder.id)}
+                                  disabled={saving}
+                                >
+                                  Revert vehicle
+                                </button>
+                                <div className="pc-menu-actions">
+                                  <button
+                                    className="btn btn-secondary"
+                                    onClick={() => setPcMenuOpenId(null)}
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    className="btn btn-primary"
+                                    onClick={() => savePcSelections(placeholder.id)}
+                                    disabled={saving}
+                                  >
+                                    <FiSave /> Save
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {index >= requirements.vehicles_required && (
+                              <button
+                                className="btn btn-icon btn-danger"
+                                onClick={() => deleteVehiclePlaceholder(placeholder.id)}
+                                disabled={saving}
+                                title="Remove"
+                              >
+                                <FiX />
+                              </button>
+                            )}
+                            {index < requirements.vehicles_required && (
+                              <button
+                                className="btn btn-icon btn-disabled"
+                                disabled={true}
+                                title="Required placeholder"
+                              >
+                                <FiX style={{ opacity: 0.3 }} />
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <select
+                              value={placeholder.mode === 'auto' ? 'auto' : placeholder.vehicle_id}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                if (value === 'auto') {
+                                  updateVehiclePlaceholder(placeholder.id, 'auto');
+                                } else {
+                                  updateVehiclePlaceholder(placeholder.id, 'manual', value);
+                                }
+                              }}
+                              className="form-control"
+                            >
+                              <option value="auto">Auto-assign</option>
+                              {vehiclesList.map(vehicle => (
+                                <option key={vehicle.id} value={vehicle.id}>
+                                  {vehicle.name} {vehicle.capacity_total ? `(${vehicle.capacity_total} seats)` : ''}
+                                </option>
+                              ))}
+                            </select>
+                            
+                            <button
+                              className="btn btn-secondary btn-sm"
+                              onClick={() => convertToPC(placeholder.id)}
+                              disabled={saving}
+                            >
+                              Convert to PC
+                            </button>
+                            
+                            {index >= requirements.vehicles_required && (
+                              <button
+                                className="btn btn-icon btn-danger"
+                                onClick={() => deleteVehiclePlaceholder(placeholder.id)}
+                                disabled={saving}
+                                title="Remove"
+                              >
+                                <FiX />
+                              </button>
+                            )}
+                            {index < requirements.vehicles_required && (
+                              <button
+                                className="btn btn-icon btn-disabled"
+                                disabled={true}
+                                title="Required placeholder"
+                              >
+                                <FiX style={{ opacity: 0.3 }} />
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Finalize */}
+        <div className="glass-card mb-4">
+          <div className="card-header">
+            <h3><FiCheckCircle /> Finalize</h3>
+          </div>
+          <div className="card-body">
+            <p>When you are ready to finalize this program, click the button below.</p>
+            <div className="form-actions">
+              <button 
+                className="btn btn-primary btn-lg"
+                onClick={finalizeProgram}
+                disabled={saving || requirements.participant_count === 0}
+              >
+                <FiCheckCircle /> Finalize Program
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
+    </ProgramFormProvider>
   );
 };
 
