@@ -135,6 +135,43 @@ const Venues = () => {
     }
   );
 
+  // Helper to normalize features from multiple sources
+  const getFeatureFlags = (venue) => {
+    // Start with empty features object
+    const features = {};
+    
+    // Add features from venue.features (JSONB) if present
+    if (venue.features && typeof venue.features === 'object') {
+      Object.assign(features, venue.features);
+    }
+    
+    // Add features from venue.facilities array
+    if (Array.isArray(venue.facilities)) {
+      venue.facilities.forEach(facility => {
+        features[facility] = true;
+      });
+    }
+    
+    // Add features from accessibility_features string
+    if (typeof venue.accessibility_features === 'string') {
+      venue.accessibility_features.split(',').forEach(feature => {
+        const trimmed = feature.trim();
+        if (trimmed) {
+          features[trimmed] = true;
+        }
+      });
+    }
+    
+    return features;
+  };
+
+  // Format feature key to display label
+  const formatLabel = (key) =>
+    key
+      .split('_')
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+
   // Filter venues based on search term and filters
   const filteredVenues = venuesData?.data?.filter(venue => {
     const matchesSearch = 
@@ -147,24 +184,36 @@ const Venues = () => {
       (filters.capacity === 'medium' && venue.capacity > 20 && venue.capacity <= 50) ||
       (filters.capacity === 'large' && venue.capacity > 50);
     
-    const matchesAccessibility = filters.accessibility === 'all' || 
-      (filters.accessibility === 'wheelchair' && venue.accessibility_features?.includes('wheelchair_access')) ||
-      (filters.accessibility === 'hearing' && venue.accessibility_features?.includes('hearing_loop')) ||
-      (filters.accessibility === 'vision' && venue.accessibility_features?.includes('vision_aids'));
+    // Updated accessibility matching using normalized features
+    const matchesAccessibility = () => {
+      if (filters.accessibility === 'all') return true;
+      
+      // Get normalized features
+      const features = getFeatureFlags(venue);
+      
+      // Check for specific accessibility features
+      if (filters.accessibility === 'wheelchair' && features.wheelchair_access) return true;
+      if (filters.accessibility === 'hearing' && features.hearing_loop) return true;
+      if (filters.accessibility === 'vision' && features.vision_aids) return true;
+      
+      // Legacy fallback (just in case)
+      if (filters.accessibility === 'wheelchair' && 
+          venue.accessibility_features?.includes('wheelchair_access')) return true;
+      if (filters.accessibility === 'hearing' && 
+          venue.accessibility_features?.includes('hearing_loop')) return true;
+      if (filters.accessibility === 'vision' && 
+          venue.accessibility_features?.includes('vision_aids')) return true;
+      
+      return false;
+    };
     
-    return matchesSearch && matchesCapacity && matchesAccessibility;
+    return matchesSearch && matchesCapacity && matchesAccessibility();
   }) || [];
 
   // Currency formatter
   const formatCurrency = (amount) => {
     if (amount === null || amount === undefined) return '$0.00';
     return `$${parseFloat(amount).toFixed(2)}`;
-  };
-
-  // Format status for display
-  const formatStatus = (status) => {
-    if (!status) return 'Unknown';
-    return status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   };
 
   // Format address for display
@@ -263,6 +312,9 @@ const Venues = () => {
       case 'kitchen':
         return <FiCoffee />;
       case 'parking':
+      case 'onsite_parking':
+      case 'street_parking':
+      case 'accessible_parking':
         return <FiMapPin />;
       case 'air_conditioning':
         return <FiThermometer />;
@@ -272,6 +324,10 @@ const Venues = () => {
         return <FiEdit2 />;
       case 'stage':
         return <FiLayers />;
+      case 'wheelchair_access':
+        return <FaWheelchair />;
+      case 'accessible_restroom':
+        return <FiHome />;
       default:
         return <FiCheck />;
     }
@@ -372,6 +428,7 @@ const Venues = () => {
           <div className="venues-grid">
             {currentVenues.map((venue) => {
               const active = isVenueActive(venue);
+              const features = getFeatureFlags(venue);
               
               return (
                 <div
@@ -438,6 +495,33 @@ const Venues = () => {
                     <p className="venue-address">
                       <FiMapPin className="icon" /> {formatAddress(venue)}
                     </p>
+                    
+                    {/* Facility Icons Row */}
+                    <div className="facility-icons">
+                      {(() => {
+                        const keyFeatures = [
+                          { key: 'wifi', icon: <FiWifi />, label: 'Wi-Fi' },
+                          { key: 'projector', icon: <FiMonitor />, label: 'Projector' },
+                          { key: 'sound_system', icon: <FiSpeaker />, label: 'Sound System' },
+                          { key: 'kitchen', icon: <FiCoffee />, label: 'Kitchen' },
+                          { key: 'onsite_parking', icon: <FiMapPin />, label: 'Onsite Parking', alt: 'parking' },
+                          { key: 'wheelchair_access', icon: <FaWheelchair />, label: 'Wheelchair Access' },
+                          { key: 'accessible_restroom', icon: <FiHome />, label: 'Accessible Restroom' }
+                        ];
+                        
+                        return keyFeatures.map(({ key, icon, label, alt }) => {
+                          // Check both primary key and alternative key if provided
+                          if (features[key] || (alt && features[alt])) {
+                            return (
+                              <div key={key} className="facility-icon" title={label}>
+                                {icon}
+                              </div>
+                            );
+                          }
+                          return null;
+                        }).filter(Boolean);
+                      })()}
+                    </div>
                   </div>
                 </div>
               );
@@ -573,6 +657,31 @@ const Venues = () => {
             {/* Facilities & Accessibility */}
             <div className="detail-section glass-card">
               <h4>Facilities & Accessibility</h4>
+              
+              {/* Features badges from normalized features */}
+              {(() => {
+                const features = getFeatureFlags(selectedVenue);
+                const keyFeatures = [
+                  'wifi', 'projector', 'sound_system', 'kitchen', 'wheelchair_access',
+                  'accessible_restroom', 'hearing_loop', 'vision_aids', 'ramps', 'elevator',
+                  'onsite_parking', 'accessible_parking', 'whiteboard', 'stage'
+                ];
+                
+                const featureBadges = keyFeatures
+                  .filter(key => features[key])
+                  .map(key => (
+                    <span key={key} className="badge badge-blue">
+                      {getFacilityIcon(key)} {formatLabel(key)}
+                    </span>
+                  ));
+                
+                if (featureBadges.length > 0) {
+                  return <div className="badge-list feature-badges">{featureBadges}</div>;
+                }
+                return null;
+              })()}
+              
+              {/* Legacy badges display */}
               <div className="badge-list">
                 {selectedVenue.facilities?.map((f, i) => (
                   <span key={i} className="badge badge-blue">
@@ -586,7 +695,8 @@ const Venues = () => {
                 ))}
                 {(!selectedVenue.facilities || selectedVenue.facilities.length === 0) &&
                   (!selectedVenue.accessibility_features ||
-                    selectedVenue.accessibility_features.length === 0) && (
+                    selectedVenue.accessibility_features.length === 0) &&
+                  !Object.values(getFeatureFlags(selectedVenue)).some(v => v) && (
                   <p className="text-muted">No facilities or accessibility features listed.</p>
                 )}
               </div>
@@ -667,7 +777,6 @@ const Venues = () => {
               onSubmit={() => createMutation.mutate(newVenue)}
               submitLabel="Create Venue"
               saving={createMutation.isLoading}
-              mode="create"
               onCancel={() => setShowAddModal(false)}
             />
           </div>
@@ -690,7 +799,6 @@ const Venues = () => {
               onSubmit={() => updateMutation.mutate({ id: editVenue.id, data: editVenue })}
               submitLabel="Update Venue"
               saving={updateMutation.isLoading}
-              mode="edit"
               onCancel={() => setEditVenue(null)}
             />
           </div>
