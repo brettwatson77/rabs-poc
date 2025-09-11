@@ -143,6 +143,40 @@
   font-size:14px;
 }
 
+/* ------------------------------------------------------------------*/
+/*  Facility icons row (under address)                                */
+/* ------------------------------------------------------------------*/
+
+.venues-page .facility-icons{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-top:6px;
+}
+.venues-page .facility-icon{
+  width:28px;
+  height:28px;
+  border-radius:8px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.10);
+}
+.venues-page .facility-icon svg{
+  width:16px;
+  height:16px;
+  color:#ffffff;
+}
+/* Invert colours on selected card */
+.venues-page .venue-card.selected .facility-icon{
+  background:rgba(0,0,0,0.06);
+  border-color:rgba(0,0,0,0.12);
+}
+.venues-page .venue-card.selected .facility-icon svg{
+  color:#111;
+}
+
 /* Pagination */
 .venues-page .pagination-container { display:flex; align-items:center; justify-content:center; gap: 14px; margin: 16px 0; }
 
