@@ -36,9 +36,17 @@ const SUPPORT_FLAG_LABELS = {
 
 const ParticipantCard = ({ participant, selected, onClick, onEdit, onDelete }) => {
   // Calculate supervision multiplier color and width
-  const supervisionMultiplier = parseFloat(participant.supervision_multiplier || 1.0);
+  const rawMultiplier = participant.supervision_multiplier;
+  let supervisionMultiplier = parseFloat(rawMultiplier);
+  if (!Number.isFinite(supervisionMultiplier)) supervisionMultiplier = 1.0;
+  // Clamp between 1.0 and 2.5
+  supervisionMultiplier = Math.min(2.5, Math.max(1.0, supervisionMultiplier));
+
   const supervisionColor = getSupervisionColor(supervisionMultiplier);
-  const supervisionWidth = Math.min((supervisionMultiplier / 2.5) * 100, 100);
+  const supervisionWidth = Math.min(
+    100,
+    Math.max(0, (supervisionMultiplier / 2.5) * 100)
+  );
   
   return (
     <div 

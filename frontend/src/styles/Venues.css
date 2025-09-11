@@ -162,3 +162,13 @@
   overflow-y:auto;
   border-radius:12px;
 }
+
+/* ------------------------------------------------------------------*/
+/*  Edit pencil icon colour override                                  */
+/* ------------------------------------------------------------------*/
+
+/* Ensure edit pencil is always white (even on selected cards) */
+.venues-page .venue-actions .action-btn.edit svg,
+.venues-page .modal-actions .action-btn.edit svg{
+  color:#ffffff !important;
+}

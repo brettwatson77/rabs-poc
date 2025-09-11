@@ -1631,7 +1631,14 @@ const Participants = () => {
                   <h4>Billing Codes</h4>
                   {selectedParticipant.billing_codes?.length > 0 ? (
                     <div className="billing-codes-list">
-                      {selectedParticipant.billing_codes.map((code, index) => (
+                      {selectedParticipant.billing_codes.map((code, index) => {
+                        const remaining = parseFloat(code.remaining_amount || 0);
+                        const total = parseFloat(code.total_amount || 0);
+                        const pct =
+                          total > 0 && isFinite(remaining)
+                            ? Math.min(100, Math.max(0, (remaining / total) * 100))
+                            : 0;
+                        return (
                         <div key={index} className="billing-code-item">
                           <div className="billing-code-header">
                             <h5>{code.code}</h5>
@@ -1662,12 +1669,13 @@ const Participants = () => {
                             <div 
                               className="progress-bar" 
                               style={{
-                                width: `${(code.remaining_amount / code.total_amount) * 100}%`
+                                width: `${pct}%`
                               }}
                             ></div>
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className="text-muted">No billing codes found for this participant.</p>

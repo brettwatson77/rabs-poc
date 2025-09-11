@@ -116,7 +116,12 @@
  * NEW 3: Action icon colours
  * ------------------------------------------------------------------ */
 .participants-page .participant-actions .action-btn.edit svg { color:#ffffff; }
-.participants-page .participant-actions .action-btn.delete svg { color:#ffffff; }
+.participants-page .participant-actions .action-btn.edit svg { color:#ffffff !important; }
+.participants-page .participant-actions .action-btn.delete svg { color:#ff6b6b !important; }
+.participants-page .participant-actions .action-btn.delete:hover{
+  background: rgba(255,107,107,0.18);
+  border-color: rgba(255,107,107,0.30);
+}
 
 /* ------------------------------------------------------------------
  * NEW 4: Toast notice

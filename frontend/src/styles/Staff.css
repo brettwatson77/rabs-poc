@@ -406,3 +406,13 @@
 
 /* Modal header close icon visibility */
 .staff-page .modal-header .modal-close svg{color:#ffffff;}
+
+/* ------------------------------------------------------------------
+ * Icon colour overrides: keep edit white, tint delete red
+ * ------------------------------------------------------------------*/
+.staff-page .staff-actions .action-btn.edit svg{ color:#ffffff !important; }
+.staff-page .staff-actions .action-btn.delete svg{ color:#ff6b6b; }
+.staff-page .staff-actions .action-btn.delete:hover{
+  background:rgba(255,107,107,0.18);
+  border-color:rgba(255,107,107,0.30);
+}

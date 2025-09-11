@@ -238,13 +238,26 @@ const Staff = () => {
 
   // Utilisation helpers
   const isCasual = (s) => s?.employment_type === 'casual';
-  const contractHours = (s) => isCasual(s) ? 0 : (s?.contracted_hours ?? 0);
-  const currentFortnightHours = (s) => s?.current_fortnight_hours ?? 0; // placeholder until Xero integration
+  // Safely parse contracted hours
+  const contractHours = (s) => {
+    if (isCasual(s)) return 0;
+    const val = Number(s?.contracted_hours ?? 0);
+    return Number.isFinite(val) && val > 0 ? val : 0;
+  };
+
+  // Safely parse current fortnight hours (placeholder until Xero integration)
+  const currentFortnightHours = (s) => {
+    const val = Number(s?.current_fortnight_hours ?? 0);
+    return Number.isFinite(val) && val >= 0 ? val : 0;
+  };
+
+  // Utilisation percentage clamped 0‒100 and NaN-safe
   const utilisationPct = (s) => {
     const ch = contractHours(s);
+    if (ch <= 0) return 0;
     const cur = currentFortnightHours(s);
-    if (!ch) return 0;
-    return Math.min(100, Math.max(0, Math.round((cur/ch)*100)));
+    const pct = (cur / ch) * 100;
+    return Math.min(100, Math.max(0, Math.round(Number.isFinite(pct) ? pct : 0)));
   };
 
   // Render directory tab content
