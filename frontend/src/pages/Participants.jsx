@@ -558,8 +558,9 @@ const Participants = () => {
     
     const matchesStatus = filters.status === 'all' || participant.status === filters.status;
     const matchesSupportLevel = filters.supportLevel === 'all' || participant.support_level === filters.supportLevel;
+    const matchesPlan = filters.planManagementType === 'all' || participant.plan_management_type === filters.planManagementType;
     
-    return matchesSearch && matchesStatus && matchesSupportLevel;
+    return matchesSearch && matchesStatus && matchesSupportLevel && matchesPlan;
   }) || [];
 
   // Pagination logic

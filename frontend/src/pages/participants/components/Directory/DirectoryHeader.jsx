@@ -64,6 +64,23 @@ const DirectoryHeader = ({
                 <option value="low">Low</option>
               </select>
             </div>
+
+            {/* Plan Management Type */}
+            <div className="filter-group">
+              <label>Management</label>
+              <select
+                value={filters.planManagementType}
+                onChange={(e) =>
+                  setFilters({ ...filters, planManagementType: e.target.value })
+                }
+              >
+                <option value="all">All Types</option>
+                <option value="agency_managed">Agency Managed</option>
+                <option value="plan_managed">Plan Managed</option>
+                <option value="self_managed">Self Managed</option>
+                <option value="self_funded">Self Funded</option>
+              </select>
+            </div>
           </div>
         )}
       </div>
