@@ -366,32 +366,34 @@ const Staff = () => {
                       </div>
                     )}
                   </div>
-                  <div className="staff-badges">
-                    <span className={`badge ${getStatusBadge(staff.status)}`}>
-                      {staff.status}
-                    </span>
-                    <span className={`badge ${getRoleBadge(staff.position)}`}>
-                      {formatRole(staff.position)}
-                    </span>
-                  </div>
                 </div>
                 
                 <div className="staff-info">
-                  <h3 className="staff-name">{staff.first_name} {staff.last_name}</h3>
+                  <div className="staff-title">
+                    <h3 className="staff-name">{staff.first_name} {staff.last_name}</h3>
+                    <div className="staff-badges">
+                      <span className={`badge ${getStatusBadge(staff.status)}`}>
+                        {staff.status?.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+                      </span>
+                      <span className={`badge ${getRoleBadge(staff.position)}`}>
+                        {formatRole(staff.position)}
+                      </span>
+                    </div>
+                  </div>
                   <p className="staff-employment">
                     <span className="badge badge-purple">
                       SCHADS L{staff.schads_level || 2}
                     </span>
-                    {staff.contracted_hours && (
-                      <span className="contract-hours">
-                        {staff.contracted_hours} hrs/week
-                      </span>
-                    )}
+                    <span className="staff-rate">
+                      <FiDollarSign className="icon" />
+                      {formatCurrency(staff.base_pay_rate)}/hr
+                    </span>
                   </p>
-                  <p className="staff-rate">
-                    <FiDollarSign className="icon" />
-                    {formatCurrency(staff.base_pay_rate)}/hr
-                  </p>
+                  {staff.contracted_hours && (
+                    <p className="contract-hours">
+                      {staff.contracted_hours} hrs/week
+                    </p>
+                  )}
                 </div>
                 
                 {/* Utilisation Indicator (middle row) */}

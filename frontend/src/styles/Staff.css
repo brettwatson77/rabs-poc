@@ -53,11 +53,19 @@
 /* Badges near name */
 .staff-page .staff-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
 
+/* Inline wrapper for name + badges (mirrors Participants) */
+.staff-page .staff-title{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
 /* Name + meta */
 .staff-page .staff-info { grid-column: 2; grid-row: 1; align-self: center; }
 .staff-page .staff-name { margin: 0 0 2px 0; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
 .staff-page .staff-employment { margin: 0; color: rgba(255,255,255,0.7); display: flex; gap: 8px; align-items: center; margin-bottom: 4px; }
-.staff-page .contract-hours { opacity: 0.8; margin-left: 6px; }
+.staff-page .contract-hours { opacity: 0.8; margin: 0; }
 .staff-page .staff-rate { margin: 0; color: rgba(255,255,255,0.7); display: flex; align-items: center; gap: 6px; }
 .staff-page .staff-rate .icon { opacity: 0.8; }
 
@@ -77,8 +85,9 @@
   justify-content: space-between;
   gap: 12px;
   margin-top: 4px;
-  padding-top: 6px;
-  border-top: 1px solid rgba(255,255,255,0.08);
+  /* remove bottom separator for cleaner card */
+  padding-top: 0;
+  border-top: none;
 }
 
 .staff-page .staff-contact {
