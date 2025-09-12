@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiXCircle, FiSave } from 'react-icons/fi';
+import { FiSave } from 'react-icons/fi';
 
 /**
  * Modal component for creating a new participant
@@ -27,9 +27,6 @@ const CreateParticipantModal = ({
       <div className="modal-content glass-panel" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h3>Create New Participant</h3>
-          <button className="modal-close" onClick={onClose}>
-            <FiXCircle />
-          </button>
         </div>
         
         <div className="modal-body">
