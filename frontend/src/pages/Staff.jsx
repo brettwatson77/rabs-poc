@@ -375,25 +375,29 @@ const Staff = () => {
                       <span className={`badge ${getStatusBadge(staff.status)}`}>
                         {staff.status?.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
                       </span>
-                      <span className={`badge ${getRoleBadge(staff.position)}`}>
-                        {formatRole(staff.position)}
-                      </span>
                     </div>
                   </div>
-                  <p className="staff-employment">
+                  {/* Row 2: SCHADS + Role */}
+                  <div className="staff-meta">
                     <span className="badge badge-purple">
                       SCHADS L{staff.schads_level || 2}
                     </span>
+                    <span className={`badge ${getRoleBadge(staff.position)}`}>
+                      {formatRole(staff.position)}
+                    </span>
+                  </div>
+                  {/* Row 3: Rate + Hours */}
+                  <div className="staff-rate-hours">
                     <span className="staff-rate">
                       <FiDollarSign className="icon" />
                       {formatCurrency(staff.base_pay_rate)}/hr
                     </span>
-                  </p>
-                  {staff.contracted_hours && (
-                    <p className="contract-hours">
-                      {staff.contracted_hours} hrs/week
-                    </p>
-                  )}
+                    {staff.contracted_hours && (
+                      <span className="contract-hours">
+                        {staff.contracted_hours} hrs/week
+                      </span>
+                    )}
+                  </div>
                 </div>
                 
                 {/* Utilisation Indicator (middle row) */}

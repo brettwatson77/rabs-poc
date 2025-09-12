@@ -497,6 +497,16 @@ const Venues = () => {
                       )}
                     </div>
                   </div>
+                  
+                  {/* Mini map below venue header */}
+                  <div className="venue-mini-map">
+                    <iframe
+                      title={`mini-map-${venue.id}`}
+                      src={`https://www.google.com/maps?q=${encodeURIComponent(formatAddress(venue))}&output=embed`}
+                      loading="lazy"
+                    />
+                  </div>
+                  
                   <div className="venue-info">
                     <p className="venue-address">
                       <FiMapPin className="icon" /> {formatAddress(venue)}
@@ -607,39 +617,6 @@ const Venues = () => {
                 >
                   <FiEdit2 />
                 </button>
-                {isVenueActive(selectedVenue) ? (
-                  <button 
-                    className="action-btn delete"
-                    title="Deactivate venue"
-                    aria-label="Deactivate venue"
-                    onClick={() => handleDeleteVenue(selectedVenue)}
-                  >
-                    <FiX />
-                  </button>
-                ) : (
-                  <>
-                    <button 
-                      className="action-btn activate"
-                      title="Activate venue"
-                      aria-label="Activate venue"
-                      onClick={() => handleActivateVenue(selectedVenue)}
-                    >
-                      <FiCheck />
-                    </button>
-                    <button 
-                      className="action-btn delete"
-                      title="Delete venue permanently"
-                      aria-label="Delete venue permanently"
-                      onClick={() => {
-                        if (window.confirm(`Are you sure you want to permanently delete "${selectedVenue.name}"?`)) {
-                          deleteMutation.mutate(selectedVenue.id);
-                        }
-                      }}
-                    >
-                      <FiTrash2 />
-                    </button>
-                  </>
-                )}
                 <button className="modal-close" onClick={() => setSelectedVenue(null)}>
                   <FiX />
                 </button>
@@ -804,9 +781,6 @@ const Venues = () => {
           <div className="modal-content venue-form-modal glass-panel" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Add New Venue</h3>
-              <button className="modal-close" onClick={() => setShowAddModal(false)}>
-                <FiX />
-              </button>
             </div>
             <VenueForm
               value={newVenue}
@@ -826,9 +800,6 @@ const Venues = () => {
           <div className="modal-content venue-form-modal glass-panel" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Edit Venue</h3>
-              <button className="modal-close" onClick={() => setEditVenue(null)}>
-                <FiX />
-              </button>
             </div>
             <VenueForm
               value={editVenue}

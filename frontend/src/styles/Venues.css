@@ -81,8 +81,11 @@
   margin-bottom:6px;
 }
 .venues-page .venue-title{
+  /* Override to inline layout so status chip sits next to name */
   display:flex;
-  flex-direction:column;
+  flex-direction:row;
+  align-items:center;
+  gap:8px;
   min-width:0;               /* allow truncation */
 }
 .venues-page .venue-title .venue-name{
@@ -105,6 +108,10 @@
   letter-spacing:-0.01em;
   margin-top:4px;
   width:max-content;
+}
+.venues-page .status-chip{
+  /* remove default top margin when used inline with title */
+  margin-top:0;
 }
 .venues-page .status-chip.active{
   background:rgba(46,204,113,0.18);
@@ -249,6 +256,22 @@
   color:#ff6b6b;
   border-color:rgba(255,107,107,0.35);
   background:rgba(255,107,107,0.16);
+}
+
+/* ------------------------------------------------------------------
+ * Mini map preview (non-interactive) beneath header
+ * ------------------------------------------------------------------*/
+.venues-page .venue-mini-map{
+  margin:8px 0;
+  border-radius:10px;
+  overflow:hidden;
+  pointer-events:none; /* disable user interaction */
+}
+.venues-page .venue-mini-map iframe{
+  width:100%;
+  height:140px;
+  border:0;
+  display:block;
 }
 /* Invert colours on selected card */
 .venues-page .venue-card.selected .facility-icon{

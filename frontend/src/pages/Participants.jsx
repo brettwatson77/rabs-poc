@@ -79,7 +79,8 @@ const Participants = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
     status: 'all',
-    supportLevel: 'all'
+    supportLevel: 'all',
+    planManagementType: 'all'
   });
   const [showFilters, setShowFilters] = useState(false);
   const [selectedParticipant, setSelectedParticipant] = useState(null);
