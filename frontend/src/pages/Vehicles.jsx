@@ -571,13 +571,6 @@ const Vehicles = () => {
                     <span className="badge fuel-tag">
                       {vehicle.fuel_type}
                     </span>
-                    {/* capacity chips */}
-                    <span className="badge cap-chip">
-                      Pax {vehicle.capacity_participants ?? vehicle.capacity ?? 0}
-                    </span>
-                    <span className="badge cap-chip">
-                      Staff {vehicle.capacity_staff ?? 1}
-                    </span>
                   </div>
                 </div>
                 
@@ -627,14 +620,18 @@ const Vehicles = () => {
                     ) : (
                       <span className="unavailable-status">Unavailable</span>
                     )}
+                    <div className="vehicle-capacity">
+                      <span className="badge cap-chip">
+                        Pax {vehicle.capacity_participants ?? vehicle.capacity ?? 0}
+                      </span>
+                      <span className="badge cap-chip">
+                        Staff {vehicle.capacity_staff ?? 1}
+                      </span>
+                    </div>
                   </div>
                   
                   {/* Compact meta icons bottom-right */}
                   <div className="vehicle-meta-icons">
-                    <div className="meta-item" title={`Seats: ${vehicle.capacity}`}>
-                      <FiUsers />
-                      <span>{vehicle.capacity}</span>
-                    </div>
                     <div className="meta-item" title={`Odometer: ${vehicle.odometer?.toLocaleString() || 0} km`}>
                       <FiHash />
                       <span>{vehicle.odometer?.toLocaleString() || 0} km</span>
@@ -693,7 +690,7 @@ const Vehicles = () => {
         <div className="modal-overlay" onClick={() => setSelectedVehicle(null)}>
           <div className="modal-content vehicle-detail-modal glass-panel" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Vehicle Details</h3>
+              <div className="vehicle-registration-display">{selectedVehicle.registration}</div>
               <button className="modal-close" onClick={() => setSelectedVehicle(null)}>
                 <FiX />
               </button>
@@ -704,7 +701,6 @@ const Vehicles = () => {
                 <div className={`vehicle-banner`}>
                   <div className="vehicle-title">
                     <h2>{selectedVehicle.year} {selectedVehicle.make} {selectedVehicle.model}</h2>
-                    <div className="vehicle-registration-display">{selectedVehicle.registration}</div>
                   </div>
                   <div className="vehicle-status-badge">
                     <span className={`badge ${getStatusBadge(selectedVehicle.status)}`}>
