@@ -179,12 +179,12 @@ const Settings = () => {
     // 2) legacy loom_window bulk entry
     const bulkBody = [{
       key: 'loom_window',
-      value: {
+      value: JSON.stringify({
         auto_generate: loomWindowSettings.auto_generate,
         rollover_time: loomWindowSettings.rollover_time,
         fortnights_after: loomFortnights,
         days_after: days
-      },
+      }),
       description: 'Loom window configuration',
       category: 'loom'
     }];
