@@ -232,6 +232,9 @@ const Settings = () => {
       await Promise.all([putOrg, postBulk]);
       queryClient.invalidateQueries(['systemSettings']);
       queryClient.invalidateQueries(['orgSettings']);
+      // Immediately pull fresh values so UI reflects changes
+      await refetchSettings();
+      await refetchOrgSettings();
       toast.success('Loom & threshold settings saved');
       
       // Log successful save
@@ -273,6 +276,9 @@ const Settings = () => {
     
     bulkUpdateSettingsMutation.mutate(settings, {
       onSuccess: () => {
+        // ensure UI shows latest values immediately
+        queryClient.invalidateQueries(['systemSettings']);
+        refetchSettings();
         toast.success('General settings saved');
         
         // Log successful save
@@ -308,6 +314,9 @@ const Settings = () => {
     
     bulkUpdateSettingsMutation.mutate(settings, {
       onSuccess: () => {
+        // ensure UI shows latest values immediately
+        queryClient.invalidateQueries(['systemSettings']);
+        refetchSettings();
         toast.success('Security settings saved');
         
         // Log successful save
