@@ -616,8 +616,8 @@ a:hover {
 /* Responsive grid of participant cards */
 .participants-grid {
   display: grid;
-  /* allow 3-column layout on wider screens by reducing min width */
-  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  /* force two-column layout on wide screens for better spacing */
+  grid-template-columns: repeat(2, minmax(420px, 1fr));
   gap: var(--space-lg);
   list-style: none;
   padding: 0;
@@ -988,8 +988,8 @@ a:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  padding: 8px 12px;
+  gap: 8px;
+  padding: 6px 10px;
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.05);
@@ -1000,13 +1000,13 @@ a:hover {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
+  padding: 3px 8px;
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-full);
   background: rgba(255, 255, 255, 0.06);
   color: var(--text-secondary);
   font-weight: 500;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   white-space: nowrap;
 }
 
