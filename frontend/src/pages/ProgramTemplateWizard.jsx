@@ -52,7 +52,9 @@ const ProgramTemplateWizard = () => {
     participant_count: 0,
     wpu_total: 0,
     staff_required: 0,
-    vehicles_required: 0
+    vehicles_required: 0,
+    staff_threshold_per_wpu: 5,
+    vehicle_trigger_every_n_participants: 10
   });
   const [openParticipants, setOpenParticipants] = useState({});
   const [lastUpdated, setLastUpdated] = useState(new Date());
@@ -1155,14 +1157,30 @@ const ProgramTemplateWizard = () => {
           <div className="req-chip">
             <FiRepeat /> <span>{getRecurrencePatternName(recurrencePattern)}</span>
           </div>
-          <div className="req-chip">
-            <FiUsers /> <span>{requirements.participant_count} participants</span>
+          <div
+            className="req-chip"
+            title="Headcount / Weighted Participant Units (WPU)"
+          >
+            <FiUsers />{' '}
+            <span>
+              Participants: {requirements.participant_count} /{' '}
+              {requirements.wpu_total.toFixed(1)}
+            </span>
           </div>
-          <div className="req-chip">
+          <div
+            className="req-chip"
+            title={`1 per ${requirements.staff_threshold_per_wpu} WPU`}
+          >
             <FiUserCheck /> <span>{requirements.staff_required} staff</span>
           </div>
-          <div className="req-chip">
-            <FiTruck /> <span>{Math.max(0, requirements.vehicles_required - pcCount)} vehicles</span>
+          <div
+            className="req-chip"
+            title={`1 per ${requirements.vehicle_trigger_every_n_participants} participants (org vehicles only)`}
+          >
+            <FiTruck />{' '}
+            <span>
+              {Math.max(0, requirements.vehicles_required - pcCount)} vehicles
+            </span>
           </div>
           {pcCount > 0 && (
             <div className="req-chip">

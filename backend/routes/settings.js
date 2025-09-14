@@ -221,6 +221,7 @@ router.get('/org', async (req, res) => {
     const DEFAULTS = {
       loom_window_days: 14,
       staff_threshold_per_wpu: 5,
+      vehicle_trigger_every_n_participants: 10,
       default_bus_capacity: 10,
     };
 
@@ -473,6 +474,7 @@ router.put('/org', async (req, res) => {
     const DEFAULTS = {
       loom_window_days: 14,
       staff_threshold_per_wpu: 5,
+      vehicle_trigger_every_n_participants: 10,
       default_bus_capacity: 10,
     };
     const allowedKeys = Object.keys(DEFAULTS);

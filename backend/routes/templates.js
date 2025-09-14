@@ -53,27 +53,39 @@ function isRuleActiveOnDate(ruleRow, dateStr) {
  * @returns {Promise<Object>} - Settings object with defaults if needed
  */
 async function loadSettings(pool) {
-  try {
-    const result = await pool.query(`
-      SELECT value FROM settings WHERE key = 'org'
-    `);
-    
-    if (result.rows.length > 0 && result.rows[0].value) {
-      try {
-        return JSON.parse(result.rows[0].value);
-      } catch (e) {
-        console.warn('Failed to parse settings JSON:', e.message);
-      }
-    }
-  } catch (err) {
-    console.warn('Error loading settings:', err.message);
-  }
-  
-  // Return defaults if settings not found or error
-  return {
+  // -------------------------------------------------------------------
+  // Organisation-level numeric defaults.  These values are used across
+  // the templates router to calculate staffing / vehicle requirements.
+  // -------------------------------------------------------------------
+  const DEFAULTS = {
+    loom_window_days: 14,
     staff_threshold_per_wpu: 5,
-    default_bus_capacity: 10
+    vehicle_trigger_every_n_participants: 10,
+    default_bus_capacity: 10, // kept for legacy fall-back paths
   };
+
+  try {
+    const keys = Object.keys(DEFAULTS);
+    const { rows } = await pool.query(
+      `SELECT key, value
+         FROM settings
+        WHERE key = ANY($1)`,
+      [keys]
+    );
+
+    // Start with defaults and overwrite with any valid numeric DB values
+    const merged = { ...DEFAULTS };
+    rows.forEach((r) => {
+      const num = Number(r.value);
+      if (Number.isFinite(num) && num > 0) merged[r.key] = num;
+    });
+
+    return merged;
+  } catch (err) {
+    console.warn('Error loading org settings:', err.message);
+    // fall back to defaults if query fails
+    return { ...DEFAULTS };
+  }
 }
 
 // POST /templates/rules - Create a new draft rule
@@ -1168,13 +1180,18 @@ router.get('/rules/:id/requirements', async (req, res) => {
     
     // Calculate required staff and vehicles
     const staffRequired = Math.ceil(wpuTotal / settings.staff_threshold_per_wpu);
-    const vehiclesRequired = Math.ceil(participantCount / settings.default_bus_capacity);
+    const vehiclesRequired = Math.ceil(
+      participantCount / settings.vehicle_trigger_every_n_participants
+    );
     
     const requirements = {
       participant_count: participantCount,
       wpu_total: wpuTotal,
       staff_required: staffRequired,
-      vehicles_required: vehiclesRequired
+      vehicles_required: vehiclesRequired,
+      staff_threshold_per_wpu: settings.staff_threshold_per_wpu,
+      vehicle_trigger_every_n_participants:
+        settings.vehicle_trigger_every_n_participants,
     };
     
     res.json({
