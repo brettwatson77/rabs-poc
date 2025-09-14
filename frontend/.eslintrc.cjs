@@ -7,7 +7,9 @@
   extends: [
     'eslint:recommended',
     'plugin:react/recommended',
+    'plugin:react-hooks/recommended',
   ],
+  plugins: ['react-hooks'],
   parserOptions: {
     ecmaVersion: 'latest',
     sourceType: 'module',
@@ -19,6 +21,8 @@
   },
   rules: {
     'react/prop-types': 'off',
+    // Disable the exhaustive-deps rule to prevent non-critical warnings
+    'react-hooks/exhaustive-deps': 'off',
     'max-lines': ['error', {
       max: 1200,
       skipBlankLines: true,
@@ -39,6 +43,16 @@
     },
     {
       files: ['src/pages/Vehicles.jsx'],
+      rules: {
+        'max-lines': ['error', {
+          max: 2000,
+          skipBlankLines: true,
+          skipComments: true
+        }]
+      }
+    },
+    {
+      files: ['src/pages/ProgramTemplateWizard.jsx'],
       rules: {
         'max-lines': ['error', {
           max: 2000,

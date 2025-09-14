@@ -306,7 +306,6 @@ const ProgramTemplateWizard = () => {
         }
       })();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ruleId, requirements.vehicles_required, vehiclePlaceholders.length]);
 
   // Fetch billing codes
