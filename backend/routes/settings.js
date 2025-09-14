@@ -40,6 +40,56 @@ router.get('/', async (req, res) => {
   }
 });
 
+/**
+ * ---------------------------------------------------------------------------
+ * GET /api/v1/settings/org
+ * ---------------------------------------------------------------------------
+ * Returns organisation-level operational defaults. If a key is missing (or its
+ * value cannot be parsed as a number) the hard-coded fallback is used.
+ * Shape: { loom_window_days, staff_threshold_per_wpu, default_bus_capacity }
+ */
+router.get('/org', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+
+    // Keys we care about and their hard-coded defaults
+    const DEFAULTS = {
+      loom_window_days: 14,
+      staff_threshold_per_wpu: 5,
+      vehicle_trigger_every_n_participants: 10,
+      default_bus_capacity: 10,
+    };
+
+    const keys = Object.keys(DEFAULTS);
+
+    // Fetch only the keys we need in a single query
+    const result = await pool.query(
+      `SELECT key, value
+         FROM settings
+        WHERE key = ANY($1)`,
+      [keys]
+    );
+
+    // Build response map starting with defaults
+    const data = { ...DEFAULTS };
+
+    // Overwrite with DB values when present & numeric
+    result.rows.forEach((row) => {
+      const n = Number(row.value);
+      data[row.key] = Number.isFinite(n) ? n : DEFAULTS[row.key];
+    });
+
+    return res.json({ success: true, data });
+  } catch (error) {
+    console.error('Error fetching org settings:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch organisation settings',
+      message: error.message,
+    });
+  }
+});
+
 // GET /settings/:key - Get specific setting
 router.get('/:key', async (req, res) => {
   try {
@@ -72,6 +122,103 @@ router.get('/:key', async (req, res) => {
       success: false,
       error: 'Failed to fetch setting',
       message: error.message
+    });
+  }
+});
+
+/**
+ * ---------------------------------------------------------------------------
+ * PUT /api/v1/settings/org
+ * ---------------------------------------------------------------------------
+ * Upsert organisation-level numeric settings. Accepts JSON body with any of:
+ *   { loom_window_days, staff_threshold_per_wpu, default_bus_capacity }
+ * All values must be finite positive numbers. Each key is stored individually
+ * in the settings table. On success returns the full org map (merged with defaults).
+ */
+router.put('/org', async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+
+    // Allowed keys + defaults
+    const DEFAULTS = {
+      loom_window_days: 14,
+      staff_threshold_per_wpu: 5,
+      vehicle_trigger_every_n_participants: 10,
+      default_bus_capacity: 10,
+    };
+    const allowedKeys = Object.keys(DEFAULTS);
+
+    // Validate body
+    const payloadKeys = Object.keys(req.body || {});
+    if (payloadKeys.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Body must include at least one setting',
+      });
+    }
+
+    // Filter & validate numeric inputs
+    const updates = {};
+    for (const k of payloadKeys) {
+      if (!allowedKeys.includes(k)) continue; // ignore unknown keys
+      const num = Number(req.body[k]);
+      if (!Number.isFinite(num) || num <= 0) {
+        return res.status(400).json({
+          success: false,
+          error: `Invalid value for ${k}. Must be a positive number`,
+        });
+      }
+      updates[k] = String(num); // store as string (settings table uses text)
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'No valid keys supplied',
+      });
+    }
+
+    // Upsert each key inside a transaction
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      for (const [key, value] of Object.entries(updates)) {
+        await client.query(
+          `INSERT INTO settings (key, value)
+           VALUES ($1, $2)
+           ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+          [key, value]
+        );
+      }
+      await client.query('COMMIT');
+    } catch (txErr) {
+      await client.query('ROLLBACK');
+      throw txErr;
+    } finally {
+      client.release();
+    }
+
+    // Return merged map (same logic as GET)
+    const result = await pool.query(
+      `SELECT key, value
+         FROM settings
+        WHERE key = ANY($1)`,
+      [allowedKeys]
+    );
+
+    const data = { ...DEFAULTS };
+    result.rows.forEach((row) => {
+      const n = Number(row.value);
+      data[row.key] = Number.isFinite(n) ? n : DEFAULTS[row.key];
+    });
+
+    return res.json({ success: true, data });
+  } catch (error) {
+    console.error('Error updating org settings:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update organisation settings',
+      message: error.message,
     });
   }
 });
