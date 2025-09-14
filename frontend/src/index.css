@@ -639,6 +639,11 @@ a:hover {
   color: var(--text-secondary);
   transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
   position: relative;
+  /* Ensure button elements look identical to anchor-based icons */
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  outline: none;
 }
 
 .icon-link svg {
@@ -656,6 +661,11 @@ a:hover {
   background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
   color: #fff;
   box-shadow: var(--glow-blue);
+}
+
+/* Accessible focus ring for keyboard navigation */
+.icon-link:focus-visible {
+  box-shadow: 0 0 0 3px rgba(77, 159, 255, 0.3);
 }
 
 /* ---------- Settings Page Navigation ---------- */

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiX, FiChevronDown, FiChevronRight } from 'react-icons/fi';
 import api from '../api/api';
@@ -146,9 +147,11 @@ const SystemLogPanel = ({ isOpen, onClose }) => {
     );
   };
 
-  return (
+  // Render via portal to avoid stacking/overflow issues
+  if (!isOpen) return null;
+
+  return createPortal(
     <AnimatePresence>
-      {isOpen && (
         <>
           {/* Overlay */}
           <motion.div
@@ -198,8 +201,8 @@ const SystemLogPanel = ({ isOpen, onClose }) => {
             </div>
           </motion.aside>
         </>
-      )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };
 
