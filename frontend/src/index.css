@@ -209,7 +209,7 @@ a:hover {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.35);
-  z-index: 1090;
+  z-index: 9990; /* ensure overlay sits above all other UI */
 }
 
 .system-log-panel {
@@ -224,7 +224,7 @@ a:hover {
   -webkit-backdrop-filter: blur(12px);
   border-right: 1px solid var(--glass-border);
   box-shadow: 8px 0 24px rgba(0, 0, 0, 0.45);
-  z-index: 1100;
+  z-index: 9991; /* panel itself one level above overlay */
   display: flex;
   flex-direction: column;
 }
