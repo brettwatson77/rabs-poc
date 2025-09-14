@@ -1164,7 +1164,9 @@ const ProgramTemplateWizard = () => {
             <FiUsers />{' '}
             <span>
               Participants: {requirements.participant_count} /{' '}
-              {requirements.wpu_total.toFixed(1)}
+              {Number(
+                requirements.wpu_total ?? requirements.participant_count ?? 0
+              ).toFixed(1)}
             </span>
           </div>
           <div

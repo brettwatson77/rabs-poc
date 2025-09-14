@@ -1152,6 +1152,9 @@ router.get('/rules/:id/requirements', async (req, res) => {
   const { id } = req.params;
   
   try {
+    // Always load org-level thresholds first – needed for normalization
+    const settings = await loadSettings(pool);
+
     // First check if requirements already exist in rules_program_requirements
     const requirementsResult = await pool.query(`
       SELECT * FROM rules_program_requirements
@@ -1159,15 +1162,48 @@ router.get('/rules/:id/requirements', async (req, res) => {
     `, [id]);
     
     if (requirementsResult.rows.length > 0) {
+      // --------------------------------------------------------------
+      // Normalise legacy / string types and ensure thresholds present
+      // --------------------------------------------------------------
+      const row = requirementsResult.rows[0];
+
+      const participantCount =
+        Number(row.participant_count) > 0 ? Number(row.participant_count) : 0;
+
+      let wpuTotal = Number(row.wpu_total);
+      if (!Number.isFinite(wpuTotal) || wpuTotal <= 0) {
+        wpuTotal = participantCount; // fallback same as simple rule
+      }
+
+      let staffRequired = Number(row.staff_required);
+      if (!Number.isFinite(staffRequired) || staffRequired <= 0) {
+        staffRequired = Math.ceil(
+          wpuTotal / settings.staff_threshold_per_wpu
+        );
+      }
+
+      let vehiclesRequired = Number(row.vehicles_required);
+      if (!Number.isFinite(vehiclesRequired) || vehiclesRequired <= 0) {
+        vehiclesRequired = Math.ceil(
+          participantCount / settings.vehicle_trigger_every_n_participants
+        );
+      }
+
       return res.json({
         success: true,
-        data: requirementsResult.rows[0]
+        data: {
+          participant_count: participantCount,
+          wpu_total: wpuTotal,
+          staff_required: staffRequired,
+          vehicles_required: vehiclesRequired,
+          staff_threshold_per_wpu: settings.staff_threshold_per_wpu,
+          vehicle_trigger_every_n_participants:
+            settings.vehicle_trigger_every_n_participants,
+        },
       });
     }
     
     // If not, compute them on the fly
-    // Load settings for thresholds
-    const settings = await loadSettings(pool);
     
     // Count participants
     const participantCountResult = await pool.query(`
