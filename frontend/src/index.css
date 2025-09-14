@@ -201,6 +201,15 @@ a:hover {
 }
 
 .btn-danger {
+  background: linear-gradient(135deg, var(--accent-red), #e53e3e);
+  color: white;
+}
+
+.btn-danger:hover {
+  box-shadow: 0 0 15px rgba(245, 101, 101, 0.5);
+  transform: translateY(-2px);
+}
+
 /* ------------------------------------------------------------------------- */
 /* System Log Drawer                                                         */
 /* ------------------------------------------------------------------------- */
@@ -361,16 +370,6 @@ a:hover {
   max-height: 220px;
   overflow: auto;
 }
-
-  background: linear-gradient(135deg, var(--accent-red), #e53e3e);
-  color: white;
-}
-
-.btn-danger:hover {
-  box-shadow: 0 0 15px rgba(245, 101, 101, 0.5);
-  transform: translateY(-2px);
-}
-
 .btn-icon {
   padding: var(--space-sm);
   border-radius: var(--radius-full);
@@ -817,11 +816,13 @@ a:hover {
   font-weight: 600;
 }
 
+/* Badge container below participant name */
 .participant-badges {
   display: flex;
   gap: 8px;
 }
 
+/* Generic pill badge */
 .badge {
   display: inline-flex;
   align-items: center;

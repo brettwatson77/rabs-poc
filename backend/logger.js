@@ -11,8 +11,12 @@ const { v4: uuidv4 } = require('uuid');
 let pool = null;
 const clients = new Set();
 
-// Valid severity levels
-const VALID_SEVERITIES = ['DEBUG', 'INFO', 'WARN', 'ERROR'];
+// Valid severity levels (including CRITICAL from older schema)
+const VALID_SEVERITIES = ['DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL'];
+
+// Cache for database schema introspection
+let columnsCache = null;
+let timestampColumnCache = null;
 
 /**
  * Initialize the logger with a database pool
@@ -22,6 +26,87 @@ const VALID_SEVERITIES = ['DEBUG', 'INFO', 'WARN', 'ERROR'];
 function init({ pool: pgPool }) {
   pool = pgPool;
   console.log('Logger initialized with database pool');
+}
+
+/**
+ * Get all available columns in the system_logs table
+ * @returns {Promise<string[]>} Array of column names
+ */
+async function getSystemLogsColumns() {
+  if (columnsCache) {
+    return columnsCache;
+  }
+
+  if (!pool) {
+    console.error('Logger not initialized with database pool');
+    return [];
+  }
+
+  try {
+    const query = `
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'system_logs'
+    `;
+    
+    const result = await pool.query(query);
+    columnsCache = result.rows.map(row => row.column_name);
+    return columnsCache;
+  } catch (error) {
+    console.error('Failed to fetch system_logs columns:', error);
+    return ['id', 'severity', 'category', 'message', 'details']; // Fallback to minimal columns
+  }
+}
+
+/**
+ * Determine the preferred timestamp column to use
+ * @returns {Promise<string>} The name of the timestamp column to use
+ */
+async function getPreferredTimestampColumn() {
+  if (timestampColumnCache) {
+    return timestampColumnCache;
+  }
+
+  const columns = await getSystemLogsColumns();
+  
+  // Check for timestamp columns in order of preference
+  const preferredColumns = ['ts', 'timestamp', 'created_at', 'updated_at'];
+  for (const col of preferredColumns) {
+    if (columns.includes(col)) {
+      timestampColumnCache = col;
+      return col;
+    }
+  }
+  
+  // If none found, default to 'id' as a last resort
+  console.warn('No timestamp column found in system_logs table, using id for ordering');
+  timestampColumnCache = 'id';
+  return 'id';
+}
+
+/**
+ * Normalize a log row to ensure consistent structure regardless of DB schema
+ * @param {Object} row - Database row
+ * @returns {Object} Normalized log entry
+ */
+function normalizeLogRow(row) {
+  if (!row) return null;
+  
+  // Determine which timestamp field to use for 'ts'
+  const timestamp = row.ts || row.timestamp || row.created_at || row.updated_at || new Date();
+  
+  return {
+    id: row.id,
+    ts: timestamp,
+    severity: row.severity || 'INFO',
+    category: row.category || 'SYSTEM',
+    message: row.message || '',
+    details: row.details || null,
+    entity: row.entity || null,
+    entity_id: row.entity_id || null,
+    actor: row.actor || null
+  };
 }
 
 /**
@@ -61,7 +146,7 @@ function removeClient(res) {
 /**
  * Log an event to the database and broadcast to SSE clients
  * @param {Object} options - Log options
- * @param {string} [options.severity='INFO'] - Log severity (DEBUG, INFO, WARN, ERROR)
+ * @param {string} [options.severity='INFO'] - Log severity (DEBUG, INFO, WARN, ERROR, CRITICAL)
  * @param {string} [options.category='SYSTEM'] - Log category
  * @param {string} options.message - Log message
  * @param {Object} [options.details=null] - Additional details (stored as JSONB)
@@ -98,15 +183,45 @@ async function logEvent({
   try {
     const id = uuidv4();
     
-    const result = await pool.query(
-      `INSERT INTO system_logs 
-       (id, severity, category, message, details, entity, entity_id, actor)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-       RETURNING id, ts, severity, category, message, details, entity, entity_id, actor`,
-      [id, severity, category, message, details, entity, entity_id, actor]
-    );
+    // Get available columns to build dynamic query
+    const availableColumns = await getSystemLogsColumns();
     
-    const logRow = result.rows[0];
+    // Always include these core columns
+    const columns = ['id', 'severity', 'category', 'message'];
+    const values = [id, severity, category, message];
+    let paramIndex = 5;
+    
+    // Conditionally add optional columns if they exist in the schema
+    if (availableColumns.includes('details')) {
+      columns.push('details');
+      values.push(details);
+    }
+    
+    if (availableColumns.includes('entity')) {
+      columns.push('entity');
+      values.push(entity);
+    }
+    
+    if (availableColumns.includes('entity_id')) {
+      columns.push('entity_id');
+      values.push(entity_id);
+    }
+    
+    if (availableColumns.includes('actor')) {
+      columns.push('actor');
+      values.push(actor);
+    }
+    
+    // Build the parameterized query
+    const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
+    const query = `
+      INSERT INTO system_logs (${columns.join(', ')})
+      VALUES (${placeholders})
+      RETURNING *
+    `;
+    
+    const result = await pool.query(query, values);
+    const logRow = normalizeLogRow(result.rows[0]);
     
     // Broadcast to all connected clients
     broadcast(logRow);
@@ -140,13 +255,13 @@ function broadcast(logEntry) {
  * Get recent log entries
  * @param {Object} options - Query options
  * @param {number} [options.limit=100] - Maximum number of logs to return
- * @param {string} [options.sinceId=null] - Only return logs after this ID
+ * @param {string} [options.sinceId=null] - Only return logs after this ID (not used - UUID ordering is not chronological)
  * @param {string|Date} [options.sinceTs=null] - Only return logs after this timestamp
  * @returns {Promise<Array>} - Array of log entries
  */
 async function getRecent({
   limit = 100,
-  sinceId = null,
+  sinceId = null, // Not used for filtering as UUID ordering is not chronological
   sinceTs = null
 } = {}) {
   if (!pool) {
@@ -155,18 +270,17 @@ async function getRecent({
   }
   
   try {
+    // Get the preferred timestamp column for ordering and filtering
+    const tsColumn = await getPreferredTimestampColumn();
+    
     // Build query conditions
     const conditions = [];
     const params = [];
     let paramIndex = 1;
     
-    if (sinceId) {
-      conditions.push(`id > $${paramIndex++}`);
-      params.push(sinceId);
-    }
-    
-    if (sinceTs) {
-      conditions.push(`ts > $${paramIndex++}`);
+    // Only filter by timestamp if we have a valid timestamp column
+    if (sinceTs && tsColumn !== 'id') {
+      conditions.push(`${tsColumn} > $${paramIndex++}`);
       params.push(sinceTs instanceof Date ? sinceTs : new Date(sinceTs));
     }
     
@@ -182,15 +296,17 @@ async function getRecent({
       : '';
     
     const query = `
-      SELECT id, ts, severity, category, message, details, entity, entity_id, actor
+      SELECT *
       FROM system_logs
       ${whereClause}
-      ORDER BY ts DESC
+      ORDER BY ${tsColumn} DESC
       LIMIT $${params.length}
     `;
     
     const result = await pool.query(query, params);
-    return result.rows;
+    
+    // Normalize each row to ensure consistent structure
+    return result.rows.map(normalizeLogRow);
   } catch (error) {
     console.error('Failed to fetch recent logs:', error);
     return [];
