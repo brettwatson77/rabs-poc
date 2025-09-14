@@ -55,7 +55,7 @@ import {
 } from 'react-icons/fi';
 
 // API base URL from environment
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3009';
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 // Vehicles Page Component
 const VehiclesFull = () => {
