@@ -62,7 +62,11 @@ const Settings = () => {
   });
 
   // Fetch all settings
-  const { refetch: refetchSettings } = useQuery(
+  const {
+    refetch: refetchSettings,
+    isLoading: sysLoading,
+    isFetching: sysFetching
+  } = useQuery(
     ['systemSettings'],
     async () => {
       const response = await axios.get(`${API_URL}/api/v1/settings`);
@@ -131,14 +135,24 @@ const Settings = () => {
             }
           });
         }
-      }
+      },
+      // Make sure we always hit the API so we never show stale values
+      refetchOnMount: 'always',
+      refetchOnWindowFocus: false,
+      staleTime: 0,
+      cacheTime: 0,
+      keepPreviousData: false
     }
   );
 
   // ------------------------------------------------------------------
   // Organisation settings query (staff/vehicle thresholds + loom days)
   // ------------------------------------------------------------------
-  const { refetch: refetchOrgSettings } = useQuery(
+  const {
+    refetch: refetchOrgSettings,
+    isLoading: orgLoading,
+    isFetching: orgFetching
+  } = useQuery(
     ['orgSettings'],
     async () => {
       const resp = await axios.get(`${API_URL}/api/v1/settings/org`);
@@ -153,6 +167,12 @@ const Settings = () => {
           setLoomFortnights(totalFortnights);
         }
       }
+      ,
+      refetchOnMount: 'always',
+      refetchOnWindowFocus: false,
+      staleTime: 0,
+      cacheTime: 0,
+      keepPreviousData: false
     }
   );
 
@@ -930,74 +950,83 @@ const Settings = () => {
     </div>
   );
 
+  // Compute loading state for conditional rendering
+  const isLoadingAll = sysLoading || orgLoading || sysFetching || orgFetching;
+
   return (
     <div className="settings-container">
-      <div className="page-header">
-        <h2 className="page-title">Settings</h2>
-        <div className="page-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap' }}>
-          <button 
-            className="icon-link" 
-            onClick={() => {
-              refetchSettings();
-              refetchOrgSettings();
-            }}
-            title="Refresh All"
-          >
-            <FiRefreshCw />
-          </button>
-          <span className="date-display">
-            {format(currentDate, 'EEEE, MMMM d, yyyy')}
-          </span>
+      {isLoadingAll ? (
+        <div className="loading-spinner-large" style={{ margin: '60px auto', textAlign: 'center' }}>
+          Loading settings...
         </div>
-      </div>
-      
-      <div className="settings-layout">
-        {/* Settings Navigation - Changed to horizontal buttons */}
-        <div className="tab-bar">
-          <button 
-            type="button"
-            className={`tab-btn ${activeSection === 'general' ? 'active' : ''}`}
-            onClick={() => setActiveSection('general')}
-          >
-            <FiSettings /> General
-          </button>
-          <button 
-            type="button"
-            className={`tab-btn ${activeSection === 'loom' ? 'active' : ''}`}
-            onClick={() => setActiveSection('loom')}
-          >
-            <FiCalendar /> Loom System
-          </button>
-          <button 
-            type="button"
-            className={`tab-btn ${activeSection === 'security' ? 'active' : ''}`}
-            onClick={() => setActiveSection('security')}
-          >
-            <FiLock /> Security
-          </button>
-          <button 
-            type="button"
-            className={`tab-btn ${activeSection === 'backup' ? 'active' : ''}`}
-            onClick={() => setActiveSection('backup')}
-          >
-            <FiDatabase /> Backup & Restore
-          </button>
-        </div>
-        
-        {/* Settings Content */}
-        <div className="settings-content">
-          {activeSection === 'general' && renderGeneralSettings()}
-          {activeSection === 'loom' && renderLoomSettings()}
-          {activeSection === 'security' && renderSecuritySettings()}
-          {activeSection === 'backup' && renderBackupSettings()}
-        </div>
-      </div>
-      
-      {/* System Status bar removed */}
-      
-      {/* Modals */}
-      {isBackupModalOpen && renderBackupModal()}
-      {isRestoreModalOpen && renderRestoreModal()}
+      ) : (
+        <>
+          <div className="page-header">
+            <h2 className="page-title">Settings</h2>
+            <div className="page-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap' }}>
+              <button 
+                className="icon-link" 
+                onClick={() => {
+                  refetchSettings();
+                  refetchOrgSettings();
+                }}
+                title="Refresh All"
+              >
+                <FiRefreshCw />
+              </button>
+              <span className="date-display">
+                {format(currentDate, 'EEEE, MMMM d, yyyy')}
+              </span>
+            </div>
+          </div>
+          
+          <div className="settings-layout">
+            {/* Settings Navigation - Changed to horizontal buttons */}
+            <div className="tab-bar">
+              <button 
+                type="button"
+                className={`tab-btn ${activeSection === 'general' ? 'active' : ''}`}
+                onClick={() => setActiveSection('general')}
+              >
+                <FiSettings /> General
+              </button>
+              <button 
+                type="button"
+                className={`tab-btn ${activeSection === 'loom' ? 'active' : ''}`}
+                onClick={() => setActiveSection('loom')}
+              >
+                <FiCalendar /> Loom System
+              </button>
+              <button 
+                type="button"
+                className={`tab-btn ${activeSection === 'security' ? 'active' : ''}`}
+                onClick={() => setActiveSection('security')}
+              >
+                <FiLock /> Security
+              </button>
+              <button 
+                type="button"
+                className={`tab-btn ${activeSection === 'backup' ? 'active' : ''}`}
+                onClick={() => setActiveSection('backup')}
+              >
+                <FiDatabase /> Backup & Restore
+              </button>
+            </div>
+            
+            {/* Settings Content */}
+            <div className="settings-content">
+              {activeSection === 'general' && renderGeneralSettings()}
+              {activeSection === 'loom' && renderLoomSettings()}
+              {activeSection === 'security' && renderSecuritySettings()}
+              {activeSection === 'backup' && renderBackupSettings()}
+            </div>
+          </div>
+          
+          {/* Modals */}
+          {isBackupModalOpen && renderBackupModal()}
+          {isRestoreModalOpen && renderRestoreModal()}
+        </>
+      )}
     </div>
   );
 };
