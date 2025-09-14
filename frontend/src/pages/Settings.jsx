@@ -75,20 +75,58 @@ const Settings = () => {
           // Process loom window settings
           const loomSettings = data.data.find(s => s.key === 'loom_window');
           if (loomSettings && loomSettings.value) {
-            setLoomWindowSettings(loomSettings.value);
+            // value now comes back as TEXT; parse when needed
+            let parsed = loomWindowSettings; // fallback to current state
+            try {
+              if (typeof loomSettings.value === 'string') {
+                parsed = JSON.parse(loomSettings.value);
+              } else if (typeof loomSettings.value === 'object') {
+                parsed = loomSettings.value;
+              }
+            } catch (err) {
+              console.warn('Failed to parse loom_window JSON – using defaults', err);
+            }
+            setLoomWindowSettings(parsed);
           }
           
-          // Process general settings
-          data.data.forEach(setting => {
-            if (setting.category === 'general') {
-              setGeneralSettings(prev => ({
+          // Known key-sets (backend no longer returns category)
+          const GENERAL_KEYS = new Set([
+            'organization_name',
+            'timezone',
+            'date_format',
+            'time_format',
+            'default_view'
+          ]);
+          const SECURITY_KEYS = new Set([
+            'session_timeout',
+            'password_expiry_days',
+            'require_2fa',
+            'failed_login_attempts'
+          ]);
+
+          const coerce = (key, value) => {
+            // Booleans
+            if (key === 'require_2fa') {
+              return value === true || value === 'true' || value === '1' || value === 1;
+            }
+            // Numbers
+            if (['session_timeout', 'password_expiry_days', 'failed_login_attempts'].includes(key)) {
+              const n = Number(value);
+              return Number.isFinite(n) ? n : 0;
+            }
+            return value;
+          };
+
+          data.data.forEach((setting) => {
+            if (GENERAL_KEYS.has(setting.key)) {
+              setGeneralSettings((prev) => ({
                 ...prev,
-                [setting.key]: setting.value
+                [setting.key]: coerce(setting.key, setting.value)
               }));
-            } else if (setting.category === 'security') {
-              setSecuritySettings(prev => ({
+            } else if (SECURITY_KEYS.has(setting.key)) {
+              setSecuritySettings((prev) => ({
                 ...prev,
-                [setting.key]: setting.value
+                [setting.key]: coerce(setting.key, setting.value)
               }));
             }
           });
