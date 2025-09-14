@@ -18,6 +18,8 @@ import SearchFilterBar from './vehicles/components/SearchFilterBar';
 import FleetSummary from './vehicles/components/FleetSummary';
 import VehiclesGrid from './vehicles/components/VehiclesGrid';
 import DetailModal from './vehicles/components/vehicle-detail/DetailModal';
+import MaintenanceDashboard from './vehicles/components/MaintenanceDashboard';
+import DocumentExpiryTable from './vehicles/components/DocumentExpiryTable';
 
 // Import hook
 import useVehiclesData from './vehicles/hooks/useVehiclesData';
@@ -25,6 +27,7 @@ import useVehiclesData from './vehicles/hooks/useVehiclesData';
 // VehiclesFull Page Component
 const VehiclesFull = () => {
   const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState('directory');
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
     status: 'all',
@@ -41,7 +44,7 @@ const VehiclesFull = () => {
     const diff = today.getDate() - day + (day === 0 ? -6 : 1);
     return new Date(today.setDate(diff));
   });
-  const vehiclesPerPage = 12;
+  const vehiclesPerPage = 24;
 
   // Form state for vehicle odometer updates
   const [vehicleForm, setVehicleForm] = useState({
@@ -250,91 +253,134 @@ const VehiclesFull = () => {
     <div className="vehicles-page">
       {/* Page Header */}
       <header className="page-header">
-        <h2>Vehicles (Full)</h2>
+        <h2>Vehicles</h2>
       </header>
 
-      {/* Search and Filter Bar */}
-      <SearchFilterBar
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-        showFilters={showFilters}
-        onToggleFilters={() => setShowFilters(!showFilters)}
-        filters={filters}
-        onFiltersChange={setFilters}
-      >
-        <button 
-          className="create-btn glass-button"
-          onClick={() => {/* No-op - creation flow omitted */}}
+      {/* Tab Navigation */}
+      <div className="tab-bar">
+        <button
+          className={`tab-btn ${activeTab === 'directory' ? 'active' : ''}`}
+          onClick={() => setActiveTab('directory')}
         >
-          <FiPlus />
-          <span>New Vehicle</span>
+          Directory
         </button>
-      </SearchFilterBar>
-      
-      {/* Fleet Summary */}
-      <FleetSummary vehicles={vehiclesData?.data || []} />
-      
-      {/* Vehicles Grid */}
-      {vehiclesLoading ? (
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p>Loading vehicles...</p>
-        </div>
-      ) : vehiclesError ? (
-        <div className="error-container glass-panel">
-          <FiAlertCircle className="error-icon" />
-          <p>Error loading vehicles: {vehiclesError.message}</p>
-          <button className="btn btn-primary" onClick={() => refetchVehicles()}>
-            <FiRefreshCw /> Try Again
-          </button>
-        </div>
-      ) : filteredVehicles.length === 0 ? (
-        <div className="empty-state glass-panel">
-          <FiTruck className="empty-icon" />
-          <h3>No vehicles found</h3>
-          <p>Try adjusting your search or filters.</p>
-        </div>
-      ) : (
-        <>
-          <VehiclesGrid
-            vehicles={currentVehicles}
-            selectedVehicle={selectedVehicle}
-            onSelect={handleSelectVehicle}
-            getStatusBadge={getStatusBadge}
-            formatStatus={formatStatus}
-            needsMaintenanceSoon={needsMaintenanceSoon}
-            isExpiringDocument={isExpiringDocument}
-            isVehicleAvailable={isVehicleAvailable}
-          />
-          
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="pagination-container">
+        <button
+          className={`tab-btn ${activeTab === 'maintenance' ? 'active' : ''}`}
+          onClick={() => setActiveTab('maintenance')}
+        >
+          Maintenance
+        </button>
+      </div>
+
+      {/* Tab Content */}
+      <div className="tab-content">
+        {activeTab === 'directory' && (
+          <>
+            {/* Search and Filter Bar */}
+            <SearchFilterBar
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              showFilters={showFilters}
+              onToggleFilters={() => setShowFilters(!showFilters)}
+              filters={filters}
+              onFiltersChange={setFilters}
+            >
               <button 
-                className="pagination-btn"
-                onClick={handlePrevPage}
-                disabled={currentPage === 1}
+                className="create-btn glass-button"
+                onClick={() => {/* No-op - creation flow omitted */}}
               >
-                <FiArrowLeft />
-                <span>Previous</span>
+                <FiPlus />
+                <span>New Vehicle</span>
               </button>
-              
-              <div className="pagination-info">
-                Page {currentPage} of {totalPages}
+            </SearchFilterBar>
+            
+            {/* Fleet Summary */}
+            <FleetSummary vehicles={vehiclesData?.data || []} />
+            
+            {/* Vehicles Grid */}
+            {vehiclesLoading ? (
+              <div className="loading-container">
+                <div className="loading-spinner"></div>
+                <p>Loading vehicles...</p>
               </div>
-              
-              <button 
-                className="pagination-btn"
-                onClick={handleNextPage}
-                disabled={currentPage === totalPages}
-              >
-                <span>Next</span>
-                <FiArrowRight />
-              </button>
-            </div>
-          )}
-        </>
-      )}
+            ) : vehiclesError ? (
+              <div className="error-container glass-panel">
+                <FiAlertCircle className="error-icon" />
+                <p>Error loading vehicles: {vehiclesError.message}</p>
+                <button className="btn btn-primary" onClick={() => refetchVehicles()}>
+                  <FiRefreshCw /> Try Again
+                </button>
+              </div>
+            ) : filteredVehicles.length === 0 ? (
+              <div className="empty-state glass-panel">
+                <FiTruck className="empty-icon" />
+                <h3>No vehicles found</h3>
+                <p>Try adjusting your search or filters.</p>
+              </div>
+            ) : (
+              <>
+                <VehiclesGrid
+                  vehicles={currentVehicles}
+                  selectedVehicle={selectedVehicle}
+                  onSelect={handleSelectVehicle}
+                  getStatusBadge={getStatusBadge}
+                  formatStatus={formatStatus}
+                  needsMaintenanceSoon={needsMaintenanceSoon}
+                  isExpiringDocument={isExpiringDocument}
+                  isVehicleAvailable={isVehicleAvailable}
+                />
+                
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="pagination-container">
+                    <button 
+                      className="pagination-btn"
+                      onClick={handlePrevPage}
+                      disabled={currentPage === 1}
+                    >
+                      <FiArrowLeft />
+                      <span>Previous</span>
+                    </button>
+                    
+                    <div className="pagination-info">
+                      Page {currentPage} of {totalPages}
+                    </div>
+                    
+                    <button 
+                      className="pagination-btn"
+                      onClick={handleNextPage}
+                      disabled={currentPage === totalPages}
+                    >
+                      <span>Next</span>
+                      <FiArrowRight />
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </>
+        )}
+        
+        {activeTab === 'maintenance' && (
+          <>
+            <MaintenanceDashboard
+              vehicles={vehiclesData?.data || []}
+              vehiclesLoading={vehiclesLoading}
+              needsMaintenanceSoon={needsMaintenanceSoon}
+              formatDate={formatDate}
+              formatCurrency={formatCurrency}
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+            />
+            <DocumentExpiryTable
+              vehicles={vehiclesData?.data || []}
+              vehiclesLoading={vehiclesLoading}
+              isExpiringDocument={isExpiringDocument}
+              formatDate={formatDate}
+            />
+          </>
+        )}
+      </div>
       
       {/* Vehicle Detail Modal */}
       {selectedVehicle && (

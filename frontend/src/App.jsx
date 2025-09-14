@@ -30,7 +30,7 @@ import Finance from './pages/Finance';
 import Settings from './pages/Settings';
 import Participants from './pages/Participants';
 import Staff from './pages/Staff';
-import Vehicles from './pages/Vehicles';
+import VehiclesFull from './pages/VehiclesFull';
 import Venues from './pages/Venues';
 import ProgramTemplateWizard from './pages/ProgramTemplateWizard';
 // Slide-in system log panel
@@ -302,7 +302,7 @@ const App = () => {
           <Route path="/settings" element={<Settings />} />
           <Route path="/participants" element={<Participants />} />
           <Route path="/staff" element={<Staff />} />
-          <Route path="/vehicles" element={<Vehicles />} />
+          <Route path="/vehicles" element={<VehiclesFull />} />
           <Route path="/venues" element={<Venues />} />
           <Route path="/template-wizard" element={<ProgramTemplateWizard />} />
         </Routes>
