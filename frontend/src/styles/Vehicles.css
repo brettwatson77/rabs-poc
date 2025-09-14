@@ -282,7 +282,9 @@
   margin-bottom: 8px; /* breathing room under rego plate */
   display: flex;
   align-items: center;
+  align-items: center;
   justify-content: space-between;
+  gap: 10px;            /* allow rego ‑ tab group ‑ close btn to breathe */
 }
 .vehicles-page .vehicle-detail-modal .vehicle-registration-display {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -374,7 +376,38 @@
   align-items:center;
   justify-content:space-between;
   gap:10px;
+  margin-bottom:8px;      /* spacing under subtitle row */
 }
 .vehicles-page .vehicle-title h2{
   margin:0;          /* keep subtitle flush with badge row */
+}
+
+/* ------------------------------------------------------------------
+ * Modal header tab group (next to rego plate)
+ * ------------------------------------------------------------------*/
+.vehicles-page .vehicle-modal-tabs{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin:0 8px;
+}
+
+/* ------------------------------------------------------------------
+ * Detail action buttons (Edit / Book / Maintenance) spacing
+ * ------------------------------------------------------------------*/
+.vehicles-page .vehicle-detail-modal .detail-actions{
+  display:flex;
+  gap:12px;
+  margin:8px 0;
+  flex-wrap:wrap;
+}
+
+/* ------------------------------------------------------------------
+ * Odometer update row spacing
+ * ------------------------------------------------------------------*/
+.vehicles-page .odometer-update{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
 }

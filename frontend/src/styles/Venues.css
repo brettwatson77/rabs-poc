@@ -6,7 +6,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
   gap: 14px;
-  margin-top: 12px;     /* spacing so cards don’t touch filter/search bar */
+  margin-top: 12px;     /* spacing so cards don't touch filter/search bar */
 }
 
 /* Card */
@@ -27,7 +27,24 @@
 /* Modal */
 .venues-page .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 9998; display:flex; align-items:center; justify-content:center; }
 .venues-page .modal-content { width: clamp(820px, 85vw, 1100px); max-height: 92vh; overflow-y: auto; border-radius: 12px; }
-.venues-page .modal-header .modal-close svg { color:#fff; }
+
+/* Modal close button styling (consistent with vehicles) */
+.venues-page .modal-header .modal-close {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.venues-page .modal-header .modal-close:hover {
+  background: rgba(255,255,255,0.12);
+}
+.venues-page .modal-header .modal-close svg {
+  color: #ffffff;
+}
 
 /* ------------------------------------------------------------------*/
 /*  Modal inline actions (edit / activate / delete)                   */
@@ -75,7 +92,7 @@
 
 .venues-page .venue-header{
   display:flex;
-  align-items:flex-start;
+  align-items:center; /* Center items vertically */
   justify-content:space-between;
   gap:10px;
   margin-bottom:6px;

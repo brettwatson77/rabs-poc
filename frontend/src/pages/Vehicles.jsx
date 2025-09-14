@@ -325,9 +325,12 @@ const Vehicles = () => {
 
   // Get status badge class
   const getStatusBadge = (status) => {
-    switch (status) {
+    const s = String(status || '').toLowerCase();
+    switch (s) {
       case 'active':
         return 'badge-green';
+      case 'inactive':
+        return 'badge-gray';
       case 'maintenance':
         return 'badge-yellow';
       case 'out_of_service':
@@ -691,6 +694,37 @@ const Vehicles = () => {
           <div className="modal-content vehicle-detail-modal glass-panel" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <div className="vehicle-registration-display">{selectedVehicle.registration}</div>
+              {/* Inline detail tabs next to rego plate */}
+              <div className="vehicle-modal-tabs">
+                <button
+                  className={`tab-btn ${selectedVehicleTab === 'overview' ? 'active' : ''}`}
+                  onClick={() => setSelectedVehicleTab('overview')}
+                >
+                  <FiTruck />
+                  <span>Overview</span>
+                </button>
+                <button
+                  className={`tab-btn ${selectedVehicleTab === 'maintenance' ? 'active' : ''}`}
+                  onClick={() => setSelectedVehicleTab('maintenance')}
+                >
+                  <FiTool />
+                  <span>Maintenance</span>
+                </button>
+                <button
+                  className={`tab-btn ${selectedVehicleTab === 'bookings' ? 'active' : ''}`}
+                  onClick={() => setSelectedVehicleTab('bookings')}
+                >
+                  <FiCalendar />
+                  <span>Bookings</span>
+                </button>
+                <button
+                  className={`tab-btn ${selectedVehicleTab === 'costs' ? 'active' : ''}`}
+                  onClick={() => setSelectedVehicleTab('costs')}
+                >
+                  <FiDollarSign />
+                  <span>Costs</span>
+                </button>
+              </div>
               <button className="modal-close" onClick={() => setSelectedVehicle(null)}>
                 <FiX />
               </button>
@@ -729,38 +763,6 @@ const Vehicles = () => {
                     <FiCalendar /> Book Vehicle
                   </button>
                 </div>
-              </div>
-              
-              {/* Global tab bar */}
-              <div className="tab-bar">
-                <button 
-                  className={`tab-btn ${selectedVehicleTab === 'overview' ? 'active' : ''}`}
-                  onClick={() => setSelectedVehicleTab('overview')}
-                >
-                  <FiTruck />
-                  <span>Overview</span>
-                </button>
-                <button 
-                  className={`tab-btn ${selectedVehicleTab === 'maintenance' ? 'active' : ''}`}
-                  onClick={() => setSelectedVehicleTab('maintenance')}
-                >
-                  <FiTool />
-                  <span>Maintenance</span>
-                </button>
-                <button 
-                  className={`tab-btn ${selectedVehicleTab === 'bookings' ? 'active' : ''}`}
-                  onClick={() => setSelectedVehicleTab('bookings')}
-                >
-                  <FiCalendar />
-                  <span>Bookings</span>
-                </button>
-                <button 
-                  className={`tab-btn ${selectedVehicleTab === 'costs' ? 'active' : ''}`}
-                  onClick={() => setSelectedVehicleTab('costs')}
-                >
-                  <FiDollarSign />
-                  <span>Costs</span>
-                </button>
               </div>
               
               <div className="detail-content">

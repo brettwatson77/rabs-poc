@@ -65,6 +65,8 @@
   align-items:center;
   gap:8px;
   flex-wrap:wrap;
+  /* add a little breathing room beneath the name row */
+  margin-bottom:6px;
 }
 
 /* Name + meta */
