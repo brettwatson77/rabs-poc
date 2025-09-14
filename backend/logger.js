@@ -14,6 +14,16 @@ const clients = new Set();
 // Valid severity levels (including CRITICAL from older schema)
 const VALID_SEVERITIES = ['DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL'];
 
+// Allowed categories enforced by DB check constraint
+const ALLOWED_CATEGORIES = [
+  'RESOURCE',
+  'OPTIMIZATION',
+  'CONSTRAINT',
+  'SYSTEM',
+  'OPERATIONAL',
+  'FINANCIAL'
+];
+
 // Cache for database schema introspection
 let columnsCache = null;
 let timestampColumnCache = null;
@@ -178,6 +188,17 @@ async function logEvent({
   severity = severity.toUpperCase();
   if (!VALID_SEVERITIES.includes(severity)) {
     severity = 'INFO';
+  }
+
+  // Normalise category and validate against allowed list
+  category = String(category || 'SYSTEM').toUpperCase();
+  if (!ALLOWED_CATEGORIES.includes(category)) {
+    category = 'SYSTEM';
+  }
+
+  // Ensure details is either null or an object that can be JSON-encoded
+  if (details && typeof details !== 'object') {
+    details = { value: details };
   }
   
   try {

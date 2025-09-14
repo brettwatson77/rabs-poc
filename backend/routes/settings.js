@@ -18,25 +18,12 @@ const logger = require('../logger');
 router.get('/', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
-    const { category } = req.query;
-    
-    let query = `
-      SELECT key, value, description, category, is_system
-      FROM settings
-      WHERE 1=1
-    `;
-    
-    const queryParams = [];
-    let paramIndex = 1;
-    
-    if (category) {
-      query += ` AND category = $${paramIndex++}`;
-      queryParams.push(category);
-    }
-    
-    query += ` ORDER BY category, key`;
-    
-    const result = await pool.query(query, queryParams);
+    // Simpler query – only columns that actually exist
+    const result = await pool.query(
+      `SELECT key, value, description
+         FROM settings
+     ORDER BY key`
+    );
     
     res.json({
       success: true,
@@ -60,7 +47,7 @@ router.get('/:key', async (req, res) => {
     const { key } = req.params;
     
     const query = `
-      SELECT key, value, description, category, is_system
+      SELECT key, value, description
       FROM settings
       WHERE key = $1
     `;
@@ -94,40 +81,29 @@ router.put('/:key', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { key } = req.params;
-    const { value, description, category } = req.body;
+    const { value, description } = req.body;
     
     // Check if setting exists
-    const checkResult = await pool.query('SELECT key, is_system FROM settings WHERE key = $1', [key]);
+    const checkResult = await pool.query('SELECT key FROM settings WHERE key = $1', [key]);
     
     if (checkResult.rowCount === 0) {
       // Setting doesn't exist, create it
       const insertQuery = `
-        INSERT INTO settings (key, value, description, category, is_system)
-        VALUES ($1, $2, $3, $4, $5)
-        RETURNING key, value, description, category, is_system
+        INSERT INTO settings (key, value, description)
+        VALUES ($1, $2, $3)
+        RETURNING key, value, description
       `;
       
       const insertResult = await pool.query(insertQuery, [
         key,
         value,
-        description || null,
-        category || 'general',
-        false // New settings created via API are not system settings
+        description || null
       ]);
       
       return res.status(201).json({
         success: true,
         data: insertResult.rows[0],
         message: 'Setting created successfully'
-      });
-    }
-    
-    // Check if it's a system setting that shouldn't be modified
-    if (checkResult.rows[0].is_system && req.body.value === undefined) {
-      return res.status(403).json({
-        success: false,
-        error: 'Cannot modify system setting',
-        message: 'This is a system setting and cannot be modified'
       });
     }
     
@@ -146,11 +122,6 @@ router.put('/:key', async (req, res) => {
       values.push(description);
     }
     
-    if (category !== undefined) {
-      updates.push(`category = $${paramIndex++}`);
-      values.push(category);
-    }
-    
     // If no fields to update
     if (updates.length === 0) {
       return res.status(400).json({
@@ -164,7 +135,7 @@ router.put('/:key', async (req, res) => {
       UPDATE settings
       SET ${updates.join(', ')}
       WHERE key = $${paramIndex}
-      RETURNING key, value, description, category, is_system
+      RETURNING key, value, description
     `;
     
     values.push(key);
@@ -253,24 +224,15 @@ router.delete('/:key', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { key } = req.params;
-    
-    // Check if setting exists and if it's a system setting
-    const checkResult = await pool.query('SELECT key, is_system FROM settings WHERE key = $1', [key]);
-    
+
+    // Check exists
+    const checkResult = await pool.query('SELECT key FROM settings WHERE key = $1', [key]);
+
     if (checkResult.rowCount === 0) {
       return res.status(404).json({
         success: false,
         error: 'Setting not found',
         message: `No setting found with key: ${key}`
-      });
-    }
-    
-    // Prevent deletion of system settings
-    if (checkResult.rows[0].is_system) {
-      return res.status(403).json({
-        success: false,
-        error: 'Cannot delete system setting',
-        message: 'This is a system setting and cannot be deleted'
       });
     }
     
@@ -333,7 +295,7 @@ router.post('/bulk', async (req, res) => {
       
       // Process each setting
       for (const setting of settings) {
-        const { key, value, description, category } = setting;
+        const { key, value, description } = setting;
         
         if (!key) {
           results.failed.push({
@@ -346,49 +308,36 @@ router.post('/bulk', async (req, res) => {
         try {
           // Check if setting exists
           const checkResult = await client.query(
-            'SELECT key, is_system FROM settings WHERE key = $1',
+            'SELECT key FROM settings WHERE key = $1',
             [key]
           );
           
           if (checkResult.rowCount === 0) {
             // Create new setting
             const insertResult = await client.query(
-              `INSERT INTO settings (key, value, description, category, is_system)
-               VALUES ($1, $2, $3, $4, $5)
-               RETURNING key, value, description, category, is_system`,
+              `INSERT INTO settings (key, value, description)
+               VALUES ($1, $2, $3)
+               RETURNING key, value, description`,
               [
                 key,
                 value,
-                description || null,
-                category || 'general',
-                false // New settings created via API are not system settings
+                description || null
               ]
             );
             
             results.created.push(insertResult.rows[0]);
           } else {
-            // Check if it's a system setting
-            if (checkResult.rows[0].is_system) {
-              results.skipped.push({
-                key,
-                reason: 'System setting cannot be modified'
-              });
-              continue;
-            }
-            
             // Update existing setting
             const updateResult = await client.query(
               `UPDATE settings
                SET value = $2,
-                   description = COALESCE($3, description),
-                   category = COALESCE($4, category)
+                   description = COALESCE($3, description)
                WHERE key = $1
-               RETURNING key, value, description, category, is_system`,
+               RETURNING key, value, description`,
               [
                 key,
                 value,
-                description,
-                category
+                description
               ]
             );
             
@@ -498,8 +447,8 @@ router.put('/org', async (req, res) => {
       await client.query('BEGIN');
       for (const [key, value] of Object.entries(updates)) {
         await client.query(
-          `INSERT INTO settings (key, value, category, is_system)
-           VALUES ($1, $2, 'org', false)
+          `INSERT INTO settings (key, value)
+           VALUES ($1, $2)
            ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
           [key, value]
         );
