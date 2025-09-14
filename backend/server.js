@@ -14,6 +14,7 @@ const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
 const uuid = require('uuid');
+const logger = require('./logger');
 
 // Initialize express app
 const app = express();
@@ -55,6 +56,9 @@ pool.query('SELECT NOW()', (err, res) => {
 // Make pool available to routes
 app.locals.pool = pool;
 
+// Initialize logger with pool
+logger.init({ pool });
+
 // ---------------------------------------------------------------------------
 // Ensure Wizard V2 supporting schema exists (runs once at start-up)
 // ---------------------------------------------------------------------------
@@ -94,6 +98,24 @@ app.locals.pool = pool;
   END $$;
   `;
 
+  // Create system_logs table if it doesn't exist
+  const systemLogsDDL = `
+    CREATE TABLE IF NOT EXISTS system_logs (
+      id uuid PRIMARY KEY,
+      ts timestamp DEFAULT now(),
+      severity text NOT NULL CHECK (severity IN ('DEBUG', 'INFO', 'WARN', 'ERROR')),
+      category text NOT NULL,
+      message text NOT NULL,
+      details jsonb NULL,
+      entity text NULL,
+      entity_id uuid NULL,
+      actor text NULL
+    );
+    
+    -- Create index on timestamp for efficient querying
+    CREATE INDEX IF NOT EXISTS system_logs_ts_idx ON system_logs (ts DESC);
+  `;
+
   const billingTableDDL = `
     /* Wizard V2 – participant billing lines (modern schema) */
     CREATE TABLE IF NOT EXISTS rules_program_participant_billing (
@@ -107,7 +129,10 @@ app.locals.pool = pool;
 
   try {
     await pool.query(ddlBlock);
+    await pool.query(systemLogsDDL);
     await pool.query(billingTableDDL);
+    console.log('✅ System logs table verified/created');
+    
     // ---------------------------------------------------------------------
     // Staff / Vehicle placeholder tables for Wizard v2.1
     // ---------------------------------------------------------------------
@@ -342,7 +367,10 @@ app.get('/api/v1/health', healthHandler);
 
 // API Routes - Versioned under /api/v1
 const apiRoutes = require('./routes');
+const logsRoutes = require('./routes/logs');
+
 app.use('/api/v1', apiRoutes);
+app.use('/api/v1/logs', logsRoutes);
 // Compat alias so legacy calls to /api still work
 app.use('/api', apiRoutes);
 
@@ -355,25 +383,20 @@ app.get('/api/docs', (req, res) => {
 app.use(async (err, req, res, next) => {
   console.error('❌ Error:', err);
   
-  // Log error to system_logs table
+  // Log error using logger service
   try {
-    await pool.query(
-      `INSERT INTO system_logs (id, severity, category, message, details)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [
-        uuid.v4(),          // id
-        'ERROR',            // severity
-        'SYSTEM',           // category
-        err.message,        // message
-        {                   // details
-          stack: err.stack,
-          path: req.path,
-          method: req.method
-        }
-      ]
-    );
+    await logger.logEvent({
+      severity: 'ERROR',
+      category: 'SYSTEM',
+      message: err.message,
+      details: {
+        stack: err.stack,
+        path: req.path,
+        method: req.method
+      }
+    });
   } catch (logError) {
-    console.error('Failed to log error to database:', logError);
+    console.error('Failed to log error using logger service:', logError);
   }
   
   res.status(500).json({

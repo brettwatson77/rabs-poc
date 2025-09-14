@@ -275,6 +275,93 @@ a:hover {
   word-break: break-word;
 }
 
+/* ------------------------------------------------------------------------- */
+/* Log list & items                                                          */
+/* ------------------------------------------------------------------------- */
+
+.log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.log-item {
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.log-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+.log-time {
+  opacity: 0.85;
+}
+.log-severity {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  padding: 2px 6px;
+  border-radius: 8px;
+}
+.sev-INFO .log-severity {
+  background: rgba(66, 184, 131, 0.18);
+  color: #8be3b9;
+  border: 1px solid rgba(66, 184, 131, 0.35);
+}
+.sev-WARN .log-severity {
+  background: rgba(255, 193, 7, 0.18);
+  color: #ffd766;
+  border: 1px solid rgba(255, 193, 7, 0.35);
+}
+.sev-ERROR .log-severity {
+  background: rgba(244, 67, 54, 0.18);
+  color: #f28b82;
+  border: 1px solid rgba(244, 67, 54, 0.35);
+}
+.sev-DEBUG .log-severity {
+  background: rgba(144, 202, 249, 0.18);
+  color: #a6d4fa;
+  border: 1px solid rgba(144, 202, 249, 0.35);
+}
+
+.log-message {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.log-details-container {
+  margin-top: 4px;
+}
+
+.log-details-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.log-details {
+  margin-top: 6px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--glass-border);
+  padding: 8px;
+  border-radius: 8px;
+  max-height: 220px;
+  overflow: auto;
+}
+
   background: linear-gradient(135deg, var(--accent-red), #e53e3e);
   color: white;
 }

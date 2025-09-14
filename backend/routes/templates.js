@@ -8,6 +8,7 @@
 const express = require('express');
 const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
+const logger = require('../logger');
 
 // Import the syncRethread utility
 const { syncRethread } = require('../routes/util_syncRethread');
@@ -106,6 +107,15 @@ router.post('/rules', async (req, res) => {
       '15:00',
       false // Draft status
     ]);
+    
+    // Log rule draft creation
+    await logger.logEvent({
+      severity: 'INFO',
+      category: 'WIZARD',
+      message: 'Rule draft created',
+      entity: 'rule',
+      entity_id: result.rows[0].id
+    });
     
     res.json({
       success: true,
@@ -345,6 +355,16 @@ router.post('/rules/:id/slots', async (req, res) => {
       
       await client.query('COMMIT');
       
+      // Log slots added
+      await logger.logEvent({
+        severity: 'INFO',
+        category: 'WIZARD',
+        message: 'Slots added',
+        entity: 'rule',
+        entity_id: id,
+        details: { count: insertedSlots.length }
+      });
+      
       res.json({
         success: true,
         data: insertedSlots
@@ -409,6 +429,19 @@ router.post('/rules/:id/participants', async (req, res) => {
       id,
       participant_id
     ]);
+    
+    // Log participant added
+    await logger.logEvent({
+      severity: 'INFO',
+      category: 'WIZARD',
+      message: 'Participant added to rule',
+      entity: 'rule_participant',
+      entity_id: result.rows[0].id,
+      details: {
+        rule_id: id,
+        participant_id: participant_id
+      }
+    });
     
     res.json({
       success: true,
@@ -478,6 +511,17 @@ router.delete('/rules/:id/participants/:rppId', async (req, res) => {
     );
 
     await client.query('COMMIT');
+    
+    // Log participant removed
+    await logger.logEvent({
+      severity: 'INFO',
+      category: 'WIZARD',
+      message: 'Participant removed from rule',
+      entity: 'rule_participant',
+      entity_id: rppId,
+      details: { rule_id: ruleId }
+    });
+    
     res.json({ success: true, data: { id: rppId, deleted: true } });
   } catch (err) {
     await client.query('ROLLBACK');
@@ -547,6 +591,15 @@ router.delete(
           .json({ success: false, error: 'Billing line not found' });
       }
 
+      // Log billing line removed
+      await logger.logEvent({
+        severity: 'INFO',
+        category: 'WIZARD',
+        message: 'Billing line removed',
+        entity: 'billing_line',
+        entity_id: lineId
+      });
+      
       res.json({ success: true, data: { id: lineId, deleted: true } });
     } catch (err) {
       console.error('Error deleting participant billing line:', err);
@@ -802,6 +855,17 @@ router.post('/rules/:id/participants/:rppId/billing', async (req, res) => {
     }
 
     await client.query('COMMIT');
+    
+    // Log billing lines added
+    await logger.logEvent({
+      severity: 'INFO',
+      category: 'WIZARD',
+      message: 'Billing lines added',
+      entity: 'rule_participant',
+      entity_id: rppId,
+      details: { count: inserted.length }
+    });
+    
     res.json({ success: true, data: inserted });
   } catch (err) {
     await client.query('ROLLBACK');
@@ -1189,17 +1253,29 @@ router.get('/rules/:id/requirements', async (req, res) => {
         );
       }
 
+      const requirements = {
+        participant_count: participantCount,
+        wpu_total: wpuTotal,
+        staff_required: staffRequired,
+        vehicles_required: vehiclesRequired,
+        staff_threshold_per_wpu: settings.staff_threshold_per_wpu,
+        vehicle_trigger_every_n_participants:
+          settings.vehicle_trigger_every_n_participants,
+      };
+      
+      // Log requirements calculated (from cache)
+      await logger.logEvent({
+        severity: 'INFO',
+        category: 'WIZARD',
+        message: 'Requirements calculated',
+        entity: 'rule',
+        entity_id: id,
+        details: requirements
+      });
+      
       return res.json({
         success: true,
-        data: {
-          participant_count: participantCount,
-          wpu_total: wpuTotal,
-          staff_required: staffRequired,
-          vehicles_required: vehiclesRequired,
-          staff_threshold_per_wpu: settings.staff_threshold_per_wpu,
-          vehicle_trigger_every_n_participants:
-            settings.vehicle_trigger_every_n_participants,
-        },
+        data: requirements,
       });
     }
     
@@ -1229,6 +1305,16 @@ router.get('/rules/:id/requirements', async (req, res) => {
       vehicle_trigger_every_n_participants:
         settings.vehicle_trigger_every_n_participants,
     };
+    
+    // Log requirements calculated (computed)
+    await logger.logEvent({
+      severity: 'INFO',
+      category: 'WIZARD',
+      message: 'Requirements calculated',
+      entity: 'rule',
+      entity_id: id,
+      details: requirements
+    });
     
     res.json({
       success: true,
@@ -1312,6 +1398,16 @@ router.post('/rules/:id/finalize', async (req, res) => {
     // Call syncRethread with the rule ID
     const summary = await syncRethread({ ruleId: id });
     
+    // Log rule finalized
+    await logger.logEvent({
+      severity: 'INFO',
+      category: 'WIZARD',
+      message: 'Rule finalized',
+      entity: 'rule',
+      entity_id: id,
+      details: { summary }
+    });
+    
     res.json({
       success: true,
       data: summary
@@ -1355,6 +1451,20 @@ router.delete('/rules/:id/slots/:slotId', async (req, res) => {
           AND seq >= $2`,
       [id, seqToDelete]
     );
+    
+    // Log slots deleted
+    await logger.logEvent({
+      severity: 'INFO',
+      category: 'WIZARD',
+      message: 'Slots deleted from sequence',
+      entity: 'rule',
+      entity_id: id,
+      details: {
+        rule_id: id,
+        from_seq: seqToDelete,
+        deleted_count: del.rowCount
+      }
+    });
 
     return res.json({
       success: true,

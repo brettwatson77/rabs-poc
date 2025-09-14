@@ -12,6 +12,7 @@
 const express = require('express');
 const router = express.Router();
 const uuid = require('uuid');
+const logger = require('../logger');
 
 // GET /settings - Get all settings
 router.get('/', async (req, res) => {
@@ -170,24 +171,16 @@ router.put('/:key', async (req, res) => {
     
     const result = await pool.query(query, values);
     
-    // Log setting change to system_logs
+    // Emit log entry via central logger (persists + SSE broadcast)
     try {
-      await pool.query(
-        `INSERT INTO system_logs (id, severity, category, message, details) 
-         VALUES ($1, $2, $3, $4, $5)`,
-        [
-          uuid.v4(),
-          'INFO',
-          'SYSTEM',
-          `Setting updated: ${key}`,
-          { 
-            key,
-            changes: req.body
-          }
-        ]
-      );
-    } catch (logError) {
-      console.error('Failed to log to system_logs:', logError);
+      await logger.logEvent({
+        severity: 'INFO',
+        category: 'SYSTEM',
+        message: `Setting updated: ${key}`,
+        details: { key, changes: req.body },
+      });
+    } catch (logErr) {
+      console.error('Failed to write setting update log:', logErr);
     }
     
     res.json({
@@ -284,21 +277,16 @@ router.delete('/:key', async (req, res) => {
     const query = 'DELETE FROM settings WHERE key = $1 RETURNING key';
     const result = await pool.query(query, [key]);
     
-    // Log setting deletion to system_logs
+    // Log deletion via logger
     try {
-      await pool.query(
-        `INSERT INTO system_logs (id, severity, category, message, details) 
-         VALUES ($1, $2, $3, $4, $5)`,
-        [
-          uuid.v4(),
-          'INFO',
-          'SYSTEM',
-          `Setting deleted: ${key}`,
-          { key }
-        ]
-      );
-    } catch (logError) {
-      console.error('Failed to log to system_logs:', logError);
+      await logger.logEvent({
+        severity: 'INFO',
+        category: 'SYSTEM',
+        message: `Setting deleted: ${key}`,
+        details: { key },
+      });
+    } catch (logErr) {
+      console.error('Failed to write setting deletion log:', logErr);
     }
     
     res.json({
@@ -416,21 +404,16 @@ router.post('/bulk', async (req, res) => {
       
       await client.query('COMMIT');
       
-      // Log bulk update to system_logs
+      // Log bulk update via logger
       try {
-        await pool.query(
-          `INSERT INTO system_logs (id, severity, category, message, details) 
-           VALUES ($1, $2, $3, $4, $5)`,
-          [
-            uuid.v4(),
-            'INFO',
-            'SYSTEM',
-            `Bulk settings update: ${results.updated.length} updated, ${results.created.length} created`,
-            { results }
-          ]
-        );
-      } catch (logError) {
-        console.error('Failed to log to system_logs:', logError);
+        await logger.logEvent({
+          severity: 'INFO',
+          category: 'SYSTEM',
+          message: `Bulk settings update: ${results.updated.length} updated, ${results.created.length} created`,
+          details: { results },
+        });
+      } catch (logErr) {
+        console.error('Failed to write bulk settings log:', logErr);
       }
       
       res.json({

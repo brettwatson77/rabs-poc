@@ -1,9 +1,94 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiX } from 'react-icons/fi';
+import { FiX, FiChevronDown, FiChevronRight } from 'react-icons/fi';
+import api from '../api/api';
 
 const SystemLogPanel = ({ isOpen, onClose }) => {
   const panelRef = useRef(null);
+  const [logs, setLogs] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const eventSourceRef = useRef(null);
+  const MAX_LOGS = 500;
+
+  // Format timestamp to readable format
+  const formatTimestamp = (timestamp) => {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    return date.toLocaleString();
+  };
+
+  // Load initial logs and set up SSE
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const fetchLogs = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await api.get('/logs?limit=200');
+        if (response.data?.data) {
+          setLogs(response.data.data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch logs:', err);
+        setError('Failed to load logs. Please try again later.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const setupSSE = () => {
+      try {
+        // Close any existing connection
+        if (eventSourceRef.current) {
+          eventSourceRef.current.close();
+        }
+
+        // Create new EventSource connection
+        eventSourceRef.current = new EventSource('/api/v1/logs/stream');
+        
+        // Handle incoming log events
+        eventSourceRef.current.onmessage = (event) => {
+          try {
+            const logEntry = JSON.parse(event.data);
+            setLogs(prevLogs => {
+              const newLogs = [logEntry, ...prevLogs];
+              // Cap the logs array at MAX_LOGS entries
+              return newLogs.slice(0, MAX_LOGS);
+            });
+          } catch (err) {
+            console.error('Error processing log event:', err);
+          }
+        };
+
+        // Handle connection error
+        eventSourceRef.current.onerror = () => {
+          console.error('SSE connection error');
+          // Close and retry in 5 seconds
+          if (eventSourceRef.current) {
+            eventSourceRef.current.close();
+            eventSourceRef.current = null;
+            setTimeout(setupSSE, 5000);
+          }
+        };
+      } catch (err) {
+        console.error('Failed to set up SSE:', err);
+      }
+    };
+
+    // Fetch initial logs and set up SSE
+    fetchLogs();
+    setupSSE();
+
+    // Cleanup function
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+    };
+  }, [isOpen]);
 
   // Handle Escape key to close panel
   useEffect(() => {
@@ -25,6 +110,41 @@ const SystemLogPanel = ({ isOpen, onClose }) => {
       document.body.style.overflow = '';
     };
   }, [isOpen, onClose]);
+
+  // Log entry component with collapsible details
+  const LogEntry = ({ log }) => {
+    const [expanded, setExpanded] = useState(false);
+    const hasDetails = log.details && Object.keys(log.details).length > 0;
+
+    return (
+      <div className={`log-item sev-${log.severity}`}>
+        <div className="log-header">
+          <span className="log-time">{formatTimestamp(log.ts)}</span>
+          <span className={`log-severity sev-${log.severity}`}>{log.severity}</span>
+          <span className="log-category">{log.category}</span>
+        </div>
+        <div className="log-message">{log.message}</div>
+        
+        {hasDetails && (
+          <div className="log-details-container">
+            <button 
+              className="log-details-toggle" 
+              onClick={() => setExpanded(!expanded)}
+            >
+              {expanded ? <FiChevronDown /> : <FiChevronRight />}
+              Details
+            </button>
+            
+            {expanded && (
+              <pre className="log-details">
+                {JSON.stringify(log.details, null, 2)}
+              </pre>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <AnimatePresence>
@@ -63,35 +183,18 @@ const SystemLogPanel = ({ isOpen, onClose }) => {
 
             {/* Content */}
             <div className="system-log-content">
-              <pre className="system-log-pre">
-                {`[2025-09-14 12:34:56] INFO: System initialized
-[2025-09-14 12:35:01] INFO: Database connection established
-[2025-09-14 12:35:03] INFO: User authentication service started
-[2025-09-14 12:35:10] WARN: Cache size approaching limit (85%)
-[2025-09-14 12:36:22] INFO: API request: GET /api/v1/participants
-[2025-09-14 12:36:23] INFO: API response: 200 OK (32ms)
-[2025-09-14 12:37:45] ERROR: Failed to connect to external service
-[2025-09-14 12:37:46] INFO: Retrying connection (attempt 1/3)
-[2025-09-14 12:37:48] INFO: Connection established to external service
-[2025-09-14 12:38:12] INFO: Background job started: data-sync
-[2025-09-14 12:40:05] INFO: Background job completed: data-sync
-[2025-09-14 12:41:30] DEBUG: Memory usage: 256MB
-[2025-09-14 12:42:11] INFO: API request: POST /api/v1/participants
-[2025-09-14 12:42:12] INFO: API response: 201 Created (78ms)
-[2025-09-14 12:43:01] WARN: Rate limit threshold reached for IP 192.168.1.105
-[2025-09-14 12:44:23] INFO: Scheduled maintenance starting in 30 minutes
-[2025-09-14 12:45:00] INFO: API request: GET /api/v1/settings
-[2025-09-14 12:45:01] INFO: API response: 200 OK (45ms)
-[2025-09-14 12:46:12] INFO: User brett.watson logged in
-[2025-09-14 12:47:33] INFO: Configuration updated by admin
-[2025-09-14 12:48:05] INFO: Email notification sent to 3 recipients
-[2025-09-14 12:49:17] INFO: API request: PUT /api/v1/vehicles/12
-[2025-09-14 12:49:18] INFO: API response: 200 OK (62ms)
-[2025-09-14 12:50:22] INFO: File upload started: program_template.xlsx
-[2025-09-14 12:50:25] INFO: File upload completed: program_template.xlsx (2.4MB)
-[2025-09-14 12:51:10] INFO: Import job started for program_template.xlsx
-[2025-09-14 12:51:45] INFO: Import completed: 28 records processed, 0 errors`}
-              </pre>
+              {isLoading && <div className="log-loading">Loading logs...</div>}
+              {error && <div className="log-error">{error}</div>}
+              
+              {!isLoading && !error && logs.length === 0 && (
+                <div className="log-empty">No logs available</div>
+              )}
+              
+              <div className="log-list">
+                {logs.map(log => (
+                  <LogEntry key={log.id} log={log} />
+                ))}
+              </div>
             </div>
           </motion.aside>
         </>
