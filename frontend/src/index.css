@@ -201,6 +201,80 @@ a:hover {
 }
 
 .btn-danger {
+/* ------------------------------------------------------------------------- */
+/* System Log Drawer                                                         */
+/* ------------------------------------------------------------------------- */
+
+.system-log-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 1090;
+}
+
+.system-log-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 420px;
+  max-width: 90vw;
+  background: rgba(18, 22, 32, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-right: 1px solid var(--glass-border);
+  box-shadow: 8px 0 24px rgba(0, 0, 0, 0.45);
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+}
+
+.system-log-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.system-log-header h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.system-log-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary);
+  transition: background var(--transition-fast);
+}
+
+.system-log-close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.system-log-content {
+  padding: 10px 14px 16px;
+  overflow: auto;
+  flex: 1;
+}
+
+.system-log-pre {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
   background: linear-gradient(135deg, var(--accent-red), #e53e3e);
   color: white;
 }

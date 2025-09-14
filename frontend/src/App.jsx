@@ -15,6 +15,7 @@ import {
   FiActivity,
   FiCheckCircle,
   FiAlertCircle,
+  FiTerminal,
   FiUser,
   FiBriefcase,
   FiTruck,
@@ -32,6 +33,8 @@ import Staff from './pages/Staff';
 import Vehicles from './pages/Vehicles';
 import Venues from './pages/Venues';
 import ProgramTemplateWizard from './pages/ProgramTemplateWizard';
+// Slide-in system log panel
+import SystemLogPanel from './components/SystemLogPanel';
 
 // Toast notifications
 import { ToastContainer } from 'react-toastify';
@@ -107,6 +110,8 @@ const HealthCheck = () => {
 const Layout = ({ children }) => {
   const location = useLocation();
   const [currentDate, setCurrentDate] = useState(new Date());
+  // System log drawer state
+  const [isLogOpen, setIsLogOpen] = useState(false);
   
   // Update date every minute
   useEffect(() => {
@@ -219,6 +224,16 @@ const Layout = ({ children }) => {
                 <FiDollarSign />
               </NavLink>
               
+              {/* System Log toggle */}
+              <button
+                type="button"
+                className={`icon-link ${isLogOpen ? 'active' : ''}`}
+                title="System Log"
+                onClick={() => setIsLogOpen(prev => !prev)}
+              >
+                <FiTerminal />
+              </button>
+              
               <NavLink 
                 to="/settings" 
                 className={({ isActive }) => 
@@ -264,6 +279,12 @@ const Layout = ({ children }) => {
           </div>
         </div>
       </footer>
+
+      {/* Slide-in System Log Panel */}
+      <SystemLogPanel
+        isOpen={isLogOpen}
+        onClose={() => setIsLogOpen(false)}
+      />
     </div>
   );
 };
