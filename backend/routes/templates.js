@@ -1219,83 +1219,34 @@ router.get('/rules/:id/requirements', async (req, res) => {
     // Always load org-level thresholds first – needed for normalization
     const settings = await loadSettings(pool);
 
-    // First check if requirements already exist in rules_program_requirements
-    const requirementsResult = await pool.query(`
-      SELECT * FROM rules_program_requirements
-      WHERE rule_id = $1
-    `, [id]);
-    
-    if (requirementsResult.rows.length > 0) {
-      // --------------------------------------------------------------
-      // Normalise legacy / string types and ensure thresholds present
-      // --------------------------------------------------------------
-      const row = requirementsResult.rows[0];
-
-      const participantCount =
-        Number(row.participant_count) > 0 ? Number(row.participant_count) : 0;
-
-      let wpuTotal = Number(row.wpu_total);
-      if (!Number.isFinite(wpuTotal) || wpuTotal <= 0) {
-        wpuTotal = participantCount; // fallback same as simple rule
-      }
-
-      let staffRequired = Number(row.staff_required);
-      if (!Number.isFinite(staffRequired) || staffRequired <= 0) {
-        staffRequired = Math.ceil(
-          wpuTotal / settings.staff_threshold_per_wpu
-        );
-      }
-
-      let vehiclesRequired = Number(row.vehicles_required);
-      if (!Number.isFinite(vehiclesRequired) || vehiclesRequired <= 0) {
-        vehiclesRequired = Math.ceil(
-          participantCount / settings.vehicle_trigger_every_n_participants
-        );
-      }
-
-      const requirements = {
-        participant_count: participantCount,
-        wpu_total: wpuTotal,
-        staff_required: staffRequired,
-        vehicles_required: vehiclesRequired,
-        staff_threshold_per_wpu: settings.staff_threshold_per_wpu,
-        vehicle_trigger_every_n_participants:
-          settings.vehicle_trigger_every_n_participants,
-      };
-      
-      // Log requirements calculated (from cache)
-      await logger.logEvent({
-        severity: 'INFO',
-        category: 'WIZARD',
-        message: 'Requirements calculated',
-        entity: 'rule',
-        entity_id: id,
-        details: requirements
-      });
-      
-      return res.json({
-        success: true,
-        data: requirements,
-      });
-    }
-    
-    // If not, compute them on the fly
-    
-    // Count participants
-    const participantCountResult = await pool.query(`
-      SELECT COUNT(*) as count FROM rules_program_participants
-      WHERE rule_id = $1
-    `, [id]);
-    
-    const participantCount = parseInt(participantCountResult.rows[0].count, 10);
-    const wpuTotal = participantCount; // In a simple implementation, WPU = participant count
-    
-    // Calculate required staff and vehicles
-    const staffRequired = Math.ceil(wpuTotal / settings.staff_threshold_per_wpu);
-    const vehiclesRequired = Math.ceil(
-      participantCount / settings.vehicle_trigger_every_n_participants
+    /* ------------------------------------------------------------------
+     * Always compute requirements live from current DB state
+     * -----------------------------------------------------------------*/
+    const liveRes = await pool.query(
+      `SELECT COUNT(*)::int AS participant_count,
+              COALESCE(SUM(p.supervision_multiplier),0)::numeric AS wpu_total
+         FROM rules_program_participants rpp
+         JOIN participants p ON p.id = rpp.participant_id
+        WHERE rpp.rule_id = $1`,
+      [id]
     );
-    
+
+    const participantCount = liveRes.rows[0].participant_count || 0;
+    const wpuTotal = parseFloat(liveRes.rows[0].wpu_total) || 0;
+
+    // Calculate requirements using live settings (with sane fallbacks)
+    const staffDivisor =
+      settings.staff_threshold_per_wpu > 0
+        ? settings.staff_threshold_per_wpu
+        : 5;
+    const vehicleDivisor =
+      settings.vehicle_trigger_every_n_participants > 0
+        ? settings.vehicle_trigger_every_n_participants
+        : 10;
+
+    const staffRequired = Math.ceil(wpuTotal / staffDivisor);
+    const vehiclesRequired = Math.ceil(participantCount / vehicleDivisor);
+
     const requirements = {
       participant_count: participantCount,
       wpu_total: wpuTotal,
@@ -1306,7 +1257,23 @@ router.get('/rules/:id/requirements', async (req, res) => {
         settings.vehicle_trigger_every_n_participants,
     };
     
-    // Log requirements calculated (computed)
+    /* ------------------------------------------------------------------
+     * Upsert into cache table so other subsystems can read quickly
+     * -----------------------------------------------------------------*/
+    await pool.query(
+      `INSERT INTO rules_program_requirements
+        (rule_id, participant_count, wpu_total, staff_required, vehicles_required, computed_at)
+       VALUES ($1,$2,$3,$4,$5, now())
+       ON CONFLICT (rule_id) DO UPDATE
+         SET participant_count = EXCLUDED.participant_count,
+             wpu_total        = EXCLUDED.wpu_total,
+             staff_required   = EXCLUDED.staff_required,
+             vehicles_required= EXCLUDED.vehicles_required,
+             computed_at      = now()`,
+      [id, participantCount, wpuTotal, staffRequired, vehiclesRequired]
+    );
+
+    // Log requirements calculated (live computation)
     await logger.logEvent({
       severity: 'INFO',
       category: 'WIZARD',

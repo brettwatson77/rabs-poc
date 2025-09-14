@@ -95,12 +95,22 @@ DECLARE
 BEGIN
   -- Optional: pull threshold/capacity from settings table if present
   BEGIN
-    SELECT COALESCE((SELECT (value::jsonb->>'staff_threshold_per_wpu')::numeric FROM settings WHERE key='org'), 5.0)
+    -- Read per-key row (numeric stored as text) with safe fallback
+    SELECT COALESCE(
+             (SELECT value::numeric
+                FROM settings
+               WHERE key = 'staff_threshold_per_wpu'),
+             5.0)
       INTO v_threshold;
   EXCEPTION WHEN others THEN v_threshold := 5.0;
   END;
   BEGIN
-    SELECT COALESCE((SELECT (value::jsonb->>'default_bus_capacity')::int FROM settings WHERE key='org'), 10)
+    -- Vehicle capacity threshold now stored per-key
+    SELECT COALESCE(
+             (SELECT value::int
+                FROM settings
+               WHERE key = 'vehicle_trigger_every_n_participants'),
+             10)
       INTO v_vehicle_cap;
   EXCEPTION WHEN others THEN v_vehicle_cap := 10;
   END;
