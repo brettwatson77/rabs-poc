@@ -496,12 +496,35 @@ router.delete('/rules/:id/participants/:rppId', async (req, res) => {
     await client.query('BEGIN');
 
     // Cascade delete billing lines (support both possible FK columns)
-    await client.query(
-      `DELETE FROM rules_program_participant_billing
-        WHERE rule_participant_id = $1
-           OR rpp_id = $1`,
-      [rppId]
+    // ------------------------------------------------------------------
+    // Detect which FK column(s) exist so we don't reference a missing one
+    // ------------------------------------------------------------------
+    const { rows: colRows } = await client.query(
+      `SELECT column_name
+         FROM information_schema.columns
+        WHERE table_name = 'rules_program_participant_billing'
+          AND column_name IN ('rule_participant_id','rpp_id')`
     );
+    const hasRuleParticipantId = colRows.some(
+      (r) => r.column_name === 'rule_participant_id'
+    );
+    const hasRppId = colRows.some((r) => r.column_name === 'rpp_id');
+
+    if (hasRuleParticipantId) {
+      await client.query(
+        `DELETE FROM rules_program_participant_billing
+          WHERE rule_participant_id = $1`,
+        [rppId]
+      );
+    }
+
+    if (hasRppId) {
+      await client.query(
+        `DELETE FROM rules_program_participant_billing
+          WHERE rpp_id = $1`,
+        [rppId]
+      );
+    }
 
     // Delete participant link
     await client.query(
