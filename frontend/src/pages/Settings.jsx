@@ -45,9 +45,8 @@ const Settings = () => {
     vehicle_trigger_every_n_participants: 10,
     loom_window_days: 14
   });
-  // Separate before/after fortnights
-  const [loomFortnightsBefore, setLoomFortnightsBefore] = useState(0);
-  const [loomFortnightsAfter, setLoomFortnightsAfter] = useState(1);
+  // Single fortnights value (future only)
+  const [loomFortnights, setLoomFortnights] = useState(1);
   const [generalSettings, setGeneralSettings] = useState({
     organization_name: 'RABS Organization',
     timezone: 'Australia/Sydney',
@@ -112,9 +111,8 @@ const Settings = () => {
         if (res?.data) {
           setOrgSettings(res.data);
           const totalFortnights = Math.max(1, Math.round(res.data.loom_window_days / 14));
-          // Default to 0 before, all after if not specified
-          setLoomFortnightsBefore(0);
-          setLoomFortnightsAfter(totalFortnights);
+          // Set single fortnights value
+          setLoomFortnights(totalFortnights);
         }
       }
     }
@@ -170,10 +168,10 @@ const Settings = () => {
 
   // Handle loom & org thresholds update
   const handleLoomWindowUpdate = async () => {
-    const totalDays = (loomFortnightsBefore + loomFortnightsAfter) * 14;
+    const days = loomFortnights * 14;
     // 1) PUT org numeric settings
     const putOrg = axios.put(`${API_URL}/api/v1/settings/org`, {
-      loom_window_days: totalDays,
+      loom_window_days: days,
       staff_threshold_per_wpu: orgSettings.staff_threshold_per_wpu,
       vehicle_trigger_every_n_participants: orgSettings.vehicle_trigger_every_n_participants
     });
@@ -184,9 +182,8 @@ const Settings = () => {
       value: {
         auto_generate: loomWindowSettings.auto_generate,
         rollover_time: loomWindowSettings.rollover_time,
-        fortnights_before: loomFortnightsBefore,
-        fortnights_after: loomFortnightsAfter,
-        days_after: loomFortnightsAfter * 14
+        fortnights_after: loomFortnights,
+        days_after: days
       },
       description: 'Loom window configuration',
       category: 'loom'
@@ -353,34 +350,21 @@ const Settings = () => {
       <div className="settings-form glass-card">
         <div className="loom-info">
           <p>
-            The loom window controls how far back and forward the system looks when generating schedules.
+            The loom window controls how far forward the system looks when generating schedules.
             Adjusting these settings affects system performance and data visibility.
           </p>
         </div>
         
-        {/* Fortnights selectors */}
+        {/* Single fortnight selector */}
         <div className="form-group">
-          <label htmlFor="fortnights-before">Fortnights Before</label>
+          <label htmlFor="fortnights-ahead">Fortnights Ahead</label>
           <input
-            id="fortnights-before"
-            type="number"
-            min="0"
-            max="6"
-            value={loomFortnightsBefore}
-            onChange={(e) => setLoomFortnightsBefore(Math.max(0, parseInt(e.target.value) || 0))}
-          />
-          <div className="input-help">How many fortnights in the past to include (0-6)</div>
-        </div>
-        
-        <div className="form-group">
-          <label htmlFor="fortnights-after">Fortnights After</label>
-          <input
-            id="fortnights-after"
+            id="fortnights-ahead"
             type="number"
             min="1"
             max="12"
-            value={loomFortnightsAfter}
-            onChange={(e) => setLoomFortnightsAfter(Math.max(1, parseInt(e.target.value) || 1))}
+            value={loomFortnights}
+            onChange={(e) => setLoomFortnights(Math.max(1, parseInt(e.target.value) || 1))}
           />
           <div className="input-help">How many fortnights in the future to include (1-12)</div>
         </div>
