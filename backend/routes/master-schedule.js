@@ -40,7 +40,6 @@ router.get('/instances', async (req, res, next) => {
     const result = await pool.query(
       `SELECT li.*, 
               p.name as program_name, 
-              p.staff_ratio,
               v.name as venue_name,
               v.address as venue_address,
               COUNT(pp.participant_id) as participant_count
@@ -49,7 +48,7 @@ router.get('/instances', async (req, res, next) => {
        JOIN venues v ON p.venue_id = v.id
        LEFT JOIN program_participants pp ON p.id = pp.program_id
        WHERE li.date BETWEEN $1 AND $2
-       GROUP BY li.id, p.name, p.staff_ratio, v.name, v.address
+       GROUP BY li.id, p.name, v.name, v.address
        ORDER BY li.date, li.id`,
       [startDate, endDate]
     );
@@ -76,7 +75,6 @@ router.get('/instances/:id', async (req, res, next) => {
     const instanceResult = await pool.query(
       `SELECT li.*, 
               p.name as program_name, 
-              p.staff_ratio,
               v.name as venue_name,
               v.address as venue_address
        FROM tgl_loom_instances li

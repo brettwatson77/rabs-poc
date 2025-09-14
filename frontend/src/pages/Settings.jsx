@@ -195,9 +195,32 @@ const Settings = () => {
       queryClient.invalidateQueries(['systemSettings']);
       queryClient.invalidateQueries(['orgSettings']);
       toast.success('Loom & threshold settings saved');
+      
+      // Log successful save
+      axios.post(`${API_URL}/api/v1/logs`, {
+        severity: 'INFO',
+        category: 'SETTINGS',
+        message: 'Loom settings saved',
+        details: {
+          loom_window_days: days,
+          fortnights: loomFortnights,
+          staff_threshold_per_wpu: orgSettings.staff_threshold_per_wpu,
+          vehicle_trigger_every_n_participants: orgSettings.vehicle_trigger_every_n_participants
+        }
+      }).catch(logErr => console.error('Failed to log loom settings update:', logErr));
     } catch (err) {
       console.error('Failed saving loom/org settings', err);
       toast.error('Save failed');
+      
+      // Log error
+      axios.post(`${API_URL}/api/v1/logs`, {
+        severity: 'ERROR',
+        category: 'SETTINGS',
+        message: 'Failed to save loom settings',
+        details: {
+          error: err.message
+        }
+      }).catch(logErr => console.error('Failed to log loom settings error:', logErr));
     }
   };
 
@@ -210,7 +233,30 @@ const Settings = () => {
       category: 'general'
     }));
     
-    bulkUpdateSettingsMutation.mutate(settings);
+    bulkUpdateSettingsMutation.mutate(settings, {
+      onSuccess: () => {
+        toast.success('General settings saved');
+        
+        // Log successful save
+        axios.post(`${API_URL}/api/v1/logs`, {
+          severity: 'INFO',
+          category: 'SETTINGS',
+          message: 'General settings saved',
+          details: { settings: generalSettings }
+        }).catch(logErr => console.error('Failed to log general settings update:', logErr));
+      },
+      onError: (error) => {
+        toast.error('Failed to save general settings');
+        
+        // Log error
+        axios.post(`${API_URL}/api/v1/logs`, {
+          severity: 'ERROR',
+          category: 'SETTINGS',
+          message: 'Failed to save general settings',
+          details: { error: error.message }
+        }).catch(logErr => console.error('Failed to log general settings error:', logErr));
+      }
+    });
   };
 
   // Handle security settings update
@@ -222,7 +268,30 @@ const Settings = () => {
       category: 'security'
     }));
     
-    bulkUpdateSettingsMutation.mutate(settings);
+    bulkUpdateSettingsMutation.mutate(settings, {
+      onSuccess: () => {
+        toast.success('Security settings saved');
+        
+        // Log successful save
+        axios.post(`${API_URL}/api/v1/logs`, {
+          severity: 'INFO',
+          category: 'SETTINGS',
+          message: 'Security settings saved',
+          details: { settings: securitySettings }
+        }).catch(logErr => console.error('Failed to log security settings update:', logErr));
+      },
+      onError: (error) => {
+        toast.error('Failed to save security settings');
+        
+        // Log error
+        axios.post(`${API_URL}/api/v1/logs`, {
+          severity: 'ERROR',
+          category: 'SETTINGS',
+          message: 'Failed to save security settings',
+          details: { error: error.message }
+        }).catch(logErr => console.error('Failed to log security settings error:', logErr));
+      }
+    });
   };
 
   // Handle backup creation
@@ -255,19 +324,21 @@ const Settings = () => {
       <h3 className="section-title">General Settings</h3>
       <div className="settings-form glass-card">
         <div className="form-group">
-          <label htmlFor="organization-name">Organization Name</label>
+          <label htmlFor="organization-name" className="form-label">Organization Name</label>
           <input
             id="organization-name"
             type="text"
+            className="form-control"
             value={generalSettings.organization_name}
             onChange={(e) => setGeneralSettings({...generalSettings, organization_name: e.target.value})}
           />
         </div>
         
         <div className="form-group">
-          <label htmlFor="timezone">Timezone</label>
+          <label htmlFor="timezone" className="form-label">Timezone</label>
           <select
             id="timezone"
+            className="form-control"
             value={generalSettings.timezone}
             onChange={(e) => setGeneralSettings({...generalSettings, timezone: e.target.value})}
           >
@@ -280,9 +351,10 @@ const Settings = () => {
         </div>
         
         <div className="form-group">
-          <label htmlFor="date-format">Date Format</label>
+          <label htmlFor="date-format" className="form-label">Date Format</label>
           <select
             id="date-format"
+            className="form-control"
             value={generalSettings.date_format}
             onChange={(e) => setGeneralSettings({...generalSettings, date_format: e.target.value})}
           >
@@ -294,9 +366,10 @@ const Settings = () => {
         </div>
         
         <div className="form-group">
-          <label htmlFor="time-format">Time Format</label>
+          <label htmlFor="time-format" className="form-label">Time Format</label>
           <select
             id="time-format"
+            className="form-control"
             value={generalSettings.time_format}
             onChange={(e) => setGeneralSettings({...generalSettings, time_format: e.target.value})}
           >
@@ -306,9 +379,10 @@ const Settings = () => {
         </div>
         
         <div className="form-group">
-          <label htmlFor="default-view">Default View</label>
+          <label htmlFor="default-view" className="form-label">Default View</label>
           <select
             id="default-view"
+            className="form-control"
             value={generalSettings.default_view}
             onChange={(e) => setGeneralSettings({...generalSettings, default_view: e.target.value})}
           >
@@ -357,10 +431,11 @@ const Settings = () => {
         
         {/* Single fortnight selector */}
         <div className="form-group">
-          <label htmlFor="fortnights-ahead">Fortnights Ahead</label>
+          <label htmlFor="fortnights-ahead" className="form-label">Fortnights Ahead</label>
           <input
             id="fortnights-ahead"
             type="number"
+            className="form-control"
             min="1"
             max="12"
             value={loomFortnights}
@@ -370,10 +445,11 @@ const Settings = () => {
         </div>
         
         <div className="form-group">
-          <label htmlFor="rollover-time">Daily Rollover Time</label>
+          <label htmlFor="rollover-time" className="form-label">Daily Rollover Time</label>
           <input
             id="rollover-time"
             type="time"
+            className="form-control"
             value={loomWindowSettings.rollover_time}
             onChange={(e) => setLoomWindowSettings({...loomWindowSettings, rollover_time: e.target.value})}
           />
@@ -396,10 +472,11 @@ const Settings = () => {
         
         {/* Operational thresholds */}
         <div className="form-group">
-          <label htmlFor="staff-threshold">Staff per WPU: {orgSettings.staff_threshold_per_wpu}</label>
+          <label htmlFor="staff-threshold" className="form-label">Staff per WPU: {orgSettings.staff_threshold_per_wpu}</label>
           <input
             id="staff-threshold"
             type="range"
+            className="form-control"
             min="1"
             max="10"
             step="1"
@@ -414,10 +491,11 @@ const Settings = () => {
           />
         </div>
         <div className="form-group">
-          <label htmlFor="vehicle-threshold">Vehicle trigger per participants: {orgSettings.vehicle_trigger_every_n_participants}</label>
+          <label htmlFor="vehicle-threshold" className="form-label">Vehicle trigger per participants: {orgSettings.vehicle_trigger_every_n_participants}</label>
           <input
             id="vehicle-threshold"
             type="range"
+            className="form-control"
             min="2"
             max="20"
             step="1"
@@ -467,10 +545,11 @@ const Settings = () => {
         </div>
         
         <div className="form-group">
-          <label htmlFor="session-timeout">Session Timeout (minutes)</label>
+          <label htmlFor="session-timeout" className="form-label">Session Timeout (minutes)</label>
           <input
             id="session-timeout"
             type="number"
+            className="form-control"
             min="5"
             max="240"
             value={securitySettings.session_timeout}
@@ -480,10 +559,11 @@ const Settings = () => {
         </div>
         
         <div className="form-group">
-          <label htmlFor="password-expiry">Password Expiry (days)</label>
+          <label htmlFor="password-expiry" className="form-label">Password Expiry (days)</label>
           <input
             id="password-expiry"
             type="number"
+            className="form-control"
             min="0"
             max="365"
             value={securitySettings.password_expiry_days}
@@ -493,10 +573,11 @@ const Settings = () => {
         </div>
         
         <div className="form-group">
-          <label htmlFor="failed-login-attempts">Failed Login Attempts</label>
+          <label htmlFor="failed-login-attempts" className="form-label">Failed Login Attempts</label>
           <input
             id="failed-login-attempts"
             type="number"
+            className="form-control"
             min="1"
             max="10"
             value={securitySettings.failed_login_attempts}
@@ -584,9 +665,10 @@ const Settings = () => {
           </div>
           
           <div className="form-group">
-            <label htmlFor="backup-frequency">Backup Frequency</label>
+            <label htmlFor="backup-frequency" className="form-label">Backup Frequency</label>
             <select
               id="backup-frequency"
+              className="form-control"
               value="daily"
               onChange={() => {}}
             >
@@ -598,10 +680,11 @@ const Settings = () => {
           </div>
           
           <div className="form-group">
-            <label htmlFor="backup-retention">Retention Period (days)</label>
+            <label htmlFor="backup-retention" className="form-label">Retention Period (days)</label>
             <input
               id="backup-retention"
               type="number"
+              className="form-control"
               min="1"
               max="365"
               value="30"
@@ -628,13 +711,13 @@ const Settings = () => {
                 <td>Full</td>
                 <td>
                   <div className="action-buttons">
-                    <button className="btn btn-icon" title="Download">
+                    <button className="icon-link" title="Download">
                       <FiDownload />
                     </button>
-                    <button className="btn btn-icon" title="Restore">
+                    <button className="icon-link" title="Restore">
                       <FiUpload />
                     </button>
-                    <button className="btn btn-icon" title="Delete">
+                    <button className="icon-link" title="Delete">
                       <FiTrash2 />
                     </button>
                   </div>
@@ -646,13 +729,13 @@ const Settings = () => {
                 <td>Full</td>
                 <td>
                   <div className="action-buttons">
-                    <button className="btn btn-icon" title="Download">
+                    <button className="icon-link" title="Download">
                       <FiDownload />
                     </button>
-                    <button className="btn btn-icon" title="Restore">
+                    <button className="icon-link" title="Restore">
                       <FiUpload />
                     </button>
-                    <button className="btn btn-icon" title="Delete">
+                    <button className="icon-link" title="Delete">
                       <FiTrash2 />
                     </button>
                   </div>
@@ -678,9 +761,10 @@ const Settings = () => {
         <div className="modal-body">
           <form className="backup-form">
             <div className="form-group">
-              <label htmlFor="backup-format">Backup Format</label>
+              <label htmlFor="backup-format" className="form-label">Backup Format</label>
               <select
                 id="backup-format"
+                className="form-control"
                 value={backupOptions.format}
                 onChange={e => setBackupOptions({...backupOptions, format: e.target.value})}
               >
@@ -767,10 +851,11 @@ const Settings = () => {
           
           <form className="restore-form" onSubmit={handleDatabaseRestore}>
             <div className="form-group">
-              <label htmlFor="backup-file">Backup File</label>
+              <label htmlFor="backup-file" className="form-label">Backup File</label>
               <input
                 id="backup-file"
                 type="file"
+                className="form-control"
                 onChange={handleFileChange}
                 required
               />
@@ -813,7 +898,7 @@ const Settings = () => {
         <h2 className="page-title">Settings</h2>
         <div className="page-actions">
           <button 
-            className="btn btn-icon" 
+            className="icon-link" 
             onClick={() => {
               refetchSettings();
               refetchOrgSettings();
@@ -830,41 +915,35 @@ const Settings = () => {
       
       <div className="settings-layout">
         {/* Settings Navigation - Changed to horizontal buttons */}
-        <div className="settings-nav glass-card" style={{ marginBottom: '12px' }}>
-          <div className="nav-buttons" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', padding: '12px' }}>
-            <button 
-              type="button"
-              className={`nav-btn ${activeSection === 'general' ? 'active' : ''}`}
-              style={{ padding: '10px 14px' }}
-              onClick={() => setActiveSection('general')}
-            >
-              <FiSettings /> General
-            </button>
-            <button 
-              type="button"
-              className={`nav-btn ${activeSection === 'loom' ? 'active' : ''}`}
-              style={{ padding: '10px 14px' }}
-              onClick={() => setActiveSection('loom')}
-            >
-              <FiCalendar /> Loom System
-            </button>
-            <button 
-              type="button"
-              className={`nav-btn ${activeSection === 'security' ? 'active' : ''}`}
-              style={{ padding: '10px 14px' }}
-              onClick={() => setActiveSection('security')}
-            >
-              <FiLock /> Security
-            </button>
-            <button 
-              type="button"
-              className={`nav-btn ${activeSection === 'backup' ? 'active' : ''}`}
-              style={{ padding: '10px 14px' }}
-              onClick={() => setActiveSection('backup')}
-            >
-              <FiDatabase /> Backup & Restore
-            </button>
-          </div>
+        <div className="tab-bar">
+          <button 
+            type="button"
+            className={`tab-btn ${activeSection === 'general' ? 'active' : ''}`}
+            onClick={() => setActiveSection('general')}
+          >
+            <FiSettings /> General
+          </button>
+          <button 
+            type="button"
+            className={`tab-btn ${activeSection === 'loom' ? 'active' : ''}`}
+            onClick={() => setActiveSection('loom')}
+          >
+            <FiCalendar /> Loom System
+          </button>
+          <button 
+            type="button"
+            className={`tab-btn ${activeSection === 'security' ? 'active' : ''}`}
+            onClick={() => setActiveSection('security')}
+          >
+            <FiLock /> Security
+          </button>
+          <button 
+            type="button"
+            className={`tab-btn ${activeSection === 'backup' ? 'active' : ''}`}
+            onClick={() => setActiveSection('backup')}
+          >
+            <FiDatabase /> Backup & Restore
+          </button>
         </div>
         
         {/* Settings Content */}
