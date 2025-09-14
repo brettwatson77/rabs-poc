@@ -17,8 +17,8 @@ import {
 } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 
-// API base URL from environment
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3009';
+// API base URL from environment (fallback to relative path)
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 // Settings component
 const Settings = () => {
@@ -422,12 +422,6 @@ const Settings = () => {
     <div className="settings-section">
       <h3 className="section-title">Loom System Settings</h3>
       <div className="settings-form glass-card">
-        <div className="loom-info">
-          <p>
-            The loom window controls how far forward the system looks when generating schedules.
-            Adjusting these settings affects system performance and data visibility.
-          </p>
-        </div>
         
         {/* Single fortnight selector */}
         <div className="form-group">
