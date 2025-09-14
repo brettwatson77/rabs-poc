@@ -24,6 +24,9 @@ import DocumentExpiryTable from './vehicles/components/DocumentExpiryTable';
 // Import hook
 import useVehiclesData from './vehicles/hooks/useVehiclesData';
 
+// Page-specific styles (matches original Vehicles page look)
+import '../styles/Vehicles.css';
+
 // VehiclesFull Page Component
 const VehiclesFull = () => {
   const queryClient = useQueryClient();
