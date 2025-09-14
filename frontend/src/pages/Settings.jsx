@@ -441,7 +441,6 @@ const Settings = () => {
             value={loomFortnights}
             onChange={(e) => setLoomFortnights(Math.max(1, parseInt(e.target.value) || 1))}
           />
-          <div className="input-help">How many fortnights in the future to include (1-12)</div>
         </div>
         
         <div className="form-group">
@@ -453,7 +452,6 @@ const Settings = () => {
             value={loomWindowSettings.rollover_time}
             onChange={(e) => setLoomWindowSettings({...loomWindowSettings, rollover_time: e.target.value})}
           />
-          <div className="input-help">When the system should process the next day&apos;s schedule</div>
         </div>
         
         <div className="form-group checkbox-group">
@@ -467,7 +465,6 @@ const Settings = () => {
             />
             <label htmlFor="auto-generate">Generate instances from template</label>
           </div>
-          <div className="input-help">Automatically create instances from program templates</div>
         </div>
         
         {/* Operational thresholds */}
@@ -896,7 +893,7 @@ const Settings = () => {
     <div className="settings-container">
       <div className="page-header">
         <h2 className="page-title">Settings</h2>
-        <div className="page-actions">
+        <div className="page-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap' }}>
           <button 
             className="icon-link" 
             onClick={() => {
