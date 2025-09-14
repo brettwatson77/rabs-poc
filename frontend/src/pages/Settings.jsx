@@ -1,34 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import axios from 'axios';
 import { format } from 'date-fns';
 import { 
   FiSettings, 
   FiCalendar, 
-  FiServer, 
   FiLock, 
   FiDatabase,
-  FiInfo,
   FiSave,
   FiRefreshCw,
   FiDownload,
   FiUpload,
   FiAlertCircle,
-  FiCheckCircle,
   FiXCircle,
-  FiEdit2,
-  FiTrash2,
-  FiPlusCircle,
-  FiCpu,
-  FiHardDrive,
-  FiUsers,
-  FiGlobe,
-  FiClock,
-  FiToggleLeft,
-  FiToggleRight,
-  FiSliders,
-  FiGrid
+  FiTrash2
 } from 'react-icons/fi';
+import { toast } from 'react-toastify';
 
 // API base URL from environment
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3009';
@@ -40,9 +27,6 @@ const Settings = () => {
   const [activeSection, setActiveSection] = useState('general');
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedSetting, setSelectedSetting] = useState(null);
-  const [newSettingValue, setNewSettingValue] = useState('');
   const [backupOptions, setBackupOptions] = useState({
     format: 'sql',
     includeData: true,
@@ -50,11 +34,20 @@ const Settings = () => {
   });
   const [restoreFile, setRestoreFile] = useState(null);
   const [loomWindowSettings, setLoomWindowSettings] = useState({
-    days_before: 7,
-    days_after: 30,
     auto_generate: true,
     rollover_time: '00:00'
   });
+  // ------------------------------------------------------------------
+  // Org-level numeric settings (+ derived fortnights)
+  // ------------------------------------------------------------------
+  const [orgSettings, setOrgSettings] = useState({
+    staff_threshold_per_wpu: 5,
+    vehicle_trigger_every_n_participants: 10,
+    loom_window_days: 14
+  });
+  // Separate before/after fortnights
+  const [loomFortnightsBefore, setLoomFortnightsBefore] = useState(0);
+  const [loomFortnightsAfter, setLoomFortnightsAfter] = useState(1);
   const [generalSettings, setGeneralSettings] = useState({
     organization_name: 'RABS Organization',
     timezone: 'Australia/Sydney',
@@ -70,12 +63,7 @@ const Settings = () => {
   });
 
   // Fetch all settings
-  const { 
-    data: settingsData, 
-    isLoading: settingsLoading, 
-    error: settingsError,
-    refetch: refetchSettings
-  } = useQuery(
+  const { refetch: refetchSettings } = useQuery(
     ['systemSettings'],
     async () => {
       const response = await axios.get(`${API_URL}/api/v1/settings`);
@@ -110,34 +98,24 @@ const Settings = () => {
     }
   );
 
-  // Fetch system info
-  const { 
-    data: systemInfoData, 
-    isLoading: systemInfoLoading, 
-    error: systemInfoError,
-    refetch: refetchSystemInfo
-  } = useQuery(
-    ['systemInfo'],
+  // ------------------------------------------------------------------
+  // Organisation settings query (staff/vehicle thresholds + loom days)
+  // ------------------------------------------------------------------
+  const { refetch: refetchOrgSettings } = useQuery(
+    ['orgSettings'],
     async () => {
-      const response = await axios.get(`${API_URL}/api/v1/system/info`);
-      return response.data;
-    }
-  );
-
-  // Update setting mutation
-  const updateSettingMutation = useMutation(
-    async ({ key, value, description, category }) => {
-      const response = await axios.put(`${API_URL}/api/v1/settings/${key}`, {
-        value,
-        description,
-        category
-      });
-      return response.data;
+      const resp = await axios.get(`${API_URL}/api/v1/settings/org`);
+      return resp.data;
     },
     {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['systemSettings']);
-        setIsEditModalOpen(false);
+      onSuccess: (res) => {
+        if (res?.data) {
+          setOrgSettings(res.data);
+          const totalFortnights = Math.max(1, Math.round(res.data.loom_window_days / 14));
+          // Default to 0 before, all after if not specified
+          setLoomFortnightsBefore(0);
+          setLoomFortnightsAfter(totalFortnights);
+        }
       }
     }
   );
@@ -186,40 +164,44 @@ const Settings = () => {
       onSuccess: () => {
         setIsRestoreModalOpen(false);
         refetchSettings();
-        refetchSystemInfo();
       }
     }
   );
 
-  // Handle setting edit
-  const handleSettingEdit = (setting) => {
-    setSelectedSetting(setting);
-    setNewSettingValue(setting.value);
-    setIsEditModalOpen(true);
-  };
-
-  // Handle setting update
-  const handleSettingUpdate = () => {
-    if (!selectedSetting) return;
-    
-    updateSettingMutation.mutate({
-      key: selectedSetting.key,
-      value: newSettingValue,
-      description: selectedSetting.description,
-      category: selectedSetting.category
+  // Handle loom & org thresholds update
+  const handleLoomWindowUpdate = async () => {
+    const totalDays = (loomFortnightsBefore + loomFortnightsAfter) * 14;
+    // 1) PUT org numeric settings
+    const putOrg = axios.put(`${API_URL}/api/v1/settings/org`, {
+      loom_window_days: totalDays,
+      staff_threshold_per_wpu: orgSettings.staff_threshold_per_wpu,
+      vehicle_trigger_every_n_participants: orgSettings.vehicle_trigger_every_n_participants
     });
-  };
 
-  // Handle loom window settings update
-  const handleLoomWindowUpdate = () => {
-    bulkUpdateSettingsMutation.mutate([
-      {
-        key: 'loom_window',
-        value: loomWindowSettings,
-        description: 'Loom window configuration',
-        category: 'loom'
-      }
-    ]);
+    // 2) legacy loom_window bulk entry
+    const bulkBody = [{
+      key: 'loom_window',
+      value: {
+        auto_generate: loomWindowSettings.auto_generate,
+        rollover_time: loomWindowSettings.rollover_time,
+        fortnights_before: loomFortnightsBefore,
+        fortnights_after: loomFortnightsAfter,
+        days_after: loomFortnightsAfter * 14
+      },
+      description: 'Loom window configuration',
+      category: 'loom'
+    }];
+    const postBulk = axios.post(`${API_URL}/api/v1/settings/bulk`, { settings: bulkBody });
+
+    try {
+      await Promise.all([putOrg, postBulk]);
+      queryClient.invalidateQueries(['systemSettings']);
+      queryClient.invalidateQueries(['orgSettings']);
+      toast.success('Loom & threshold settings saved');
+    } catch (err) {
+      console.error('Failed saving loom/org settings', err);
+      toast.error('Save failed');
+    }
   };
 
   // Handle general settings update
@@ -268,19 +250,6 @@ const Settings = () => {
     if (e.target.files && e.target.files[0]) {
       setRestoreFile(e.target.files[0]);
     }
-  };
-
-  // Format bytes to human-readable format
-  const formatBytes = (bytes, decimals = 2) => {
-    if (bytes === 0) return '0 Bytes';
-    
-    const k = 1024;
-    const dm = decimals < 0 ? 0 : decimals;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-    
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
   };
 
   // Render general settings section
@@ -375,7 +344,9 @@ const Settings = () => {
     </div>
   );
 
+  // ------------------------------------------------------------------
   // Render loom settings section
+  // ------------------------------------------------------------------
   const renderLoomSettings = () => (
     <div className="settings-section">
       <h3 className="section-title">Loom System Settings</h3>
@@ -387,30 +358,31 @@ const Settings = () => {
           </p>
         </div>
         
+        {/* Fortnights selectors */}
         <div className="form-group">
-          <label htmlFor="days-before">Days Before (Past)</label>
+          <label htmlFor="fortnights-before">Fortnights Before</label>
           <input
-            id="days-before"
+            id="fortnights-before"
             type="number"
-            min="1"
-            max="90"
-            value={loomWindowSettings.days_before}
-            onChange={(e) => setLoomWindowSettings({...loomWindowSettings, days_before: parseInt(e.target.value)})}
+            min="0"
+            max="6"
+            value={loomFortnightsBefore}
+            onChange={(e) => setLoomFortnightsBefore(Math.max(0, parseInt(e.target.value) || 0))}
           />
-          <div className="input-help">How many days in the past to include in the loom window</div>
+          <div className="input-help">How many fortnights in the past to include (0-6)</div>
         </div>
         
         <div className="form-group">
-          <label htmlFor="days-after">Days After (Future)</label>
+          <label htmlFor="fortnights-after">Fortnights After</label>
           <input
-            id="days-after"
+            id="fortnights-after"
             type="number"
             min="1"
-            max="365"
-            value={loomWindowSettings.days_after}
-            onChange={(e) => setLoomWindowSettings({...loomWindowSettings, days_after: parseInt(e.target.value)})}
+            max="12"
+            value={loomFortnightsAfter}
+            onChange={(e) => setLoomFortnightsAfter(Math.max(1, parseInt(e.target.value) || 1))}
           />
-          <div className="input-help">How many days in the future to include in the loom window</div>
+          <div className="input-help">How many fortnights in the future to include (1-12)</div>
         </div>
         
         <div className="form-group">
@@ -421,42 +393,61 @@ const Settings = () => {
             value={loomWindowSettings.rollover_time}
             onChange={(e) => setLoomWindowSettings({...loomWindowSettings, rollover_time: e.target.value})}
           />
-          <div className="input-help">When the system should process the next day's schedule</div>
+          <div className="input-help">When the system should process the next day&apos;s schedule</div>
         </div>
         
         <div className="form-group checkbox-group">
-          <div className="toggle-switch">
+          <div className="checkbox-item" style={{ display: 'flex', alignItems: 'center' }}>
             <input
               id="auto-generate"
               type="checkbox"
               checked={loomWindowSettings.auto_generate}
               onChange={(e) => setLoomWindowSettings({...loomWindowSettings, auto_generate: e.target.checked})}
+              style={{ marginRight: '8px' }}
             />
-            <label htmlFor="auto-generate">
-              <div className="toggle-icon">
-                {loomWindowSettings.auto_generate ? <FiToggleRight /> : <FiToggleLeft />}
-              </div>
-              <div className="toggle-text">
-                Auto-generate instances from programs
-              </div>
-            </label>
+            <label htmlFor="auto-generate">Generate instances from template</label>
           </div>
           <div className="input-help">Automatically create instances from program templates</div>
         </div>
         
-        <div className="loom-visualization">
-          <h4>Loom Window Visualization</h4>
-          <div className="loom-timeline">
-            <div className="timeline-past" style={{flex: loomWindowSettings.days_before}}>
-              Past ({loomWindowSettings.days_before} days)
-            </div>
-            <div className="timeline-today">Today</div>
-            <div className="timeline-future" style={{flex: loomWindowSettings.days_after}}>
-              Future ({loomWindowSettings.days_after} days)
-            </div>
-          </div>
+        {/* Operational thresholds */}
+        <div className="form-group">
+          <label htmlFor="staff-threshold">Staff per WPU: {orgSettings.staff_threshold_per_wpu}</label>
+          <input
+            id="staff-threshold"
+            type="range"
+            min="1"
+            max="10"
+            step="1"
+            value={orgSettings.staff_threshold_per_wpu}
+            onChange={(e) =>
+              setOrgSettings({
+                ...orgSettings,
+                staff_threshold_per_wpu: parseInt(e.target.value) || 1
+              })
+            }
+            style={{ width: '100%' }}
+          />
         </div>
-        
+        <div className="form-group">
+          <label htmlFor="vehicle-threshold">Vehicle trigger per participants: {orgSettings.vehicle_trigger_every_n_participants}</label>
+          <input
+            id="vehicle-threshold"
+            type="range"
+            min="2"
+            max="20"
+            step="1"
+            value={orgSettings.vehicle_trigger_every_n_participants}
+            onChange={(e) =>
+              setOrgSettings({
+                ...orgSettings,
+                vehicle_trigger_every_n_participants: parseInt(e.target.value) || 2
+              })
+            }
+            style={{ width: '100%' }}
+          />
+        </div>
+
         <div className="form-actions">
           <button 
             className="btn btn-primary"
@@ -531,21 +522,15 @@ const Settings = () => {
         </div>
         
         <div className="form-group checkbox-group">
-          <div className="toggle-switch">
+          <div className="checkbox-item" style={{ display: 'flex', alignItems: 'center' }}>
             <input
               id="require-2fa"
               type="checkbox"
               checked={securitySettings.require_2fa}
               onChange={(e) => setSecuritySettings({...securitySettings, require_2fa: e.target.checked})}
+              style={{ marginRight: '8px' }}
             />
-            <label htmlFor="require-2fa">
-              <div className="toggle-icon">
-                {securitySettings.require_2fa ? <FiToggleRight /> : <FiToggleLeft />}
-              </div>
-              <div className="toggle-text">
-                Require Two-Factor Authentication
-              </div>
-            </label>
+            <label htmlFor="require-2fa">Require Two-Factor Authentication</label>
           </div>
           <div className="input-help">Enforce 2FA for all user accounts</div>
         </div>
@@ -584,7 +569,7 @@ const Settings = () => {
           </p>
         </div>
         
-        <div className="backup-actions">
+        <div className="backup-actions" style={{ display: 'flex', gap: '16px', marginBottom: '20px' }}>
           <button 
             className="btn btn-primary"
             onClick={() => setIsBackupModalOpen(true)}
@@ -602,21 +587,15 @@ const Settings = () => {
         <div className="backup-schedule">
           <h4>Scheduled Backups</h4>
           <div className="form-group checkbox-group">
-            <div className="toggle-switch">
+            <div className="checkbox-item" style={{ display: 'flex', alignItems: 'center' }}>
               <input
                 id="auto-backup"
                 type="checkbox"
                 checked={true}
                 onChange={() => {}}
+                style={{ marginRight: '8px' }}
               />
-              <label htmlFor="auto-backup">
-                <div className="toggle-icon">
-                  <FiToggleRight />
-                </div>
-                <div className="toggle-text">
-                  Enable Automatic Backups
-                </div>
-              </label>
+              <label htmlFor="auto-backup">Enable Automatic Backups</label>
             </div>
           </div>
           
@@ -697,231 +676,6 @@ const Settings = () => {
               </tr>
             </tbody>
           </table>
-        </div>
-      </div>
-    </div>
-  );
-
-  // Render system info section
-  const renderSystemInfo = () => (
-    <div className="settings-section">
-      <h3 className="section-title">System Information</h3>
-      <div className="settings-form glass-card">
-        {systemInfoLoading ? (
-          <div className="loading-container">
-            <div className="loading-spinner"></div>
-            <p>Loading system information...</p>
-          </div>
-        ) : systemInfoError ? (
-          <div className="error-container">
-            <FiAlertCircle className="error-icon" />
-            <p>Error loading system information: {systemInfoError.message}</p>
-            <button className="btn btn-primary" onClick={() => refetchSystemInfo()}>
-              Try Again
-            </button>
-          </div>
-        ) : (
-          <>
-            <div className="system-info-grid">
-              <div className="info-section">
-                <h4><FiInfo /> Application</h4>
-                <div className="info-item">
-                  <div className="info-label">Name:</div>
-                  <div className="info-value">{systemInfoData?.data?.app?.name || 'RABS'}</div>
-                </div>
-                <div className="info-item">
-                  <div className="info-label">Version:</div>
-                  <div className="info-value">{systemInfoData?.data?.app?.version || '3.0.0'}</div>
-                </div>
-                <div className="info-item">
-                  <div className="info-label">API Version:</div>
-                  <div className="info-value">{systemInfoData?.data?.app?.api_version || 'v1'}</div>
-                </div>
-              </div>
-              
-              <div className="info-section">
-                <h4><FiServer /> Server</h4>
-                <div className="info-item">
-                  <div className="info-label">Platform:</div>
-                  <div className="info-value">{systemInfoData?.data?.system?.platform || 'Unknown'}</div>
-                </div>
-                <div className="info-item">
-                  <div className="info-label">Node Version:</div>
-                  <div className="info-value">{systemInfoData?.data?.node?.version || 'Unknown'}</div>
-                </div>
-                <div className="info-item">
-                  <div className="info-label">Uptime:</div>
-                  <div className="info-value">
-                    {systemInfoData?.data?.system?.uptime 
-                      ? `${Math.floor(systemInfoData.data.system.uptime / 86400)} days, ${Math.floor((systemInfoData.data.system.uptime % 86400) / 3600)} hours` 
-                      : 'Unknown'}
-                  </div>
-                </div>
-              </div>
-              
-              <div className="info-section">
-                <h4><FiDatabase /> Database</h4>
-                <div className="info-item">
-                  <div className="info-label">Version:</div>
-                  <div className="info-value">{systemInfoData?.data?.database?.version?.split(' ')[0] || 'Unknown'}</div>
-                </div>
-                <div className="info-item">
-                  <div className="info-label">Size:</div>
-                  <div className="info-value">
-                    {systemInfoData?.data?.database?.tables?.reduce((acc, table) => acc + parseInt(table.size_bytes || 0), 0)
-                      ? formatBytes(systemInfoData.data.database.tables.reduce((acc, table) => acc + parseInt(table.size_bytes || 0), 0))
-                      : 'Unknown'}
-                  </div>
-                </div>
-                <div className="info-item">
-                  <div className="info-label">Tables:</div>
-                  <div className="info-value">{systemInfoData?.data?.database?.tables?.length || 'Unknown'}</div>
-                </div>
-              </div>
-              
-              <div className="info-section">
-                <h4><FiCpu /> Resources</h4>
-                <div className="info-item">
-                  <div className="info-label">CPU Cores:</div>
-                  <div className="info-value">{systemInfoData?.data?.system?.cpus || 'Unknown'}</div>
-                </div>
-                <div className="info-item">
-                  <div className="info-label">Memory:</div>
-                  <div className="info-value">
-                    {systemInfoData?.data?.system?.memory?.total
-                      ? `${formatBytes(systemInfoData.data.system.memory.used)} / ${formatBytes(systemInfoData.data.system.memory.total)}`
-                      : 'Unknown'}
-                  </div>
-                </div>
-                <div className="info-item">
-                  <div className="info-label">Memory Usage:</div>
-                  <div className="info-value">
-                    {systemInfoData?.data?.system?.memory?.total
-                      ? `${Math.round((systemInfoData.data.system.memory.used / systemInfoData.data.system.memory.total) * 100)}%`
-                      : 'Unknown'}
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="table-counts">
-              <h4><FiGrid /> Data Summary</h4>
-              <div className="counts-grid">
-                <div className="count-item">
-                  <div className="count-value">{systemInfoData?.data?.database?.table_counts?.participants_count || 0}</div>
-                  <div className="count-label">Participants</div>
-                </div>
-                <div className="count-item">
-                  <div className="count-value">{systemInfoData?.data?.database?.table_counts?.staff_count || 0}</div>
-                  <div className="count-label">Staff</div>
-                </div>
-                <div className="count-item">
-                  <div className="count-value">{systemInfoData?.data?.database?.table_counts?.programs_count || 0}</div>
-                  <div className="count-label">Programs</div>
-                </div>
-                <div className="count-item">
-                  <div className="count-value">{systemInfoData?.data?.database?.table_counts?.loom_instances_count || 0}</div>
-                  <div className="count-label">Loom Instances</div>
-                </div>
-                <div className="count-item">
-                  <div className="count-value">{systemInfoData?.data?.database?.table_counts?.vehicles_count || 0}</div>
-                  <div className="count-label">Vehicles</div>
-                </div>
-                <div className="count-item">
-                  <div className="count-value">{systemInfoData?.data?.database?.table_counts?.system_logs_count || 0}</div>
-                  <div className="count-label">System Logs</div>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-        
-        <div className="system-actions">
-          <button 
-            className="btn btn-secondary"
-            onClick={() => refetchSystemInfo()}
-          >
-            <FiRefreshCw /> Refresh System Info
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  // Render all settings
-  const renderAllSettings = () => (
-    <div className="settings-section">
-      <h3 className="section-title">All Settings</h3>
-      <div className="settings-form glass-card">
-        {settingsLoading ? (
-          <div className="loading-container">
-            <div className="loading-spinner"></div>
-            <p>Loading settings...</p>
-          </div>
-        ) : settingsError ? (
-          <div className="error-container">
-            <FiAlertCircle className="error-icon" />
-            <p>Error loading settings: {settingsError.message}</p>
-            <button className="btn btn-primary" onClick={() => refetchSettings()}>
-              Try Again
-            </button>
-          </div>
-        ) : (
-          <div className="settings-table-container">
-            <table className="settings-table glass-table">
-              <thead>
-                <tr>
-                  <th>Key</th>
-                  <th>Value</th>
-                  <th>Category</th>
-                  <th>Description</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {settingsData?.data?.map(setting => (
-                  <tr key={setting.key}>
-                    <td>{setting.key}</td>
-                    <td>
-                      {typeof setting.value === 'object' 
-                        ? JSON.stringify(setting.value).substring(0, 50) + (JSON.stringify(setting.value).length > 50 ? '...' : '')
-                        : String(setting.value).substring(0, 50) + (String(setting.value).length > 50 ? '...' : '')}
-                    </td>
-                    <td>{setting.category}</td>
-                    <td>{setting.description}</td>
-                    <td>
-                      <div className="action-buttons">
-                        <button 
-                          className="btn btn-icon" 
-                          onClick={() => handleSettingEdit(setting)}
-                          disabled={setting.is_system}
-                          title={setting.is_system ? 'System setting (read-only)' : 'Edit setting'}
-                        >
-                          <FiEdit2 />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {(!settingsData?.data || settingsData.data.length === 0) && (
-                  <tr>
-                    <td colSpan="5" className="no-results">
-                      No settings found
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-        
-        <div className="settings-actions">
-          <button 
-            className="btn btn-secondary"
-            onClick={() => refetchSettings()}
-          >
-            <FiRefreshCw /> Refresh Settings
-          </button>
         </div>
       </div>
     </div>
@@ -1069,133 +823,6 @@ const Settings = () => {
     </div>
   );
 
-  // Render setting edit modal
-  const renderEditModal = () => {
-    if (!selectedSetting) return null;
-    
-    return (
-      <div className="modal-overlay" onClick={() => setIsEditModalOpen(false)}>
-        <div className="modal-content glass-card" onClick={e => e.stopPropagation()}>
-          <div className="modal-header">
-            <h3>Edit Setting</h3>
-            <button className="btn-close" onClick={() => setIsEditModalOpen(false)}>
-              <FiXCircle />
-            </button>
-          </div>
-          <div className="modal-body">
-            <form className="edit-setting-form">
-              <div className="form-group">
-                <label htmlFor="setting-key">Key</label>
-                <input
-                  id="setting-key"
-                  type="text"
-                  value={selectedSetting.key}
-                  disabled
-                />
-              </div>
-              
-              <div className="form-group">
-                <label htmlFor="setting-value">Value</label>
-                {typeof selectedSetting.value === 'boolean' ? (
-                  <div className="toggle-switch">
-                    <input
-                      id="setting-value"
-                      type="checkbox"
-                      checked={newSettingValue === true}
-                      onChange={e => setNewSettingValue(e.target.checked)}
-                    />
-                    <label htmlFor="setting-value">
-                      <div className="toggle-icon">
-                        {newSettingValue === true ? <FiToggleRight /> : <FiToggleLeft />}
-                      </div>
-                      <div className="toggle-text">
-                        {newSettingValue === true ? 'Enabled' : 'Disabled'}
-                      </div>
-                    </label>
-                  </div>
-                ) : typeof selectedSetting.value === 'number' ? (
-                  <input
-                    id="setting-value"
-                    type="number"
-                    value={newSettingValue}
-                    onChange={e => setNewSettingValue(parseFloat(e.target.value))}
-                  />
-                ) : typeof selectedSetting.value === 'object' ? (
-                  <textarea
-                    id="setting-value"
-                    value={JSON.stringify(newSettingValue, null, 2)}
-                    onChange={e => {
-                      try {
-                        setNewSettingValue(JSON.parse(e.target.value));
-                      } catch (error) {
-                        // Allow invalid JSON during editing
-                        setNewSettingValue(e.target.value);
-                      }
-                    }}
-                    rows="10"
-                  />
-                ) : (
-                  <input
-                    id="setting-value"
-                    type="text"
-                    value={newSettingValue}
-                    onChange={e => setNewSettingValue(e.target.value)}
-                  />
-                )}
-              </div>
-              
-              <div className="form-group">
-                <label htmlFor="setting-category">Category</label>
-                <input
-                  id="setting-category"
-                  type="text"
-                  value={selectedSetting.category}
-                  disabled
-                />
-              </div>
-              
-              <div className="form-group">
-                <label htmlFor="setting-description">Description</label>
-                <input
-                  id="setting-description"
-                  type="text"
-                  value={selectedSetting.description || ''}
-                  disabled
-                />
-              </div>
-            </form>
-          </div>
-          <div className="modal-footer">
-            <button 
-              type="button" 
-              className="btn btn-secondary"
-              onClick={() => setIsEditModalOpen(false)}
-            >
-              Cancel
-            </button>
-            <button 
-              type="button" 
-              className="btn btn-primary"
-              onClick={handleSettingUpdate}
-              disabled={updateSettingMutation.isLoading}
-            >
-              {updateSettingMutation.isLoading ? (
-                <>
-                  <div className="loading-spinner-small"></div>
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <FiSave /> Save Changes
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="settings-container">
       <div className="page-header">
@@ -1205,7 +832,7 @@ const Settings = () => {
             className="btn btn-icon" 
             onClick={() => {
               refetchSettings();
-              refetchSystemInfo();
+              refetchOrgSettings();
             }}
             title="Refresh All"
           >
@@ -1218,46 +845,42 @@ const Settings = () => {
       </div>
       
       <div className="settings-layout">
-        {/* Settings Navigation */}
-        <div className="settings-nav glass-card">
-          <ul className="nav-list">
-            <li 
-              className={activeSection === 'general' ? 'active' : ''}
+        {/* Settings Navigation - Changed to horizontal buttons */}
+        <div className="settings-nav glass-card" style={{ marginBottom: '12px' }}>
+          <div className="nav-buttons" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', padding: '12px' }}>
+            <button 
+              type="button"
+              className={`nav-btn ${activeSection === 'general' ? 'active' : ''}`}
+              style={{ padding: '10px 14px' }}
               onClick={() => setActiveSection('general')}
             >
               <FiSettings /> General
-            </li>
-            <li 
-              className={activeSection === 'loom' ? 'active' : ''}
+            </button>
+            <button 
+              type="button"
+              className={`nav-btn ${activeSection === 'loom' ? 'active' : ''}`}
+              style={{ padding: '10px 14px' }}
               onClick={() => setActiveSection('loom')}
             >
               <FiCalendar /> Loom System
-            </li>
-            <li 
-              className={activeSection === 'security' ? 'active' : ''}
+            </button>
+            <button 
+              type="button"
+              className={`nav-btn ${activeSection === 'security' ? 'active' : ''}`}
+              style={{ padding: '10px 14px' }}
               onClick={() => setActiveSection('security')}
             >
               <FiLock /> Security
-            </li>
-            <li 
-              className={activeSection === 'backup' ? 'active' : ''}
+            </button>
+            <button 
+              type="button"
+              className={`nav-btn ${activeSection === 'backup' ? 'active' : ''}`}
+              style={{ padding: '10px 14px' }}
               onClick={() => setActiveSection('backup')}
             >
               <FiDatabase /> Backup & Restore
-            </li>
-            <li 
-              className={activeSection === 'system' ? 'active' : ''}
-              onClick={() => setActiveSection('system')}
-            >
-              <FiInfo /> System Info
-            </li>
-            <li 
-              className={activeSection === 'all' ? 'active' : ''}
-              onClick={() => setActiveSection('all')}
-            >
-              <FiSliders /> All Settings
-            </li>
-          </ul>
+            </button>
+          </div>
         </div>
         
         {/* Settings Content */}
@@ -1266,43 +889,14 @@ const Settings = () => {
           {activeSection === 'loom' && renderLoomSettings()}
           {activeSection === 'security' && renderSecuritySettings()}
           {activeSection === 'backup' && renderBackupSettings()}
-          {activeSection === 'system' && renderSystemInfo()}
-          {activeSection === 'all' && renderAllSettings()}
         </div>
       </div>
       
-      {/* System Status */}
-      <div className="system-status glass-card">
-        <div className="status-item">
-          <div className="status-label">API Status:</div>
-          <div className="status-value online">
-            <FiCheckCircle /> Online
-          </div>
-        </div>
-        <div className="status-item">
-          <div className="status-label">Database:</div>
-          <div className="status-value online">
-            <FiCheckCircle /> Connected
-          </div>
-        </div>
-        <div className="status-item">
-          <div className="status-label">Last Backup:</div>
-          <div className="status-value">
-            {format(new Date(), 'MMM d, yyyy h:mm a')}
-          </div>
-        </div>
-        <div className="status-item">
-          <div className="status-label">Version:</div>
-          <div className="status-value">
-            RABS v3.0.0
-          </div>
-        </div>
-      </div>
+      {/* System Status bar removed */}
       
       {/* Modals */}
       {isBackupModalOpen && renderBackupModal()}
       {isRestoreModalOpen && renderRestoreModal()}
-      {isEditModalOpen && renderEditModal()}
     </div>
   );
 };
