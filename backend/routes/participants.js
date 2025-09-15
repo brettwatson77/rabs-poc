@@ -20,18 +20,66 @@ const pool = new Pool({
 });
 
 /**
+ * Helper to build WHERE clauses for supervision_multiplier filters
+ * @param {Object} query - Request query parameters
+ * @returns {Object} Object with where clause and params array
+ */
+function buildSupervisionMultiplierFilter(query) {
+  const { supervision_multiplier_op, value } = query;
+  const whereFragments = [];
+  const params = [];
+  
+  if (supervision_multiplier_op && value) {
+    let paramIndex = params.length + 1;
+    
+    switch (supervision_multiplier_op) {
+      case 'eq':
+        whereFragments.push(`supervision_multiplier = $${paramIndex}`);
+        params.push(parseFloat(value));
+        break;
+      case 'gte':
+        whereFragments.push(`supervision_multiplier >= $${paramIndex}`);
+        params.push(parseFloat(value));
+        break;
+      case 'lte':
+        whereFragments.push(`supervision_multiplier <= $${paramIndex}`);
+        params.push(parseFloat(value));
+        break;
+      case 'between':
+        const [min, max] = value.split(',').map(v => parseFloat(v.trim()));
+        if (!isNaN(min) && !isNaN(max)) {
+          whereFragments.push(`supervision_multiplier BETWEEN $${paramIndex} AND $${paramIndex + 1}`);
+          params.push(min, max);
+        }
+        break;
+    }
+  }
+  
+  return { whereFragments, params };
+}
+
+/**
  * @route   GET /api/v1/participants
- * @desc    Get all participants
+ * @desc    Get all participants with optional filters
  * @access  Public
  */
 router.get('/', async (req, res, next) => {
   try {
-    // Restore full field set expected by Filing Cabinet UI
-    const result = await pool.query(
-      `SELECT * 
-         FROM participants
-     ORDER BY last_name, first_name`
-    );
+    // Build WHERE clause for supervision_multiplier filters
+    const { whereFragments, params } = buildSupervisionMultiplierFilter(req.query);
+    
+    // Construct the full query
+    let query = 'SELECT * FROM participants';
+    
+    if (whereFragments.length > 0) {
+      query += ' WHERE ' + whereFragments.join(' AND ');
+    }
+    
+    query += ' ORDER BY last_name, first_name';
+    
+    // Execute the query
+    const result = await pool.query(query, params);
+    
     res.json({
       success: true,
       data: result.rows
@@ -43,29 +91,104 @@ router.get('/', async (req, res, next) => {
 
 /**
  * @route   GET /api/v1/participants/:id
- * @desc    Get participant by ID
+ * @desc    Get participant by ID with addresses
  * @access  Public
  */
 router.get('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
-    const result = await pool.query('SELECT * FROM participants WHERE id = $1', [id]);
+    const client = await pool.connect();
     
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Participant not found'
+    try {
+      await client.query('BEGIN');
+      
+      // Get participant data
+      const participantResult = await client.query(
+        'SELECT * FROM participants WHERE id = $1',
+        [id]
+      );
+      
+      if (participantResult.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({
+          success: false,
+          error: 'Participant not found'
+        });
+      }
+      
+      const participant = participantResult.rows[0];
+      
+      // Get addresses (both primary and secondary if they exist)
+      const addressesResult = await client.query(
+        'SELECT * FROM participant_addresses WHERE participant_id = $1 AND is_active = true',
+        [id]
+      );
+      
+      // Format addresses as object with primary/secondary keys
+      const addresses = {};
+      let secondaryAddress = null;
+      
+      addressesResult.rows.forEach(addr => {
+        if (addr.kind === 'primary') {
+          addresses.primary = addr;
+        } else if (addr.kind === 'secondary') {
+          addresses.secondary = addr;
+          // Create flattened secondary address fields for backward compatibility
+          secondaryAddress = {
+            secondary_address_line1: addr.line1,
+            secondary_address_line2: addr.line2,
+            secondary_address_suburb: addr.suburb,
+            secondary_address_state: addr.state,
+            secondary_address_postcode: addr.postcode,
+            secondary_address_country: addr.country
+          };
+        }
       });
+      
+      await client.query('COMMIT');
+      
+      // Include addresses in response
+      const response = {
+        ...participant,
+        addresses: Object.keys(addresses).length > 0 ? addresses : null,
+        ...(secondaryAddress || {}) // Include flattened secondary_* fields if they exist
+      };
+      
+      res.json({
+        success: true,
+        data: response
+      });
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
     }
-    
-    res.json({
-      success: true,
-      data: result.rows[0]
-    });
   } catch (error) {
     next(error);
   }
 });
+
+/**
+ * Validate if invoices_email is required based on plan management type
+ * @param {Object} body - Request body
+ * @returns {Object|null} Error object if validation fails, null otherwise
+ */
+function validateInvoicesEmail(body) {
+  const requiresInvoiceEmail = ['plan_managed', 'self_managed', 'self_funded'];
+  const planType = body.plan_management_type;
+  
+  if (planType && requiresInvoiceEmail.includes(planType)) {
+    if (!body.invoices_email) {
+      return {
+        status: 422,
+        error: `Invoices email is required when plan management type is ${planType}`
+      };
+    }
+  }
+  
+  return null;
+}
 
 /**
  * ---------------------------------------------------------------------------
@@ -77,19 +200,29 @@ router.get('/:id', async (req, res, next) => {
 router.patch('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
+    const { secondary_address, ...bodyFields } = req.body || {};
 
     // ---------------------------------------------------------------------
     // Normalise deprecated value -> enum value used in DB
     // ---------------------------------------------------------------------
     if (
-      req.body &&
-      typeof req.body.plan_management_type === 'string' &&
-      req.body.plan_management_type.trim() === 'fee_for_service'
+      bodyFields &&
+      typeof bodyFields.plan_management_type === 'string' &&
+      bodyFields.plan_management_type.trim() === 'fee_for_service'
     ) {
-      req.body.plan_management_type = 'self_funded';
+      bodyFields.plan_management_type = 'self_funded';
+    }
+    
+    // Validate invoices_email if plan_management_type requires it
+    const validationError = validateInvoicesEmail(bodyFields);
+    if (validationError) {
+      return res.status(validationError.status).json({
+        success: false,
+        error: validationError.error
+      });
     }
 
-    // Whitelist of updatable columns
+    // Whitelist of updatable columns (expanded with new fields)
     const allowedFields = [
       'first_name',
       'last_name',
@@ -109,38 +242,113 @@ router.patch('/:id', async (req, res, next) => {
       'has_hearing_impairment',
       'has_cognitive_support',
       'has_communication_needs',
-      'plan_management_type'          // NEW
+      'plan_management_type',
+      // New fields
+      'secondary_email',
+      'secondary_email_include_comms',
+      'secondary_email_include_billing',
+      'invoices_email',
+      'emergency_contact_relationship',
+      'emergency_contact_phone_allow_sms',
+      'emergency_contact_email',
+      'emergency_contact_email_include_comms',
+      'emergency_contact_email_include_billing'
     ];
 
-    const fields = Object.keys(req.body || {}).filter((k) =>
+    const fields = Object.keys(bodyFields || {}).filter((k) =>
       allowedFields.includes(k)
     );
 
-    if (fields.length === 0) {
+    if (fields.length === 0 && !secondary_address) {
       return res.status(400).json({
         success: false,
         error: 'No valid fields supplied for update'
       });
     }
 
-    // Build dynamic UPDATE query
-    const setFragments = fields.map((f, idx) => `${f} = $${idx + 2}`);
-    const values = fields.map((f) => req.body[f]);
+    const client = await pool.connect();
+    
+    try {
+      await client.query('BEGIN');
+      
+      // Update main participant record if there are fields to update
+      let participantResult = null;
+      if (fields.length > 0) {
+        // Build dynamic UPDATE query
+        const setFragments = fields.map((f, idx) => `${f} = $${idx + 2}`);
+        const values = fields.map((f) => bodyFields[f]);
 
-    const updateSql = `
-      UPDATE participants
-      SET ${setFragments.join(', ')},
-          updated_at = NOW()
-      WHERE id = $1
-      RETURNING *`;
+        const updateSql = `
+          UPDATE participants
+          SET ${setFragments.join(', ')},
+              updated_at = NOW()
+          WHERE id = $1
+          RETURNING *`;
 
-    const result = await pool.query(updateSql, [id, ...values]);
+        participantResult = await client.query(updateSql, [id, ...values]);
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ success: false, error: 'Participant not found' });
+        if (participantResult.rows.length === 0) {
+          await client.query('ROLLBACK');
+          return res.status(404).json({ success: false, error: 'Participant not found' });
+        }
+      } else {
+        // Verify participant exists
+        const checkResult = await client.query('SELECT id FROM participants WHERE id = $1', [id]);
+        if (checkResult.rows.length === 0) {
+          await client.query('ROLLBACK');
+          return res.status(404).json({ success: false, error: 'Participant not found' });
+        }
+        participantResult = checkResult;
+      }
+      
+      // Handle secondary address if provided
+      if (secondary_address && typeof secondary_address === 'object') {
+        const addressFields = ['line1', 'line2', 'suburb', 'state', 'postcode', 'country', 'latitude', 'longitude'];
+        const filteredAddress = {};
+        
+        // Filter valid fields
+        addressFields.forEach(field => {
+          if (secondary_address[field] !== undefined) {
+            filteredAddress[field] = secondary_address[field];
+          }
+        });
+        
+        if (Object.keys(filteredAddress).length > 0) {
+          // Upsert secondary address with ON CONFLICT DO UPDATE
+          const addressFields = Object.keys(filteredAddress);
+          const placeholders = addressFields.map((_, i) => `$${i + 3}`);
+          const updateFragments = addressFields.map(f => `${f} = EXCLUDED.${f}`);
+          
+          const upsertSql = `
+            INSERT INTO participant_addresses
+              (participant_id, kind, ${addressFields.join(', ')}, updated_at)
+            VALUES
+              ($1, $2, ${placeholders.join(', ')}, NOW())
+            ON CONFLICT (participant_id, kind)
+            DO UPDATE SET
+              ${updateFragments.join(', ')},
+              updated_at = NOW()
+            RETURNING *`;
+          
+          await client.query(
+            upsertSql,
+            [id, 'secondary', ...addressFields.map(f => filteredAddress[f])]
+          );
+        }
+      }
+      
+      await client.query('COMMIT');
+      
+      // Get updated participant with addresses for response
+      const result = await pool.query('SELECT * FROM participants WHERE id = $1', [id]);
+      
+      res.json({ success: true, data: result.rows[0] });
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
     }
-
-    res.json({ success: true, data: result.rows[0] });
   } catch (error) {
     next(error);
   }
@@ -156,19 +364,29 @@ router.patch('/:id', async (req, res, next) => {
 router.put('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
+    const { secondary_address, ...bodyFields } = req.body || {};
 
     // ---------------------------------------------------------------------
     // Normalise deprecated value -> enum value used in DB
     // ---------------------------------------------------------------------
     if (
-      req.body &&
-      typeof req.body.plan_management_type === 'string' &&
-      req.body.plan_management_type.trim() === 'fee_for_service'
+      bodyFields &&
+      typeof bodyFields.plan_management_type === 'string' &&
+      bodyFields.plan_management_type.trim() === 'fee_for_service'
     ) {
-      req.body.plan_management_type = 'self_funded';
+      bodyFields.plan_management_type = 'self_funded';
+    }
+    
+    // Validate invoices_email if plan_management_type requires it
+    const validationError = validateInvoicesEmail(bodyFields);
+    if (validationError) {
+      return res.status(validationError.status).json({
+        success: false,
+        error: validationError.error
+      });
     }
 
-    // Whitelist of ALL updatable columns for full update
+    // Whitelist of ALL updatable columns for full update (removed support_level, added new fields)
     const allowed = [
       'first_name',
       'last_name',
@@ -183,7 +401,7 @@ router.put('/:id', async (req, res, next) => {
       'postcode',
       'emergency_contact_name',
       'emergency_contact_phone',
-      'support_level',
+      // 'support_level', // Removed as requested
       'status',
       'plan_management_type',
       'notes',
@@ -195,37 +413,112 @@ router.put('/:id', async (req, res, next) => {
       'has_visual_impairment',
       'has_hearing_impairment',
       'has_cognitive_support',
-      'has_communication_needs'
+      'has_communication_needs',
+      // New fields
+      'secondary_email',
+      'secondary_email_include_comms',
+      'secondary_email_include_billing',
+      'invoices_email',
+      'emergency_contact_relationship',
+      'emergency_contact_phone_allow_sms',
+      'emergency_contact_email',
+      'emergency_contact_email_include_comms',
+      'emergency_contact_email_include_billing'
     ];
 
-    const bodyKeys = Object.keys(req.body || {});
+    const bodyKeys = Object.keys(bodyFields || {});
     const fields = bodyKeys.filter((k) => allowed.includes(k));
 
-    if (fields.length === 0) {
+    if (fields.length === 0 && !secondary_address) {
       return res.status(400).json({
         success: false,
         error: 'No valid fields supplied for update'
       });
     }
 
-    // Build dynamic UPDATE statement
-    const setFragments = fields.map((f, idx) => `${f} = $${idx + 2}`);
-    const values = fields.map((f) => req.body[f]);
+    const client = await pool.connect();
+    
+    try {
+      await client.query('BEGIN');
+      
+      // Update main participant record if there are fields to update
+      let participantResult = null;
+      if (fields.length > 0) {
+        // Build dynamic UPDATE statement
+        const setFragments = fields.map((f, idx) => `${f} = $${idx + 2}`);
+        const values = fields.map((f) => bodyFields[f]);
 
-    const sql = `
-      UPDATE participants
-      SET ${setFragments.join(', ')},
-          updated_at = NOW()
-      WHERE id = $1
-      RETURNING *`;
+        const sql = `
+          UPDATE participants
+          SET ${setFragments.join(', ')},
+              updated_at = NOW()
+          WHERE id = $1
+          RETURNING *`;
 
-    const result = await pool.query(sql, [id, ...values]);
+        participantResult = await client.query(sql, [id, ...values]);
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ success: false, error: 'Participant not found' });
+        if (participantResult.rows.length === 0) {
+          await client.query('ROLLBACK');
+          return res.status(404).json({ success: false, error: 'Participant not found' });
+        }
+      } else {
+        // Verify participant exists
+        const checkResult = await client.query('SELECT id FROM participants WHERE id = $1', [id]);
+        if (checkResult.rows.length === 0) {
+          await client.query('ROLLBACK');
+          return res.status(404).json({ success: false, error: 'Participant not found' });
+        }
+        participantResult = checkResult;
+      }
+      
+      // Handle secondary address if provided
+      if (secondary_address && typeof secondary_address === 'object') {
+        const addressFields = ['line1', 'line2', 'suburb', 'state', 'postcode', 'country', 'latitude', 'longitude'];
+        const filteredAddress = {};
+        
+        // Filter valid fields
+        addressFields.forEach(field => {
+          if (secondary_address[field] !== undefined) {
+            filteredAddress[field] = secondary_address[field];
+          }
+        });
+        
+        if (Object.keys(filteredAddress).length > 0) {
+          // Upsert secondary address with ON CONFLICT DO UPDATE
+          const addressFields = Object.keys(filteredAddress);
+          const placeholders = addressFields.map((_, i) => `$${i + 3}`);
+          const updateFragments = addressFields.map(f => `${f} = EXCLUDED.${f}`);
+          
+          const upsertSql = `
+            INSERT INTO participant_addresses
+              (participant_id, kind, ${addressFields.join(', ')}, updated_at)
+            VALUES
+              ($1, $2, ${placeholders.join(', ')}, NOW())
+            ON CONFLICT (participant_id, kind)
+            DO UPDATE SET
+              ${updateFragments.join(', ')},
+              updated_at = NOW()
+            RETURNING *`;
+          
+          await client.query(
+            upsertSql,
+            [id, 'secondary', ...addressFields.map(f => filteredAddress[f])]
+          );
+        }
+      }
+      
+      await client.query('COMMIT');
+      
+      // Get updated participant with addresses for response
+      const result = await pool.query('SELECT * FROM participants WHERE id = $1', [id]);
+      
+      res.json({ success: true, data: result.rows[0] });
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
     }
-
-    res.json({ success: true, data: result.rows[0] });
   } catch (error) {
     next(error);
   }
