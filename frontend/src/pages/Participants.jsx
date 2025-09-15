@@ -563,6 +563,8 @@ const Participants = () => {
       notes: participant.notes || '',
       billing_codes: participant.billing_codes || []
     });
+    // ensure selectedParticipant is up-to-date so save handler has the id
+    setSelectedParticipant(participant);
     setIsEditModalOpen(true);
   };
 
