@@ -371,10 +371,9 @@ const CreateParticipantModal = ({
                   />
                 </div>
                 
-                <div className="form-group" style={{ flexGrow: 0, marginLeft: 8, alignSelf: 'flex-end' }}>
-                  <label htmlFor="create-emergency-sms" style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
-                    SMS
-                  </label>
+                {/* SMS toggle inline with phone field */}
+                <div className="form-group sms-inline">
+                  <label htmlFor="create-emergency-sms">SMS</label>
                   <input
                     id="create-emergency-sms"
                     type="checkbox"
@@ -385,7 +384,6 @@ const CreateParticipantModal = ({
                         emergency_contact_phone_allow_sms: e.target.checked,
                       })
                     }
-                    style={{ marginTop: 0 }}
                   />
                 </div>
               </div>

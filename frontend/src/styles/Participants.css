@@ -214,6 +214,38 @@
 .participants-page .icon-back svg{ color:#ffffff; }
 
 /* ------------------------------------------------------------------
+
+/* ------------------------------------------------------------------
+ * Alignment helpers for checkbox rows and SMS toggle
+ * ------------------------------------------------------------------ */
+.participants-page .checkbox-row{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  flex-wrap:wrap;
+  margin-top:8px;
+}
+.participants-page .checkbox-row label{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  margin:0;
+}
+
+/* Inline SMS checkbox beside phone input */
+.participants-page .sms-inline{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  margin-left:8px; /* small spacing from phone input */
+}
+.participants-page .sms-inline label{ margin:0; }
+.participants-page .sms-inline input[type="checkbox"]{ margin:0; }
+
+/* Ensure inputs in the same row align to baseline for cleaner look */
+.participants-page .participant-form .form-row{
+  align-items:flex-end;
+}
  * NEW 6: Summary stats
  * ------------------------------------------------------------------ */
 .participants-page .summary-stats{
