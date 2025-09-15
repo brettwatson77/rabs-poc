@@ -22,6 +22,14 @@ const CreateParticipantModal = ({
 }) => {
   if (!isOpen) return null;
 
+  // Helper function to get supervision color based on multiplier value
+  const getSupervisionColor = (multiplier) => {
+    if (multiplier <= 1.0) return '#9e9e9e';
+    if (multiplier <= 1.5) return '#4caf50';
+    if (multiplier <= 2.0) return '#ff9800';
+    return '#e53935';
+  };
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content glass-panel" onClick={e => e.stopPropagation()}>
@@ -106,21 +114,22 @@ const CreateParticipantModal = ({
                   />
                 </div>
               </div>
-              
-              <div className="form-group">
-                <label htmlFor="email">Email</label>
-                <input
-                  id="email"
-                  type="email"
-                  value={participantForm.email}
-                  onChange={(e) => setParticipantForm({...participantForm, email: e.target.value})}
-                />
-              </div>
             </div>
 
             {/* -------------------- EMAILS -------------------- */}
             <div className="form-section">
               <h4>Emails</h4>
+
+              {/* Primary Email */}
+              <div className="form-group">
+                <label htmlFor="create-email">Primary Email</label>
+                <input
+                  id="create-email"
+                  type="email"
+                  value={participantForm.email}
+                  onChange={(e) => setParticipantForm({...participantForm, email: e.target.value})}
+                />
+              </div>
 
               {/* Secondary Email */}
               <div className="form-group">
@@ -361,6 +370,24 @@ const CreateParticipantModal = ({
                     onChange={(e) => setParticipantForm({...participantForm, emergency_contact_phone: e.target.value})}
                   />
                 </div>
+                
+                <div className="form-group" style={{ flexGrow: 0, marginLeft: 8, alignSelf: 'flex-end' }}>
+                  <label htmlFor="create-emergency-sms" style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+                    SMS
+                  </label>
+                  <input
+                    id="create-emergency-sms"
+                    type="checkbox"
+                    checked={participantForm.emergency_contact_phone_allow_sms || false}
+                    onChange={(e) =>
+                      setParticipantForm({
+                        ...participantForm,
+                        emergency_contact_phone_allow_sms: e.target.checked,
+                      })
+                    }
+                    style={{ marginTop: 0 }}
+                  />
+                </div>
               </div>
 
               {/* Relationship */}
@@ -424,42 +451,57 @@ const CreateParticipantModal = ({
                   </label>
                 </div>
               </div>
-
-              {/* Allow SMS */}
-              <div className="form-group">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={participantForm.emergency_contact_phone_allow_sms || false}
-                    onChange={(e) =>
-                      setParticipantForm({
-                        ...participantForm,
-                        emergency_contact_phone_allow_sms: e.target.checked,
-                      })
-                    }
-                  />{' '}
-                  Allow SMS / text messages
-                </label>
-              </div>
             </div>
             
             <div className="form-section">
               <h4>Support Details</h4>
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="support-level">Support Level</label>
-                  <select
-                    id="support-level"
-                    value={participantForm.support_level}
-                    onChange={(e) => setParticipantForm({...participantForm, support_level: e.target.value})}
-                  >
-                    <option value="standard">Standard</option>
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                  </select>
+              
+              {/* Supervision Multiplier Slider */}
+              <div className="form-group">
+                <label htmlFor="create-supervision-multiplier">Supervision Multiplier</label>
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <span>Current Value:</span>
+                    <span style={{ 
+                      fontWeight: 'bold', 
+                      fontSize: '1.1em',
+                      color: getSupervisionColor(parseFloat(participantForm.supervision_multiplier || 1.0))
+                    }}>
+                      {parseFloat(participantForm.supervision_multiplier || 1.0).toFixed(2)}×
+                    </span>
+                  </div>
+                  
+                  <input
+                    id="create-supervision-multiplier"
+                    type="range"
+                    min="1"
+                    max="2"
+                    step="0.25"
+                    value={participantForm.supervision_multiplier || 1.0}
+                    onChange={(e) => setParticipantForm({
+                      ...participantForm, 
+                      supervision_multiplier: parseFloat(e.target.value)
+                    })}
+                    style={{ width: '100%' }}
+                  />
+                  
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    width: '100%',
+                    fontSize: '0.85em',
+                    color: '#666'
+                  }}>
+                    <span>1.0×</span>
+                    <span>1.25×</span>
+                    <span>1.5×</span>
+                    <span>1.75×</span>
+                    <span>2.0×</span>
+                  </div>
                 </div>
-                
+              </div>
+              
+              <div className="form-row">
                 {/* Plan Management Type */}
                 <div className="form-group">
                   <label htmlFor="create-plan-management">Plan Management</label>

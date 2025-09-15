@@ -64,9 +64,11 @@ const ParticipantCard = ({ participant, selected, onClick, onEdit, onDelete }) =
             {participant.first_name} {participant.last_name}
           </h3>
           <div className="participant-badges">
-            <span className={`badge ${getStatusBadge(participant.status)}`}>
-              {participant.status}
-            </span>
+            {participant.status && (
+              <span className={`badge ${getStatusBadge(participant.status)}`}>
+                {participant.status}
+              </span>
+            )}
             {/* Multiplier badge replaces legacy support level badge */}
             <span
               className="badge"

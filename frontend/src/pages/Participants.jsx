@@ -1111,11 +1111,6 @@ const Participants = () => {
                     <span style={{ color: supervisionColor }}>{supervisionMultiplier.toFixed(2)}×</span>
                   </div>
                 </div>
-                <div className="participant-selection-badge">
-                  <span className={`badge ${getSupportLevelBadge(participant.support_level)}`}>
-                    {participant.support_level}
-                  </span>
-                </div>
                 <div className="mini-support-flags">
                   {Object.entries(SUPPORT_FLAG_ICONS).map(([key, icon]) => (
                     participant[key] && (
@@ -1146,9 +1141,6 @@ const Participants = () => {
           <div className="planning-nav glass-panel">
             <div className="participant-planning-header">
               <h3>{selectedParticipant.first_name} {selectedParticipant.last_name}</h3>
-              <span className={`badge ${getSupportLevelBadge(selectedParticipant.support_level)}`}>
-                {selectedParticipant.support_level}
-              </span>
             </div>
             
             <div className="planning-tabs">
