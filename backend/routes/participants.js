@@ -221,6 +221,20 @@ router.patch('/:id', async (req, res, next) => {
         bodyFields.status.trim().toLowerCase() === 'active';
       delete bodyFields.status;
     }
+
+    // ---------------------------------------------------------------------
+    // Normalize empty-string dates to NULL to avoid Postgres date parsing
+    // ---------------------------------------------------------------------
+    {
+      const dateFields = ['date_of_birth', 'ndis_plan_start', 'ndis_plan_end'];
+      dateFields.forEach((f) => {
+        if (Object.prototype.hasOwnProperty.call(bodyFields, f)) {
+          if (bodyFields[f] === '' || bodyFields[f] === undefined) {
+            bodyFields[f] = null;
+          }
+        }
+      });
+    }
     
     // Validate invoices_email if plan_management_type requires it
     const validationError = validateInvoicesEmail(bodyFields);
@@ -395,6 +409,20 @@ router.put('/:id', async (req, res, next) => {
       bodyFields.active =
         bodyFields.status.trim().toLowerCase() === 'active';
       delete bodyFields.status;
+    }
+
+    // ---------------------------------------------------------------------
+    // Normalize empty-string dates to NULL to avoid Postgres date parsing
+    // ---------------------------------------------------------------------
+    {
+      const dateFields = ['date_of_birth', 'ndis_plan_start', 'ndis_plan_end'];
+      dateFields.forEach((f) => {
+        if (Object.prototype.hasOwnProperty.call(bodyFields, f)) {
+          if (bodyFields[f] === '' || bodyFields[f] === undefined) {
+            bodyFields[f] = null;
+          }
+        }
+      });
     }
     
     // Validate invoices_email if plan_management_type requires it
