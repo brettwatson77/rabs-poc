@@ -213,6 +213,15 @@ router.patch('/:id', async (req, res, next) => {
       bodyFields.plan_management_type = 'self_funded';
     }
     
+    // ---------------------------------------------------------------------
+    // Map legacy `status` string → boolean `active`
+    // ---------------------------------------------------------------------
+    if (typeof bodyFields.status === 'string') {
+      bodyFields.active =
+        bodyFields.status.trim().toLowerCase() === 'active';
+      delete bodyFields.status;
+    }
+    
     // Validate invoices_email if plan_management_type requires it
     const validationError = validateInvoicesEmail(bodyFields);
     if (validationError) {
@@ -243,6 +252,8 @@ router.patch('/:id', async (req, res, next) => {
       'has_cognitive_support',
       'has_communication_needs',
       'plan_management_type',
+      // Active flag (replaces legacy status)
+      'active',
       // New fields
       'secondary_email',
       'secondary_email_include_comms',
@@ -377,6 +388,15 @@ router.put('/:id', async (req, res, next) => {
       bodyFields.plan_management_type = 'self_funded';
     }
     
+    // ---------------------------------------------------------------------
+    // Map legacy `status` string → boolean `active`
+    // ---------------------------------------------------------------------
+    if (typeof bodyFields.status === 'string') {
+      bodyFields.active =
+        bodyFields.status.trim().toLowerCase() === 'active';
+      delete bodyFields.status;
+    }
+    
     // Validate invoices_email if plan_management_type requires it
     const validationError = validateInvoicesEmail(bodyFields);
     if (validationError) {
@@ -402,7 +422,6 @@ router.put('/:id', async (req, res, next) => {
       'emergency_contact_name',
       'emergency_contact_phone',
       // 'support_level', // Removed as requested
-      'status',
       'plan_management_type',
       'notes',
       'supervision_multiplier',
@@ -414,6 +433,8 @@ router.put('/:id', async (req, res, next) => {
       'has_hearing_impairment',
       'has_cognitive_support',
       'has_communication_needs',
+      // Boolean active flag (replaces legacy status)
+      'active',
       // New fields
       'secondary_email',
       'secondary_email_include_comms',
