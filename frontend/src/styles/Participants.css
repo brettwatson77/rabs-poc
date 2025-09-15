@@ -213,7 +213,7 @@
 /* back icon arrow always white */
 .participants-page .icon-back svg{ color:#ffffff; }
 
-/* ------------------------------------------------------------------
+/* ------------------------------------------------------------------ */
 
 /* ------------------------------------------------------------------
  * Alignment helpers for checkbox rows and SMS toggle
@@ -246,7 +246,7 @@
 .participants-page .participant-form .form-row{
   align-items:flex-end;
 }
- * NEW 6: Summary stats
+/* NEW 6: Summary stats
  * ------------------------------------------------------------------ */
 .participants-page .summary-stats{
   display:flex;
