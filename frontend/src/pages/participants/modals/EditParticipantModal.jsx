@@ -118,6 +118,82 @@ const EditParticipantModal = ({
               </div>
             </div>
             
+            {/* -------------------- EMAILS -------------------- */}
+            <div className="form-section">
+              <h4>Emails</h4>
+
+              {/* Secondary Email */}
+              <div className="form-group">
+                <label htmlFor="edit-secondary-email">Secondary Email</label>
+                <input
+                  id="edit-secondary-email"
+                  type="email"
+                  value={participantForm.secondary_email || ''}
+                  onChange={(e) =>
+                    setParticipantForm({
+                      ...participantForm,
+                      secondary_email: e.target.value,
+                    })
+                  }
+                />
+
+                {/* Checkboxes */}
+                <div className="checkbox-row">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={
+                        participantForm.secondary_email_include_comms || false
+                      }
+                      onChange={(e) =>
+                        setParticipantForm({
+                          ...participantForm,
+                          secondary_email_include_comms: e.target.checked,
+                        })
+                      }
+                    />{' '}
+                    Include in communications / newsletters
+                  </label>
+                  <label style={{ marginLeft: 16 }}>
+                    <input
+                      type="checkbox"
+                      checked={
+                        participantForm.secondary_email_include_billing || false
+                      }
+                      onChange={(e) =>
+                        setParticipantForm({
+                          ...participantForm,
+                          secondary_email_include_billing: e.target.checked,
+                        })
+                      }
+                    />{' '}
+                    Include in billing communications
+                  </label>
+                </div>
+              </div>
+
+              {/* Invoices Email */}
+              <div className="form-group">
+                <label htmlFor="edit-invoices-email">
+                  Invoices Email{' '}
+                  <small style={{ fontWeight: 400 }}>
+                    (required for plan/self managed or fee-for-service)
+                  </small>
+                </label>
+                <input
+                  id="edit-invoices-email"
+                  type="email"
+                  value={participantForm.invoices_email || ''}
+                  onChange={(e) =>
+                    setParticipantForm({
+                      ...participantForm,
+                      invoices_email: e.target.value,
+                    })
+                  }
+                />
+              </div>
+            </div>
+
             <div className="form-section">
               <h4>Address</h4>
               <div className="form-group">
@@ -169,6 +245,103 @@ const EditParticipantModal = ({
                   />
                 </div>
               </div>
+
+              {/* -------- Secondary Address -------- */}
+              <h5 style={{ marginTop: 12 }}>Secondary Address (optional)</h5>
+              <div className="form-group">
+                <label htmlFor="edit-sec-address-line1">Street Address</label>
+                <input
+                  id="edit-sec-address-line1"
+                  type="text"
+                  value={participantForm.secondary_address_line1 || ''}
+                  onChange={(e) =>
+                    setParticipantForm({
+                      ...participantForm,
+                      secondary_address_line1: e.target.value,
+                    })
+                  }
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="edit-sec-address-line2">Address Line 2</label>
+                <input
+                  id="edit-sec-address-line2"
+                  type="text"
+                  value={participantForm.secondary_address_line2 || ''}
+                  onChange={(e) =>
+                    setParticipantForm({
+                      ...participantForm,
+                      secondary_address_line2: e.target.value,
+                    })
+                  }
+                />
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="edit-sec-suburb">Suburb</label>
+                  <input
+                    id="edit-sec-suburb"
+                    type="text"
+                    value={participantForm.secondary_address_suburb || ''}
+                    onChange={(e) =>
+                      setParticipantForm({
+                        ...participantForm,
+                        secondary_address_suburb: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="edit-sec-state">State</label>
+                  <select
+                    id="edit-sec-state"
+                    value={participantForm.secondary_address_state || 'NSW'}
+                    onChange={(e) =>
+                      setParticipantForm({
+                        ...participantForm,
+                        secondary_address_state: e.target.value,
+                      })
+                    }
+                  >
+                    <option value="NSW">NSW</option>
+                    <option value="VIC">VIC</option>
+                    <option value="QLD">QLD</option>
+                    <option value="SA">SA</option>
+                    <option value="WA">WA</option>
+                    <option value="TAS">TAS</option>
+                    <option value="NT">NT</option>
+                    <option value="ACT">ACT</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="edit-sec-postcode">Postcode</label>
+                  <input
+                    id="edit-sec-postcode"
+                    type="text"
+                    value={participantForm.secondary_address_postcode || ''}
+                    onChange={(e) =>
+                      setParticipantForm({
+                        ...participantForm,
+                        secondary_address_postcode: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+              </div>
+              <div className="form-group">
+                <label htmlFor="edit-sec-country">Country</label>
+                <input
+                  id="edit-sec-country"
+                  type="text"
+                  value={participantForm.secondary_address_country || ''}
+                  onChange={(e) =>
+                    setParticipantForm({
+                      ...participantForm,
+                      secondary_address_country: e.target.value,
+                    })
+                  }
+                />
+              </div>
             </div>
             
             <div className="form-section">
@@ -193,6 +366,94 @@ const EditParticipantModal = ({
                     onChange={(e) => setParticipantForm({...participantForm, emergency_contact_phone: e.target.value})}
                   />
                 </div>
+              </div>
+
+              {/* Relationship */}
+              <div className="form-group">
+                <label htmlFor="edit-emergency-contact-relationship">
+                  Relationship
+                </label>
+                <input
+                  id="edit-emergency-contact-relationship"
+                  type="text"
+                  value={participantForm.emergency_contact_relationship || ''}
+                  onChange={(e) =>
+                    setParticipantForm({
+                      ...participantForm,
+                      emergency_contact_relationship: e.target.value,
+                    })
+                  }
+                />
+              </div>
+
+              {/* Contact Email + toggles */}
+              <div className="form-group">
+                <label htmlFor="edit-emergency-contact-email">Email</label>
+                <input
+                  id="edit-emergency-contact-email"
+                  type="email"
+                  value={participantForm.emergency_contact_email || ''}
+                  onChange={(e) =>
+                    setParticipantForm({
+                      ...participantForm,
+                      emergency_contact_email: e.target.value,
+                    })
+                  }
+                />
+                <div className="checkbox-row">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={
+                        participantForm.emergency_contact_email_include_comms ||
+                        false
+                      }
+                      onChange={(e) =>
+                        setParticipantForm({
+                          ...participantForm,
+                          emergency_contact_email_include_comms: e.target.checked,
+                        })
+                      }
+                    />{' '}
+                    Include in communications / newsletters
+                  </label>
+                  <label style={{ marginLeft: 16 }}>
+                    <input
+                      type="checkbox"
+                      checked={
+                        participantForm.emergency_contact_email_include_billing ||
+                        false
+                      }
+                      onChange={(e) =>
+                        setParticipantForm({
+                          ...participantForm,
+                          emergency_contact_email_include_billing:
+                            e.target.checked,
+                        })
+                      }
+                    />{' '}
+                    Include in billing communications
+                  </label>
+                </div>
+              </div>
+
+              {/* Allow SMS */}
+              <div className="form-group">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={
+                      participantForm.emergency_contact_phone_allow_sms || false
+                    }
+                    onChange={(e) =>
+                      setParticipantForm({
+                        ...participantForm,
+                        emergency_contact_phone_allow_sms: e.target.checked,
+                      })
+                    }
+                  />{' '}
+                  Allow SMS / text messages
+                </label>
               </div>
             </div>
             

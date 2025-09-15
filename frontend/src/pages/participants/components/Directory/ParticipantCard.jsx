@@ -6,7 +6,6 @@ import { FiCoffee, FiHeart, FiBell, FiEye, FiMessageCircle } from 'react-icons/f
 import {
   calculateAge,
   getStatusBadge,
-  getSupportLevelBadge,
   getSupervisionColor
 } from '../../helpers/participantsUtils';
 
@@ -68,8 +67,12 @@ const ParticipantCard = ({ participant, selected, onClick, onEdit, onDelete }) =
             <span className={`badge ${getStatusBadge(participant.status)}`}>
               {participant.status}
             </span>
-            <span className={`badge ${getSupportLevelBadge(participant.support_level)}`}>
-              {participant.support_level}
+            {/* Multiplier badge replaces legacy support level badge */}
+            <span
+              className="badge"
+              style={{ backgroundColor: supervisionColor, color: '#fff' }}
+            >
+              ×{supervisionMultiplier.toFixed(2)}
             </span>
           </div>
         </div>

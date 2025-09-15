@@ -51,20 +51,6 @@ const DirectoryHeader = ({
               </select>
             </div>
             
-            <div className="filter-group">
-              <label>Support Level</label>
-              <select
-                value={filters.supportLevel}
-                onChange={(e) => setFilters({...filters, supportLevel: e.target.value})}
-              >
-                <option value="all">All Levels</option>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="standard">Standard</option>
-                <option value="low">Low</option>
-              </select>
-            </div>
-
             {/* Plan Management Type */}
             <div className="filter-group">
               <label>Management</label>
@@ -80,6 +66,67 @@ const DirectoryHeader = ({
                 <option value="self_managed">Self Managed</option>
                 <option value="self_funded">Self Funded</option>
               </select>
+            </div>
+
+            {/* Supervision Multiplier */}
+            <div className="filter-group">
+              <label>Multiplier</label>
+              <div className="multiplier-filter">
+                <select
+                  value={filters.multiplierOp}
+                  onChange={(e) =>
+                    setFilters({ ...filters, multiplierOp: e.target.value })
+                  }
+                >
+                  <option value="eq">=</option>
+                  <option value="gte">≥</option>
+                  <option value="lte">≤</option>
+                  <option value="between">between</option>
+                </select>
+
+                {/* Single value mode */}
+                {filters.multiplierOp !== 'between' && (
+                  <input
+                    type="number"
+                    min="1"
+                    max="2"
+                    step="0.25"
+                    value={filters.multiplierValue}
+                    onChange={(e) =>
+                      setFilters({ ...filters, multiplierValue: e.target.value })
+                    }
+                  />
+                )}
+
+                {/* Between mode => min & max */}
+                {filters.multiplierOp === 'between' && (
+                  <>
+                    <input
+                      type="number"
+                      min="1"
+                      max="2"
+                      step="0.25"
+                      placeholder="min"
+                      value={filters.multiplierMin}
+                      onChange={(e) =>
+                        setFilters({ ...filters, multiplierMin: e.target.value })
+                      }
+                    />
+                    <span style={{ margin: '0 4px' }}>–</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="2"
+                      step="0.25"
+                      placeholder="max"
+                      value={filters.multiplierMax}
+                      onChange={(e) =>
+                        setFilters({ ...filters, multiplierMax: e.target.value })
+                      }
+                    />
+                  </>
+                )}
+              </div>
             </div>
           </div>
         )}

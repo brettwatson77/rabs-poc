@@ -171,6 +171,22 @@ const Participants = () => {
     postcode: '',
     emergency_contact_name: '',
     emergency_contact_phone: '',
+    // ------------------ NEW EMAIL / ADDRESS FIELDS ------------------
+    secondary_email: '',
+    secondary_email_include_comms: false,
+    secondary_email_include_billing: false,
+    invoices_email: '',
+    emergency_contact_relationship: '',
+    emergency_contact_phone_allow_sms: false,
+    emergency_contact_email: '',
+    emergency_contact_email_include_comms: false,
+    emergency_contact_email_include_billing: false,
+    secondary_address_line1: '',
+    secondary_address_line2: '',
+    secondary_address_suburb: '',
+    secondary_address_state: 'NSW',
+    secondary_address_postcode: '',
+    secondary_address_country: '',
     support_level: 'standard',
     status: 'active',
     plan_management_type: 'agency_managed',
@@ -460,12 +476,51 @@ const Participants = () => {
       postcode: '',
       emergency_contact_name: '',
       emergency_contact_phone: '',
+      secondary_email: '',
+      secondary_email_include_comms: false,
+      secondary_email_include_billing: false,
+      invoices_email: '',
+      emergency_contact_relationship: '',
+      emergency_contact_phone_allow_sms: false,
+      emergency_contact_email: '',
+      emergency_contact_email_include_comms: false,
+      emergency_contact_email_include_billing: false,
+      secondary_address_line1: '',
+      secondary_address_line2: '',
+      secondary_address_suburb: '',
+      secondary_address_state: 'NSW',
+      secondary_address_postcode: '',
+      secondary_address_country: '',
       support_level: 'standard',
       status: 'active',
       plan_management_type: 'agency_managed',
       notes: '',
       billing_codes: []
     });
+  };
+
+  /* ------------------------------------------------------------------
+   * Helper – secondary address builder
+   * ------------------------------------------------------------------ */
+  const buildSecondaryAddressPayload = (form) => {
+    const fields = [
+      'secondary_address_line1',
+      'secondary_address_line2',
+      'secondary_address_suburb',
+      'secondary_address_state',
+      'secondary_address_postcode',
+      'secondary_address_country'
+    ];
+    const hasAny = fields.some((k) => (form[k] || '').toString().trim().length > 0);
+    if (!hasAny) return null;
+    return {
+      line1: form.secondary_address_line1 || '',
+      line2: form.secondary_address_line2 || '',
+      suburb: form.secondary_address_suburb || '',
+      state: form.secondary_address_state || 'NSW',
+      postcode: form.secondary_address_postcode || '',
+      country: form.secondary_address_country || ''
+    };
   };
 
   // Handle opening edit modal
@@ -484,6 +539,21 @@ const Participants = () => {
       postcode: participant.postcode || '',
       emergency_contact_name: participant.emergency_contact_name || '',
       emergency_contact_phone: participant.emergency_contact_phone || '',
+      secondary_email: participant.secondary_email || '',
+      secondary_email_include_comms: participant.secondary_email_include_comms || false,
+      secondary_email_include_billing: participant.secondary_email_include_billing || false,
+      invoices_email: participant.invoices_email || '',
+      emergency_contact_relationship: participant.emergency_contact_relationship || '',
+      emergency_contact_phone_allow_sms: participant.emergency_contact_phone_allow_sms || false,
+      emergency_contact_email: participant.emergency_contact_email || '',
+      emergency_contact_email_include_comms: participant.emergency_contact_email_include_comms || false,
+      emergency_contact_email_include_billing: participant.emergency_contact_email_include_billing || false,
+      secondary_address_line1: participant.secondary_address_line1 || '',
+      secondary_address_line2: participant.secondary_address_line2 || '',
+      secondary_address_suburb: participant.secondary_address_suburb || '',
+      secondary_address_state: participant.secondary_address_state || 'NSW',
+      secondary_address_postcode: participant.secondary_address_postcode || '',
+      secondary_address_country: participant.secondary_address_country || '',
       support_level: participant.support_level || 'standard',
       status: participant.status || 'active',
       plan_management_type: participant.plan_management_type || 'agency_managed',
@@ -496,16 +566,22 @@ const Participants = () => {
   // Handle participant creation
   const handleCreateParticipant = (e) => {
     e.preventDefault();
-    createParticipantMutation.mutate(participantForm);
+    const payload = { ...participantForm };
+    const sec = buildSecondaryAddressPayload(participantForm);
+    if (sec) payload.secondary_address = sec;
+    createParticipantMutation.mutate(payload);
   };
 
   // Handle participant update
   const handleUpdateParticipant = (e) => {
     e.preventDefault();
     if (selectedParticipant) {
+      const payload = { ...participantForm };
+      const sec = buildSecondaryAddressPayload(participantForm);
+      if (sec) payload.secondary_address = sec;
       updateParticipantMutation.mutate({
         id: selectedParticipant.id,
-        participantData: participantForm
+        participantData: payload
       });
     }
   };
@@ -1205,7 +1281,7 @@ const Participants = () => {
                       <input
                         type="range"
                         min="1"
-                        max="2.5"
+                        max="2.0"
                         step="0.25"
                         value={supervisionValue}
                         onChange={(e) => setSupervisionValue(parseFloat(e.target.value))}
@@ -1214,9 +1290,10 @@ const Participants = () => {
                       
                       <div className="slider-labels">
                         <span>1.0×</span>
+                        <span>1.25×</span>
                         <span>1.5×</span>
+                        <span>1.75×</span>
                         <span>2.0×</span>
-                        <span>2.5×</span>
                       </div>
                       
                       <div className="supervision-bar-container">
