@@ -20,10 +20,11 @@ const EditParticipantModal = ({
   onSubmit,
   isSubmitting
 }) => {
-  if (!isOpen) return null;
-
   // two-tab state: 'general' | 'health'
   const [activeTab, setActiveTab] = React.useState('general');
+
+  // Bail out early if modal isn't open (hooks already declared above)
+  if (!isOpen) return null;
 
   // Helper function to get supervision color based on multiplier value
   const getSupervisionColor = (multiplier) => {

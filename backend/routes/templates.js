@@ -419,16 +419,19 @@ router.post('/rules/:id/participants', async (req, res) => {
     }
     
     // Insert the participant
+    // Ensure new preference columns exist then insert with defaults
+    await pool.query(`
+      ALTER TABLE rules_program_participants
+        ADD COLUMN IF NOT EXISTS pickup_address_pref  text DEFAULT 'primary',
+        ADD COLUMN IF NOT EXISTS dropoff_address_pref text DEFAULT 'primary'
+    `);
+
     const result = await pool.query(`
       INSERT INTO rules_program_participants
-      (id, rule_id, participant_id)
-      VALUES ($1, $2, $3)
+        (id, rule_id, participant_id, pickup_address_pref, dropoff_address_pref)
+      VALUES ($1, $2, $3, 'primary', 'primary')
       RETURNING *
-    `, [
-      uuidv4(),
-      id,
-      participant_id
-    ]);
+    `, [uuidv4(), id, participant_id]);
     
     // Log participant added
     await logger.logEvent({
@@ -554,6 +557,93 @@ router.delete('/rules/:id/participants/:rppId', async (req, res) => {
       .json({ success: false, error: 'Failed to delete participant' });
   } finally {
     client.release();
+  }
+});
+
+// PATCH /templates/rules/:id/participants/:rppId  - update pickup/dropoff prefs
+router.patch('/rules/:id/participants/:rppId', async (req, res) => {
+  const pool = req.app.locals.pool;
+  const { id: ruleId, rppId } = req.params;
+  const { pickup_address_pref, dropoff_address_pref } = req.body || {};
+
+  // Quick validation of provided values
+  const validVals = ['primary', 'secondary'];
+  if (
+    pickup_address_pref !== undefined &&
+    !validVals.includes(pickup_address_pref)
+  ) {
+    return res
+      .status(400)
+      .json({ success: false, error: 'Invalid pickup_address_pref' });
+  }
+  if (
+    dropoff_address_pref !== undefined &&
+    !validVals.includes(dropoff_address_pref)
+  ) {
+    return res
+      .status(400)
+      .json({ success: false, error: 'Invalid dropoff_address_pref' });
+  }
+
+  if (
+    pickup_address_pref === undefined &&
+    dropoff_address_pref === undefined
+  ) {
+    return res
+      .status(400)
+      .json({ success: false, error: 'No fields to update' });
+  }
+
+  try {
+    // Ensure columns exist (idempotent)
+    await pool.query(`
+      ALTER TABLE rules_program_participants
+        ADD COLUMN IF NOT EXISTS pickup_address_pref text DEFAULT 'primary',
+        ADD COLUMN IF NOT EXISTS dropoff_address_pref text DEFAULT 'primary';
+    `);
+
+    // Validate rule & link existence
+    if (!(await ruleExists(pool, ruleId))) {
+      return res.status(404).json({ success: false, error: 'Rule not found' });
+    }
+    const chk = await pool.query(
+      `SELECT id FROM rules_program_participants
+        WHERE id = $1 AND rule_id = $2`,
+      [rppId, ruleId]
+    );
+    if (chk.rowCount === 0) {
+      return res
+        .status(404)
+        .json({ success: false, error: 'Participant link not found' });
+    }
+
+    // Build dynamic update
+    const updates = [];
+    const vals = [rppId];
+    let idx = 2;
+    if (pickup_address_pref !== undefined) {
+      updates.push(`pickup_address_pref = $${idx++}`);
+      vals.push(pickup_address_pref);
+    }
+    if (dropoff_address_pref !== undefined) {
+      updates.push(`dropoff_address_pref = $${idx++}`);
+      vals.push(dropoff_address_pref);
+    }
+
+    const upd = await pool.query(
+      `UPDATE rules_program_participants
+          SET ${updates.join(', ')}, updated_at = NOW()
+        WHERE id = $1
+        RETURNING id, rule_id, participant_id, pickup_address_pref, dropoff_address_pref`,
+      vals
+    );
+
+    res.json({ success: true, data: upd.rows[0] });
+  } catch (err) {
+    console.error('Error updating pickup/dropoff prefs:', err);
+    res
+      .status(500)
+      .json({ success: false, error: 'Failed to update preferences' });
   }
 });
 

@@ -105,10 +105,86 @@ const ProgramTemplateWizard = () => {
   const [vehiclesList, setVehiclesList] = useState([]);
   const [staffPlaceholders, setStaffPlaceholders] = useState([]);
   const [vehiclePlaceholders, setVehiclePlaceholders] = useState([]);
+
+  // ---------------------------------------------------------------
+  // NEW: participant address details + prefs
+  // ---------------------------------------------------------------
+  // Cache of participant_id -> full record (including addresses)
+  const [participantDetails, setParticipantDetails] = useState({});
+  // Map of rule_participant_id -> { pickup: 'primary'|'secondary', dropoff: same }
+  const [addressPrefs, setAddressPrefs] = useState({});
   
   // Currency formatter helper
   const formatCurrency = (amount) => {
     return `$${(parseFloat(amount) || 0).toFixed(2)}`;
+  };
+
+  /* --------------------------------------------------------------
+     Helpers for pickup / drop-off address handling
+     -------------------------------------------------------------- */
+  const fetchParticipantDetailsFull = async (pid) => {
+    if (!pid || participantDetails[pid]) return;
+    try {
+      const resp = await api.get(`/participants/${pid}`);
+      if (resp.data.success && resp.data.data) {
+        setParticipantDetails((prev) => ({ ...prev, [pid]: resp.data.data }));
+      }
+    } catch (e) {
+      console.warn('Failed to fetch participant details:', e);
+    }
+  };
+
+  const buildAddressString = (addr) => {
+    if (!addr) return '';
+    const parts = [
+      addr.line1 || addr.address || '',
+      addr.suburb,
+      addr.state,
+      addr.postcode,
+    ]
+      .filter(Boolean)
+      .join(', ');
+    return parts;
+  };
+
+  const getPrimaryAddressLabel = (p) =>
+    buildAddressString({
+      line1: p.address,
+      suburb: p.suburb,
+      state: p.state,
+      postcode: p.postcode,
+    });
+
+  const getSecondaryAddressLabel = (details) => {
+    if (!details) return '';
+    // prefer nested structure
+    if (details.addresses?.secondary) {
+      return buildAddressString(details.addresses.secondary);
+    }
+    // fallback to flattened fields
+    return buildAddressString({
+      line1: details.secondary_address_line1,
+      suburb: details.secondary_address_suburb,
+      state: details.secondary_address_state,
+      postcode: details.secondary_address_postcode,
+    });
+  };
+
+  const updateAddressPref = async (rppId, field, value) => {
+    setAddressPrefs((prev) => ({
+      ...prev,
+      [rppId]: { ...prev[rppId], [field]: value },
+    }));
+    if (!ruleId) return;
+    try {
+      await api.patch(
+        `/templates/rules/${ruleId}/participants/${rppId}`,
+        { [field]: value }
+      );
+    } catch (e) {
+      console.error('Pref update failed:', e);
+      toast.error('Failed to save address preference');
+    }
   };
 
   // Derive day of week from anchor date
@@ -875,6 +951,15 @@ const ProgramTemplateWizard = () => {
           ...participantBilling,
           [newParticipant.id]: { billing_code: '', hours: '' }
         });
+
+        // Initialise address prefs (default → primary)
+        setAddressPrefs((prev) => ({
+          ...prev,
+          [newParticipant.id]: { pickup: 'primary', dropoff: 'primary' },
+        }));
+
+        // fetch full details for address strings
+        fetchParticipantDetailsFull(selectedParticipantId);
         
         // Refresh requirements after adding participant
         fetchRequirements(ruleId);
@@ -1317,6 +1402,76 @@ const ProgramTemplateWizard = () => {
                       
                       {openParticipants[participant.id] && (
                         <>
+                          {/* ---------------- Pickup / Dropoff Address prefs ------------- */}
+                          <div className="form-row" style={{ marginBottom: 12 }}>
+                            {(() => {
+                              const pid = participant.participant_id;
+                              const details = participantDetails[pid];
+                              const primaryLabel = getPrimaryAddressLabel(
+                                participants.find((p) => p.id === pid) || {}
+                              );
+                              const secondaryLabel = getSecondaryAddressLabel(details);
+                              const prefs = addressPrefs[participant.id] || {
+                                pickup: 'primary',
+                                dropoff: 'primary',
+                              };
+                              return (
+                                <>
+                                  <div className="form-group">
+                                    <label>Pickup Address</label>
+                                    <select
+                                      className="form-control"
+                                      value={prefs.pickup}
+                                      onChange={(e) =>
+                                        updateAddressPref(
+                                          participant.id,
+                                          'pickup_address_pref',
+                                          e.target.value
+                                        )
+                                      }
+                                    >
+                                      <option value="primary">
+                                        Primary — {primaryLabel}
+                                      </option>
+                                      <option
+                                        value="secondary"
+                                        disabled={!secondaryLabel}
+                                      >
+                                        Secondary —{' '}
+                                        {secondaryLabel || 'N/A'}
+                                      </option>
+                                    </select>
+                                  </div>
+                                  <div className="form-group">
+                                    <label>Drop-off Address</label>
+                                    <select
+                                      className="form-control"
+                                      value={prefs.dropoff}
+                                      onChange={(e) =>
+                                        updateAddressPref(
+                                          participant.id,
+                                          'dropoff_address_pref',
+                                          e.target.value
+                                        )
+                                      }
+                                    >
+                                      <option value="primary">
+                                        Primary — {primaryLabel}
+                                      </option>
+                                      <option
+                                        value="secondary"
+                                        disabled={!secondaryLabel}
+                                      >
+                                        Secondary —{' '}
+                                        {secondaryLabel || 'N/A'}
+                                      </option>
+                                    </select>
+                                  </div>
+                                </>
+                              );
+                            })()}
+                          </div>
+
                           {/* Billing Lines mini-form */}
                           <div className="billing-form">
                             <div className="form-row">

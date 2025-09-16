@@ -20,10 +20,10 @@ const CreateParticipantModal = ({
   onSubmit,
   isSubmitting
 }) => {
-  if (!isOpen) return null;
-
   // two-tab state for form sections
   const [activeTab, setActiveTab] = React.useState('general');
+
+  if (!isOpen) return null;
 
   // Helper function to get supervision color based on multiplier value
   const getSupervisionColor = (multiplier) => {
