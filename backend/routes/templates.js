@@ -599,7 +599,9 @@ router.patch('/rules/:id/participants/:rppId', async (req, res) => {
     await pool.query(`
       ALTER TABLE rules_program_participants
         ADD COLUMN IF NOT EXISTS pickup_address_pref text DEFAULT 'primary',
-        ADD COLUMN IF NOT EXISTS dropoff_address_pref text DEFAULT 'primary';
+        ADD COLUMN IF NOT EXISTS dropoff_address_pref text DEFAULT 'primary',
+        ADD COLUMN IF NOT EXISTS created_at timestamp DEFAULT now(),
+        ADD COLUMN IF NOT EXISTS updated_at timestamp DEFAULT now();
     `);
 
     // Validate rule & link existence
