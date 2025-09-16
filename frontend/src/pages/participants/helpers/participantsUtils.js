@@ -105,9 +105,15 @@ export const getGoalStatusBadge = (status) => {
  * @returns {string} Color hex code
  */
 export const getSupervisionColor = (multiplier) => {
-  if (multiplier <= 1.0) return '#9e9e9e';
-  if (multiplier <= 1.5) return '#4caf50';
-  if (multiplier <= 2.0) return '#ff9800';
+  // < 1.0  → grey
+  if (multiplier < 1.0) return '#9e9e9e';
+  // === 1.0 → green
+  if (multiplier === 1.0) return '#4caf50';
+  // >1.0 && ≤1.5 → yellow
+  if (multiplier > 1.0 && multiplier <= 1.5) return '#ffeb3b';
+  // >1.5 && <2.0 → orange
+  if (multiplier > 1.5 && multiplier < 2.0) return '#ff9800';
+  // ≥ 2.0 → red
   return '#e53935';
 };
 

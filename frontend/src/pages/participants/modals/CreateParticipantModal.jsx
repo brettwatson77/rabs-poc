@@ -22,12 +22,16 @@ const CreateParticipantModal = ({
 }) => {
   if (!isOpen) return null;
 
+  // two-tab state for form sections
+  const [activeTab, setActiveTab] = React.useState('general');
+
   // Helper function to get supervision color based on multiplier value
   const getSupervisionColor = (multiplier) => {
-    if (multiplier <= 1.0) return '#9e9e9e';
-    if (multiplier <= 1.5) return '#4caf50';
-    if (multiplier <= 2.0) return '#ff9800';
-    return '#e53935';
+    if (multiplier < 1.0) return '#9e9e9e';       // grey
+    if (multiplier === 1.0) return '#4caf50';      // green
+    if (multiplier > 1.0 && multiplier <= 1.5) return '#ffeb3b'; // yellow
+    if (multiplier > 1.5 && multiplier < 2.0) return '#ff9800';  // orange
+    return '#e53935';                               // red (≥2.0)
   };
 
   return (
@@ -38,7 +42,32 @@ const CreateParticipantModal = ({
         </div>
         
         <div className="modal-body">
+          {/* ---------------------------------------------------------------- */}
+          {/* Primary tab bar                                                */}
+          {/* ---------------------------------------------------------------- */}
+          <div className="page-tabs" style={{ marginBottom: 16 }}>
+            <button
+              type="button"
+              className={`tab-button ${activeTab === 'general' ? 'active' : ''}`}
+              onClick={() => setActiveTab('general')}
+            >
+              General Details
+            </button>
+            <button
+              type="button"
+              className={`tab-button ${activeTab === 'health' ? 'active' : ''}`}
+              onClick={() => setActiveTab('health')}
+            >
+              Health &amp; Wellbeing
+            </button>
+          </div>
+
           <form className="participant-form" onSubmit={onSubmit}>
+            {/* ==============================================================
+                 GENERAL TAB
+               ============================================================== */}
+            {activeTab === 'general' && (
+              <>
             <div className="form-section">
               <h4>Personal Information</h4>
               <div className="form-row">
@@ -333,18 +362,7 @@ const CreateParticipantModal = ({
                 </div>
               </div>
               <div className="form-group">
-                <label htmlFor="create-sec-country">Country</label>
-                <input
-                  id="create-sec-country"
-                  type="text"
-                  value={participantForm.secondary_address_country || ''}
-                  onChange={(e) =>
-                    setParticipantForm({
-                      ...participantForm,
-                      secondary_address_country: e.target.value,
-                    })
-                  }
-                />
+                {/* country field removed – AU only */}
               </div>
             </div>
             
@@ -451,6 +469,22 @@ const CreateParticipantModal = ({
               </div>
             </div>
             
+              </>
+            )}
+            {/* ==============================================================
+                 HEALTH TAB
+               ============================================================== */}
+            {activeTab === 'health' && (
+              <div className="form-section">
+                <h4>Health &amp; Wellbeing</h4>
+                <p>No fields yet. Coming soon.</p>
+              </div>
+            )}
+            {/* --------------------------------------------------------------
+                 MOVED FROM HEALTH → GENERAL
+               -------------------------------------------------------------- */}
+            {activeTab === 'general' && (
+              <>
             <div className="form-section">
               <h4>Support Details</h4>
               
@@ -472,8 +506,8 @@ const CreateParticipantModal = ({
                   <input
                     id="create-supervision-multiplier"
                     type="range"
-                    min="1"
-                    max="2"
+                    min="0.5"
+                    max="2.5"
                     step="0.25"
                     value={participantForm.supervision_multiplier || 1.0}
                     onChange={(e) => setParticipantForm({
@@ -490,12 +524,60 @@ const CreateParticipantModal = ({
                     fontSize: '0.85em',
                     color: '#666'
                   }}>
+                    <span>0.5×</span>
                     <span>1.0×</span>
-                    <span>1.25×</span>
                     <span>1.5×</span>
-                    <span>1.75×</span>
                     <span>2.0×</span>
+                    <span>2.5×</span>
                   </div>
+                </div>
+              </div>
+              
+              {/* Plan Flags */}
+              <div className="form-group">
+                <label style={{ display: 'block', marginBottom: 4 }}>
+                  Additional Plans / Practices
+                </label>
+                <div className="checkbox-row">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={participantForm.has_behavior_support_plan || false}
+                      onChange={(e) =>
+                        setParticipantForm({
+                          ...participantForm,
+                          has_behavior_support_plan: e.target.checked,
+                        })
+                      }
+                    />{' '}
+                    Behaviour Support Plan
+                  </label>
+                  <label style={{ marginLeft: 16 }}>
+                    <input
+                      type="checkbox"
+                      checked={participantForm.has_restrictive_practices || false}
+                      onChange={(e) =>
+                        setParticipantForm({
+                          ...participantForm,
+                          has_restrictive_practices: e.target.checked,
+                        })
+                      }
+                    />{' '}
+                    Restrictive Practices
+                  </label>
+                  <label style={{ marginLeft: 16 }}>
+                    <input
+                      type="checkbox"
+                      checked={participantForm.has_mealtime_management_plan || false}
+                      onChange={(e) =>
+                        setParticipantForm({
+                          ...participantForm,
+                          has_mealtime_management_plan: e.target.checked,
+                        })
+                      }
+                    />{' '}
+                    Mealtime Management Plan
+                  </label>
                 </div>
               </div>
               
@@ -540,7 +622,8 @@ const CreateParticipantModal = ({
                 ></textarea>
               </div>
             </div>
-            
+            </>
+            )}
             <div className="form-actions">
               <button 
                 type="button" 

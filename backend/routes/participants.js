@@ -268,6 +268,10 @@ router.patch('/:id', async (req, res, next) => {
       'plan_management_type',
       // Active flag (replaces legacy status)
       'active',
+      // Plan-level flags
+      'has_behavior_support_plan',
+      'has_restrictive_practices',
+      'has_mealtime_management_plan',
       // New fields
       'secondary_email',
       'secondary_email_include_comms',
@@ -461,6 +465,10 @@ router.put('/:id', async (req, res, next) => {
       'has_hearing_impairment',
       'has_cognitive_support',
       'has_communication_needs',
+      // Plan-level flags
+      'has_behavior_support_plan',
+      'has_restrictive_practices',
+      'has_mealtime_management_plan',
       // Boolean active flag (replaces legacy status)
       'active',
       // New fields

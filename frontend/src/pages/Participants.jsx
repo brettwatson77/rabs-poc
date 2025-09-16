@@ -186,7 +186,10 @@ const Participants = () => {
     secondary_address_suburb: '',
     secondary_address_state: 'NSW',
     secondary_address_postcode: '',
-    secondary_address_country: '',
+    /* ---- NEW PLAN FLAGS ---- */
+    has_behavior_support_plan: false,
+    has_restrictive_practices: false,
+    has_mealtime_management_plan: false,
     supervision_multiplier: 1.0,
     support_level: 'standard',
     status: 'active',
@@ -491,7 +494,10 @@ const Participants = () => {
       secondary_address_suburb: '',
       secondary_address_state: 'NSW',
       secondary_address_postcode: '',
-      secondary_address_country: '',
+    /* ---- NEW PLAN FLAGS ---- */
+    has_behavior_support_plan: false,
+    has_restrictive_practices: false,
+    has_mealtime_management_plan: false,
       supervision_multiplier: 1.0,
       support_level: 'standard',
       status: 'active',
@@ -511,7 +517,7 @@ const Participants = () => {
       'secondary_address_suburb',
       'secondary_address_state',
       'secondary_address_postcode',
-      'secondary_address_country'
+      // country no longer required
     ];
     const hasAny = fields.some((k) => (form[k] || '').toString().trim().length > 0);
     if (!hasAny) return null;
@@ -520,51 +526,64 @@ const Participants = () => {
       line2: form.secondary_address_line2 || '',
       suburb: form.secondary_address_suburb || '',
       state: form.secondary_address_state || 'NSW',
-      postcode: form.secondary_address_postcode || '',
-      country: form.secondary_address_country || ''
+      postcode: form.secondary_address_postcode || ''
     };
   };
 
-  // Handle opening edit modal
-  const handleEditParticipant = (participant) => {
-    setParticipantForm({
-      first_name: participant.first_name || '',
-      last_name: participant.last_name || '',
-      ndis_number: participant.ndis_number || '',
-      date_of_birth: participant.date_of_birth || '',
-      gender: participant.gender || '',
-      phone: participant.phone || '',
-      email: participant.email || '',
-      address: participant.address || '',
-      suburb: participant.suburb || '',
-      state: participant.state || 'NSW',
-      postcode: participant.postcode || '',
-      emergency_contact_name: participant.emergency_contact_name || '',
-      emergency_contact_phone: participant.emergency_contact_phone || '',
-      secondary_email: participant.secondary_email || '',
-      secondary_email_include_comms: participant.secondary_email_include_comms || false,
-      secondary_email_include_billing: participant.secondary_email_include_billing || false,
-      invoices_email: participant.invoices_email || '',
-      emergency_contact_relationship: participant.emergency_contact_relationship || '',
-      emergency_contact_phone_allow_sms: participant.emergency_contact_phone_allow_sms || false,
-      emergency_contact_email: participant.emergency_contact_email || '',
-      emergency_contact_email_include_comms: participant.emergency_contact_email_include_comms || false,
-      emergency_contact_email_include_billing: participant.emergency_contact_email_include_billing || false,
-      secondary_address_line1: participant.secondary_address_line1 || '',
-      secondary_address_line2: participant.secondary_address_line2 || '',
-      secondary_address_suburb: participant.secondary_address_suburb || '',
-      secondary_address_state: participant.secondary_address_state || 'NSW',
-      secondary_address_postcode: participant.secondary_address_postcode || '',
-      secondary_address_country: participant.secondary_address_country || '',
-      supervision_multiplier: parseFloat(participant.supervision_multiplier ?? 1.0),
-      support_level: participant.support_level || 'standard',
-      status: participant.status || 'active',
-      plan_management_type: participant.plan_management_type || 'agency_managed',
-      notes: participant.notes || '',
-      billing_codes: participant.billing_codes || []
-    });
-    // ensure selectedParticipant is up-to-date so save handler has the id
+  // Handle opening edit modal (fetch latest details first)
+  const handleEditParticipant = async (participant) => {
+    // pre-select so UI can reflect selection immediately
     setSelectedParticipant(participant);
+
+    // fetch latest details (silently fall back on supplied participant)
+    let p = participant;
+    try {
+      const response = await axios.get(`${API_URL}/api/v1/participants/${participant.id}`);
+      p = response.data?.data || participant;
+    } catch (e) {
+      console.error('Failed to fetch full participant details, using shallow data.', e);
+    }
+
+    setParticipantForm({
+      first_name: p.first_name || '',
+      last_name: p.last_name || '',
+      ndis_number: p.ndis_number || '',
+      date_of_birth: p.date_of_birth || '',
+      gender: p.gender || '',
+      phone: p.phone || '',
+      email: p.email || '',
+      address: p.address || '',
+      suburb: p.suburb || '',
+      state: p.state || 'NSW',
+      postcode: p.postcode || '',
+      emergency_contact_name: p.emergency_contact_name || '',
+      emergency_contact_phone: p.emergency_contact_phone || '',
+      secondary_email: p.secondary_email || '',
+      secondary_email_include_comms: p.secondary_email_include_comms || false,
+      secondary_email_include_billing: p.secondary_email_include_billing || false,
+      invoices_email: p.invoices_email || '',
+      emergency_contact_relationship: p.emergency_contact_relationship || '',
+      emergency_contact_phone_allow_sms: p.emergency_contact_phone_allow_sms || false,
+      emergency_contact_email: p.emergency_contact_email || '',
+      emergency_contact_email_include_comms: p.emergency_contact_email_include_comms || false,
+      emergency_contact_email_include_billing: p.emergency_contact_email_include_billing || false,
+      secondary_address_line1: p.secondary_address_line1 || '',
+      secondary_address_line2: p.secondary_address_line2 || '',
+      secondary_address_suburb: p.secondary_address_suburb || '',
+      secondary_address_state: p.secondary_address_state || 'NSW',
+      secondary_address_postcode: p.secondary_address_postcode || '',
+      supervision_multiplier: parseFloat(p.supervision_multiplier ?? 1.0),
+      support_level: p.support_level || 'standard',
+      status: p.status || 'active',
+      plan_management_type: p.plan_management_type || 'agency_managed',
+      notes: p.notes || '',
+      /* ---- NEW PLAN FLAGS ---- */
+      has_behavior_support_plan: !!p.has_behavior_support_plan,
+      has_restrictive_practices: !!p.has_restrictive_practices,
+      has_mealtime_management_plan: !!p.has_mealtime_management_plan,
+      billing_codes: p.billing_codes || []
+    });
+
     setIsEditModalOpen(true);
   };
 
@@ -745,9 +764,15 @@ const Participants = () => {
 
   // Get supervision multiplier color
   const getSupervisionColor = (multiplier) => {
-    if (multiplier <= 1.0) return '#9e9e9e';
-    if (multiplier <= 1.5) return '#4caf50';
-    if (multiplier <= 2.0) return '#ff9800';
+    // <1.0 → grey
+    if (multiplier < 1.0) return '#9e9e9e';
+    // ===1.0 → green
+    if (multiplier === 1.0) return '#4caf50';
+    // >1.0 && ≤1.5 → yellow
+    if (multiplier > 1.0 && multiplier <= 1.5) return '#ffeb3b';
+    // >1.5 && <2.0 → orange
+    if (multiplier > 1.5 && multiplier < 2.0) return '#ff9800';
+    // ≥2.0 → red
     return '#e53935';
   };
 

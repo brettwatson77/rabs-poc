@@ -88,8 +88,8 @@ const DirectoryHeader = ({
                 {filters.multiplierOp !== 'between' && (
                   <input
                     type="number"
-                    min="1"
-                    max="2"
+                    min="0.5"
+                    max="2.5"
                     step="0.25"
                     value={filters.multiplierValue}
                     onChange={(e) =>
@@ -103,8 +103,8 @@ const DirectoryHeader = ({
                   <>
                     <input
                       type="number"
-                      min="1"
-                      max="2"
+                      min="0.5"
+                      max="2.5"
                       step="0.25"
                       placeholder="min"
                       value={filters.multiplierMin}
@@ -115,8 +115,8 @@ const DirectoryHeader = ({
                     <span style={{ margin: '0 4px' }}>–</span>
                     <input
                       type="number"
-                      min="1"
-                      max="2"
+                      min="0.5"
+                      max="2.5"
                       step="0.25"
                       placeholder="max"
                       value={filters.multiplierMax}
