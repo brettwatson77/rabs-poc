@@ -1,6 +1,6 @@
 import React from 'react';
-import { FiEdit2, FiTrash2, FiPhone, FiHome } from 'react-icons/fi';
-import { FaWheelchair, FaBrain } from 'react-icons/fa';
+import { FiEdit2, FiTrash2, FiPhone, FiHome, FiLock } from 'react-icons/fi';
+import { FaWheelchair, FaBrain, FaUserShield, FaUtensils } from 'react-icons/fa';
 import { BsEar } from 'react-icons/bs';
 import { FiCoffee, FiHeart, FiBell, FiEye, FiMessageCircle } from 'react-icons/fi';
 import {
@@ -33,13 +33,27 @@ const SUPPORT_FLAG_LABELS = {
   has_communication_needs: 'Communication Needs'
 };
 
+// Plan flag icon mapping
+const PLAN_FLAG_ICONS = {
+  has_behavior_support_plan: <FaUserShield />,
+  has_restrictive_practices: <FiLock />,
+  has_mealtime_management_plan: <FaUtensils />
+};
+
+// Plan flag friendly labels
+const PLAN_FLAG_LABELS = {
+  has_behavior_support_plan: 'Behavior Support Plan',
+  has_restrictive_practices: 'Restrictive Practices',
+  has_mealtime_management_plan: 'Mealtime Management Plan'
+};
+
 const ParticipantCard = ({ participant, selected, onClick, onEdit, onDelete }) => {
   // Calculate supervision multiplier color and width
   const rawMultiplier = participant.supervision_multiplier;
   let supervisionMultiplier = parseFloat(rawMultiplier);
   if (!Number.isFinite(supervisionMultiplier)) supervisionMultiplier = 1.0;
-  // Clamp between 1.0 and 2.5
-  supervisionMultiplier = Math.min(2.5, Math.max(1.0, supervisionMultiplier));
+  // Clamp between 0.5 and 2.5
+  supervisionMultiplier = Math.min(2.5, Math.max(0.5, supervisionMultiplier));
 
   const supervisionColor = getSupervisionColor(supervisionMultiplier);
   const supervisionWidth = Math.min(
@@ -63,19 +77,27 @@ const ParticipantCard = ({ participant, selected, onClick, onEdit, onDelete }) =
           <h3 className="participant-name">
             {participant.first_name} {participant.last_name}
           </h3>
+          {/* Inline Plan Flags */}
+          <div className="plan-flags-inline">
+            {['has_behavior_support_plan', 'has_restrictive_practices', 'has_mealtime_management_plan'].map(
+              (key) =>
+                participant[key] && (
+                  <span
+                    key={key}
+                    className="support-flag-icon"
+                    title={PLAN_FLAG_LABELS[key]}
+                  >
+                    {PLAN_FLAG_ICONS[key]}
+                  </span>
+                )
+            )}
+          </div>
           <div className="participant-badges">
             {participant.status && (
               <span className={`badge ${getStatusBadge(participant.status)}`}>
                 {participant.status}
               </span>
             )}
-            {/* Multiplier badge replaces legacy support level badge */}
-            <span
-              className="badge"
-              style={{ backgroundColor: supervisionColor, color: '#fff' }}
-            >
-              ×{supervisionMultiplier.toFixed(2)}
-            </span>
           </div>
         </div>
         <p className="participant-ndis">
