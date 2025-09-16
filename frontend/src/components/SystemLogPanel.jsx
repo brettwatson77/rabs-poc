@@ -241,24 +241,24 @@ const SystemLogPanel = ({ isOpen, onClose }) => {
                   <LogEntry key={log.id} log={log} />
                 ))}
               </div>
+            </div>
 
-              {/* Footer actions */}
-              <div className="system-log-footer">
-                <button
-                  className="log-export-btn"
-                  onClick={handleExport}
-                  disabled={logs.length === 0}
-                >
-                  Export
-                </button>
-                <button
-                  className="log-clear-btn"
-                  onClick={handleClear}
-                  disabled={logs.length === 0}
-                >
-                  Clear log
-                </button>
-              </div>
+            {/* Footer actions (fixed at bottom) */}
+            <div className="system-log-footer">
+              <button
+                className="btn btn-secondary"
+                onClick={handleExport}
+                disabled={logs.length === 0}
+              >
+                Export
+              </button>
+              <button
+                className="btn btn-danger"
+                onClick={handleClear}
+                disabled={logs.length === 0}
+              >
+                Clear log
+              </button>
             </div>
           </motion.aside>
         </>
