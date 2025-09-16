@@ -96,7 +96,9 @@ const MasterSchedule = () => {
   
   // Get instances for a specific day
   const getInstancesForDay = (dateStr) => {
-    return instances.filter(instance => instance.instance_date === dateStr);
+    // normalise both DB string and target day to YYYY-MM-DD to avoid TZ issues
+    const norm = (d) => new Date(d).toISOString().split('T')[0];
+    return instances.filter(instance => norm(instance.instance_date) === dateStr);
   };
   
   // Format day header
