@@ -103,7 +103,7 @@ router.post('/exception', async (req, res) => {
         dateFrom: exception_date,
         dateTo: exception_date,
         futureOnly: false
-      });
+      }, pool);
       
       await client.query('COMMIT');
       
