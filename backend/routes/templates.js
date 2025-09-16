@@ -1478,7 +1478,7 @@ router.post('/rules/:id/finalize', async (req, res) => {
     `, [id]);
     
     // Call syncRethread with the rule ID
-    const summary = await syncRethread({ ruleId: id });
+    const summary = await syncRethread({ ruleId: id }, pool);
     
     // Log rule finalized
     await logger.logEvent({

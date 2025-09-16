@@ -7,7 +7,6 @@
  */
 
 const { v4: uuidv4 } = require('uuid');
-const { pool } = require('../database');
 
 /**
  * Helper function to get tomorrow's date in YYYY-MM-DD format
@@ -81,9 +80,13 @@ function generateDateRange(startDate, endDate) {
  * @param {string} [options.dateTo] - End date in YYYY-MM-DD format (defaults to dateFrom + 14 days)
  * @param {number} [options.windowDays=14] - Number of days in the window if dateTo not provided
  * @param {boolean} [options.futureOnly=true] - Whether to clamp dateFrom to tomorrow if it's earlier
+ * @param {Pool} pool - pg Pool instance provided by the caller
  * @returns {Object} - Summary of the rethread operation
  */
-async function syncRethread(options = {}) {
+async function syncRethread(options = {}, pool) {
+  if (!pool) {
+    throw new Error('syncRethread requires a database pool');
+  }
   const {
     ruleId,
     windowDays = 14,
