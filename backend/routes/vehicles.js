@@ -20,12 +20,57 @@ const pool = new Pool({
 });
 
 /**
+ * Helper function to ensure vehicle base address columns exist
+ * Adds columns if they don't exist
+ */
+async function ensureVehicleExtraColumns() {
+  try {
+    await pool.query(`
+      DO $$ 
+      BEGIN 
+        -- Add base address columns if they don't exist
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'vehicles' AND column_name = 'base_address') THEN
+          ALTER TABLE vehicles ADD COLUMN base_address text;
+        END IF;
+        
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'vehicles' AND column_name = 'base_suburb') THEN
+          ALTER TABLE vehicles ADD COLUMN base_suburb varchar(100);
+        END IF;
+        
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'vehicles' AND column_name = 'base_state') THEN
+          ALTER TABLE vehicles ADD COLUMN base_state varchar(50);
+        END IF;
+        
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'vehicles' AND column_name = 'base_postcode') THEN
+          ALTER TABLE vehicles ADD COLUMN base_postcode varchar(10);
+        END IF;
+        
+        -- Add capacity split columns if they don't exist
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'vehicles' AND column_name = 'capacity_participants') THEN
+          ALTER TABLE vehicles ADD COLUMN capacity_participants integer;
+        END IF;
+        
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'vehicles' AND column_name = 'capacity_staff') THEN
+          ALTER TABLE vehicles ADD COLUMN capacity_staff integer;
+        END IF;
+      END $$;
+    `);
+    console.log('Ensured vehicle extra columns exist');
+  } catch (error) {
+    console.error('Error ensuring vehicle extra columns:', error);
+  }
+}
+
+/**
  * @route   GET /api/v1/vehicles
  * @desc    Get all vehicles
  * @access  Public
  */
 router.get('/', async (req, res, next) => {
   try {
+    // Ensure columns exist before querying
+    await ensureVehicleExtraColumns();
+    
     // Restore full field set expected by Filing Cabinet UI
     const result = await pool.query(
       `SELECT *
@@ -69,6 +114,11 @@ const ALLOWED_KEYS = [
   // New capacity split fields (participants vs staff)
   'capacity_participants',
   'capacity_staff',
+  // Base address fields
+  'base_address',
+  'base_suburb',
+  'base_state',
+  'base_postcode',
 ];
 
 /**
@@ -107,6 +157,9 @@ function sanitizeVehicleBody(body = {}) {
  */
 router.post('/', async (req, res, next) => {
   try {
+    // Ensure columns exist before inserting
+    await ensureVehicleExtraColumns();
+    
     const data = sanitizeVehicleBody(req.body);
 
     // Generate default name if not supplied
@@ -147,6 +200,9 @@ router.post('/', async (req, res, next) => {
  */
 async function updateVehicle(req, res, next) {
   try {
+    // Ensure columns exist before updating
+    await ensureVehicleExtraColumns();
+    
     const { id } = req.params;
     const data = sanitizeVehicleBody(req.body);
     if (Object.keys(data).length === 0) {
@@ -447,6 +503,9 @@ router.delete('/blackouts/:blackoutId', async (req, res, next) => {
  */
 router.get('/:id', async (req, res, next) => {
   try {
+    // Ensure columns exist before querying
+    await ensureVehicleExtraColumns();
+    
     const { id } = req.params;
     const result = await pool.query('SELECT * FROM vehicles WHERE id = $1', [id]);
     

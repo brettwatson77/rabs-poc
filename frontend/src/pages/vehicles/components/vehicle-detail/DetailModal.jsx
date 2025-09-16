@@ -32,7 +32,8 @@ const DetailModal = ({
   onPrevWeek,
   onNextWeek,
   onAddMaintenance,
-  onAddBooking
+  onAddBooking,
+  onEdit // optional edit handler
 }) => {
   if (!vehicle) return null;
 
@@ -42,30 +43,30 @@ const DetailModal = ({
         <div className="modal-header">
           <div className="vehicle-registration-display">{vehicle.registration}</div>
           {/* Inline detail tabs next to rego plate */}
-          <div className="vehicle-modal-tabs">
+          <div className="page-tabs vehicle-modal-tabs">
             <button
-              className={`tab-btn ${selectedTab === 'overview' ? 'active' : ''}`}
+              className={`tab-button ${selectedTab === 'overview' ? 'active' : ''}`}
               onClick={() => setSelectedTab('overview')}
             >
               <FiTruck />
               <span>Overview</span>
             </button>
             <button
-              className={`tab-btn ${selectedTab === 'maintenance' ? 'active' : ''}`}
+              className={`tab-button ${selectedTab === 'maintenance' ? 'active' : ''}`}
               onClick={() => setSelectedTab('maintenance')}
             >
               <FiTool />
               <span>Maintenance</span>
             </button>
             <button
-              className={`tab-btn ${selectedTab === 'bookings' ? 'active' : ''}`}
+              className={`tab-button ${selectedTab === 'bookings' ? 'active' : ''}`}
               onClick={() => setSelectedTab('bookings')}
             >
               <FiCalendar />
               <span>Bookings</span>
             </button>
             <button
-              className={`tab-btn ${selectedTab === 'costs' ? 'active' : ''}`}
+              className={`tab-button ${selectedTab === 'costs' ? 'active' : ''}`}
               onClick={() => setSelectedTab('costs')}
             >
               <FiDollarSign />
@@ -147,6 +148,14 @@ const DetailModal = ({
 
         {/* Modal footer actions */}
         <div className="modal-footer-actions">
+          {onEdit && (
+            <button
+              className="btn btn-primary"
+              onClick={() => onEdit(vehicle)}
+            >
+              Edit Vehicle
+            </button>
+          )}
           <button
             className="btn btn-secondary"
             onClick={onClose}

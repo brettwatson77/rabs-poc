@@ -260,15 +260,15 @@ const VehiclesFull = () => {
       </header>
 
       {/* Tab Navigation */}
-      <div className="tab-bar">
+      <div className="page-tabs">
         <button
-          className={`tab-btn ${activeTab === 'directory' ? 'active' : ''}`}
+          className={`tab-button ${activeTab === 'directory' ? 'active' : ''}`}
           onClick={() => setActiveTab('directory')}
         >
           Directory
         </button>
         <button
-          className={`tab-btn ${activeTab === 'maintenance' ? 'active' : ''}`}
+          className={`tab-button ${activeTab === 'maintenance' ? 'active' : ''}`}
           onClick={() => setActiveTab('maintenance')}
         >
           Maintenance
