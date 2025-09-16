@@ -427,7 +427,15 @@ const Finance = () => {
       },
       onError: (error) => {
         console.error('Error deleting rate:', error);
-        toast.error('Failed to delete rate');
+        const status = error?.response?.status;
+        const msg = error?.response?.data?.message;
+        if (status === 409) {
+          toast.error(msg || 'Rate is in use and cannot be deleted. Consider deactivating it instead.');
+        } else if (status === 404) {
+          toast.info('Rate not found');
+        } else {
+          toast.error('Failed to delete rate');
+        }
       }
     }
   );

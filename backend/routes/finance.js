@@ -919,6 +919,40 @@ router.delete('/rates/:id', async (req, res) => {
       return res.status(400).json({ success: false, error: 'id required' });
     }
 
+    /* --------------------------------------------------------------
+     * Guard: block deletion when rate is referenced by billing lines
+     * ------------------------------------------------------------ */
+    const ref = await pool.query(
+      `SELECT COUNT(*)::int AS cnt
+         FROM rules_program_participant_billing
+        WHERE billing_code_id = $1`,
+      [id]
+    );
+    const refCnt = ref.rows[0]?.cnt || 0;
+    if (refCnt > 0) {
+      // Log blocked attempt
+      try {
+        await pool.query(
+          `INSERT INTO system_logs (id,severity,category,message,details)
+           VALUES ($1,'WARN','FINANCIAL',$2,$3)`,
+          [
+            uuid.v4(),
+            'Rate deletion blocked: in use',
+            { rate_id: id, reference_count: refCnt }
+          ]
+        );
+      } catch (logErr) {
+        console.error('[FINANCE] Failed to log blocked deletion:', logErr.message);
+      }
+
+      return res.status(409).json({
+        success: false,
+        error: 'rate_in_use',
+        message: `Rate is in use by ${refCnt} billing line(s) and cannot be deleted. Consider deactivating it instead.`,
+        reference_count: refCnt
+      });
+    }
+
     const { rows } = await pool.query(
       'DELETE FROM billing_rates WHERE id = $1 RETURNING *',
       [id]
@@ -941,6 +975,36 @@ router.delete('/rates/:id', async (req, res) => {
 
     return res.json({ success: true, data: rows[0] });
   } catch (err) {
+    // FK violation fallback – same behaviour as pre-check (defensive)
+    if (err.code === '23503') {
+      try {
+        const ref = await req.app.locals.pool.query(
+          `SELECT COUNT(*)::int AS cnt
+             FROM rules_program_participant_billing
+            WHERE billing_code_id = $1`,
+          [req.params.id]
+        );
+        const cnt = ref.rows[0]?.cnt || 0;
+        await req.app.locals.pool.query(
+          `INSERT INTO system_logs (id,severity,category,message,details)
+           VALUES ($1,'WARN','FINANCIAL',$2,$3)`,
+          [
+            uuid.v4(),
+            'Rate deletion blocked (FK): in use',
+            { rate_id: req.params.id, reference_count: cnt }
+          ]
+        );
+        return res.status(409).json({
+          success: false,
+          error: 'rate_in_use',
+          message: `Rate is in use by ${cnt} billing line(s) and cannot be deleted. Consider deactivating it instead.`,
+          reference_count: cnt
+        });
+      } catch (logErr) {
+        console.error('[FINANCE] (FK) additional logging failed:', logErr.message);
+      }
+    }
+
     console.error('[FINANCE] Error deleting billing rate:', err);
     res.status(500).json({
       success: false,
