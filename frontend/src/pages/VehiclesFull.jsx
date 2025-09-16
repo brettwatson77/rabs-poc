@@ -20,6 +20,8 @@ import VehiclesGrid from './vehicles/components/VehiclesGrid';
 import DetailModal from './vehicles/components/vehicle-detail/DetailModal';
 import MaintenanceDashboard from './vehicles/components/MaintenanceDashboard';
 import DocumentExpiryTable from './vehicles/components/DocumentExpiryTable';
+import VehicleCreateModal from './vehicles/components/modals/VehicleCreateModal';
+import VehicleEditModal from './vehicles/components/modals/VehicleEditModal';
 
 // Import hook
 import useVehiclesData from './vehicles/hooks/useVehiclesData';
@@ -54,6 +56,29 @@ const VehiclesFull = () => {
     odometer: 0
   });
 
+  // Create/Edit modal states
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    registration: '',
+    make: '',
+    model: '',
+    year: '',
+    fuel_type: '',
+    status: 'active',
+    capacity: '',
+    wheelchair_capacity: '',
+    wheelchair_accessible: false,
+    base_address: '',
+    base_suburb: '',
+    base_state: 'NSW',
+    base_postcode: '',
+    notes: ''
+  });
+  const [editForm, setEditForm] = useState({});
+  const [submittingCreate, setSubmittingCreate] = useState(false);
+  const [submittingEdit, setSubmittingEdit] = useState(false);
+
   // Use the custom hook to fetch data
   const {
     vehiclesData,
@@ -64,6 +89,48 @@ const VehiclesFull = () => {
     bookingsData,
     bookingsLoading
   } = useVehiclesData(currentWeekStart);
+
+  // Create vehicle mutation
+  const createVehicleMutation = useMutation(
+    async (vehicleData) => {
+      const response = await api.post('/vehicles', vehicleData);
+      return response.data;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['vehicles']);
+        setIsCreateOpen(false);
+        setSelectedVehicle(null);
+        setSubmittingCreate(false);
+      },
+      onError: (error) => {
+        console.error('Error creating vehicle:', error);
+        setSubmittingCreate(false);
+      }
+    }
+  );
+
+  // Edit vehicle mutation
+  const editVehicleMutation = useMutation(
+    async ({ id, data }) => {
+      const response = await api.patch(`/vehicles/${id}`, data);
+      return response.data;
+    },
+    {
+      onSuccess: (data) => {
+        queryClient.invalidateQueries(['vehicles']);
+        setIsEditOpen(false);
+        if (data?.data) {
+          setSelectedVehicle(data.data);
+        }
+        setSubmittingEdit(false);
+      },
+      onError: (error) => {
+        console.error('Error updating vehicle:', error);
+        setSubmittingEdit(false);
+      }
+    }
+  );
 
   // Update odometer mutation
   const updateOdometerMutation = useMutation(
@@ -77,6 +144,66 @@ const VehiclesFull = () => {
       }
     }
   );
+
+  // Create/Edit handlers
+  const openCreate = () => {
+    setCreateForm({
+      registration: '',
+      make: '',
+      model: '',
+      year: '',
+      fuel_type: '',
+      status: 'active',
+      capacity: '',
+      wheelchair_capacity: '',
+      wheelchair_accessible: false,
+      base_address: '',
+      base_suburb: '',
+      base_state: 'NSW',
+      base_postcode: '',
+      notes: ''
+    });
+    setIsCreateOpen(true);
+  };
+
+  const submitCreate = (e) => {
+    e.preventDefault();
+    setSubmittingCreate(true);
+    createVehicleMutation.mutate(createForm);
+  };
+
+  const openEdit = () => {
+    if (!selectedVehicle) return;
+    
+    setEditForm({
+      registration: selectedVehicle.registration || '',
+      make: selectedVehicle.make || '',
+      model: selectedVehicle.model || '',
+      year: selectedVehicle.year || '',
+      fuel_type: selectedVehicle.fuel_type || '',
+      status: selectedVehicle.status || 'active',
+      capacity: selectedVehicle.capacity || '',
+      wheelchair_capacity: selectedVehicle.wheelchair_capacity || '',
+      wheelchair_accessible: selectedVehicle.wheelchair_accessible || false,
+      base_address: selectedVehicle.base_address || '',
+      base_suburb: selectedVehicle.base_suburb || '',
+      base_state: selectedVehicle.base_state || 'NSW',
+      base_postcode: selectedVehicle.base_postcode || '',
+      notes: selectedVehicle.notes || ''
+    });
+    setIsEditOpen(true);
+  };
+
+  const submitEdit = (e) => {
+    e.preventDefault();
+    if (!selectedVehicle) return;
+    
+    setSubmittingEdit(true);
+    editVehicleMutation.mutate({
+      id: selectedVehicle.id,
+      data: editForm
+    });
+  };
 
   // Handle updating odometer
   const handleUpdateOdometer = (vehicleId, odometer) => {
@@ -290,7 +417,7 @@ const VehiclesFull = () => {
             >
               <button 
                 className="create-btn glass-button"
-                onClick={() => {/* No-op - creation flow omitted */}}
+                onClick={openCreate}
               >
                 <FiPlus />
                 <span>New Vehicle</span>
@@ -413,8 +540,29 @@ const VehiclesFull = () => {
           onNextWeek={handleNextWeek}
           onAddMaintenance={() => {/* No-op - maintenance flow omitted */}}
           onAddBooking={() => {/* No-op - booking flow omitted */}}
+          onEdit={openEdit}
         />
       )}
+
+      {/* Vehicle Create Modal */}
+      <VehicleCreateModal
+        isOpen={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        vehicleForm={createForm}
+        setVehicleForm={setCreateForm}
+        onSubmit={submitCreate}
+        isSubmitting={submittingCreate}
+      />
+
+      {/* Vehicle Edit Modal */}
+      <VehicleEditModal
+        isOpen={isEditOpen}
+        onClose={() => setIsEditOpen(false)}
+        vehicleForm={editForm}
+        setVehicleForm={setEditForm}
+        onSubmit={submitEdit}
+        isSubmitting={submittingEdit}
+      />
     </div>
   );
 };
