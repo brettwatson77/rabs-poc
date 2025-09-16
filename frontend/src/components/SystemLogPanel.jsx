@@ -147,6 +147,49 @@ const SystemLogPanel = ({ isOpen, onClose }) => {
     );
   };
 
+  /* ---------------------------------------------------------------------
+   * Footer Actions
+   * ------------------------------------------------------------------*/
+
+  // Export current logs to a JSON file
+  const handleExport = () => {
+    if (!logs || logs.length === 0) return;
+    try {
+      const ts = new Date()
+        .toISOString()
+        .replace(/[:.]/g, '-')
+        .split('T')
+        .join('_')
+        .replace('Z', '');
+      const filename = `system_logs_${ts}.json`;
+      const json = JSON.stringify(logs, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Export failed:', err);
+      setError('Failed to export logs.');
+    }
+  };
+
+  // Clear all logs via backend and local state
+  const handleClear = async () => {
+    if (!window.confirm('Clear all system log entries?')) return;
+    try {
+      await api.delete('/system/logs', { params: { confirm: true } });
+      setLogs([]);
+    } catch (err) {
+      console.error('Failed to clear logs:', err);
+      setError('Failed to clear logs. Please try again later.');
+    }
+  };
+
   // Render via portal to avoid stacking/overflow issues
   if (!isOpen) return null;
 
@@ -197,6 +240,24 @@ const SystemLogPanel = ({ isOpen, onClose }) => {
                 {logs.map(log => (
                   <LogEntry key={log.id} log={log} />
                 ))}
+              </div>
+
+              {/* Footer actions */}
+              <div className="system-log-footer">
+                <button
+                  className="log-export-btn"
+                  onClick={handleExport}
+                  disabled={logs.length === 0}
+                >
+                  Export
+                </button>
+                <button
+                  className="log-clear-btn"
+                  onClick={handleClear}
+                  disabled={logs.length === 0}
+                >
+                  Clear log
+                </button>
               </div>
             </div>
           </motion.aside>
