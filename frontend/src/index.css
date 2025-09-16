@@ -275,6 +275,27 @@ a:hover {
   flex: 1;
 }
 
+/* footer sits below the scroll area (flex child) */
+.system-log-footer {
+  padding: 10px 14px;
+  border-top: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  /* subtle elevation so it stands out above log list */
+  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.25);
+}
+
+/* ensure footer buttons inherit common btn styling but keep fixed height */
+.system-log-footer .btn {
+  height: 36px;
+  padding: 0 18px;
+}
+
 .system-log-pre {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: 12.5px;
