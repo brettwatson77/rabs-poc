@@ -111,9 +111,6 @@ logger.init({ pool });
       entity_id uuid NULL,
       actor text NULL
     );
-    
-    -- Create index on timestamp for efficient querying
-    CREATE INDEX IF NOT EXISTS system_logs_ts_idx ON system_logs (ts DESC);
   `;
 
   const billingTableDDL = `
@@ -130,6 +127,13 @@ logger.init({ pool });
   try {
     await pool.query(ddlBlock);
     await pool.query(systemLogsDDL);
+    // Ensure ts column exists (older DBs may be missing it) then add index
+    await pool.query(
+      'ALTER TABLE system_logs ADD COLUMN IF NOT EXISTS ts timestamp DEFAULT now();'
+    );
+    await pool.query(
+      'CREATE INDEX IF NOT EXISTS system_logs_ts_idx ON system_logs (ts DESC);'
+    );
     await pool.query(billingTableDDL);
     console.log('✅ System logs table verified/created');
     
