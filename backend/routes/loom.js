@@ -96,16 +96,20 @@ router.get('/instances', async (req, res) => {
     // Query loom_instances table for instances within date range
     const query = `
       SELECT 
-        id, 
-        source_rule_id, 
-        instance_date, 
-        start_time, 
-        end_time, 
-        venue_id,
+        li.id,
+        li.source_rule_id,
+        li.instance_date,
+        li.start_time,
+        li.end_time,
+        li.venue_id,
+        rp.name AS program_name,
+        v.name  AS venue_name,
         'planned' AS status
-      FROM loom_instances
-      WHERE instance_date BETWEEN $1 AND $2
-      ORDER BY instance_date ASC, start_time ASC
+      FROM loom_instances li
+      JOIN rules_programs rp ON li.source_rule_id = rp.id
+      LEFT JOIN venues v       ON rp.venue_id = v.id
+      WHERE li.instance_date BETWEEN $1 AND $2
+      ORDER BY li.instance_date ASC, li.start_time ASC
     `;
     
     const result = await pool.query(query, [startDate, endDate]);
