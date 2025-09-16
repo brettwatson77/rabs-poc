@@ -171,9 +171,17 @@ const ProgramTemplateWizard = () => {
   };
 
   const updateAddressPref = async (rppId, field, value) => {
+    // Translate backend field name → local state key
+    const localKey =
+      field === 'pickup_address_pref'
+        ? 'pickup'
+        : field === 'dropoff_address_pref'
+        ? 'dropoff'
+        : field;
+
     setAddressPrefs((prev) => ({
       ...prev,
-      [rppId]: { ...prev[rppId], [field]: value },
+      [rppId]: { ...prev[rppId], [localKey]: value },
     }));
     if (!ruleId) return;
     try {
