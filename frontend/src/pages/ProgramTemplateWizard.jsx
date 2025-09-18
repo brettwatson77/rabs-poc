@@ -1145,6 +1145,35 @@ const ProgramTemplateWizard = () => {
     
     try {
       setSaving(true);
+      /* --------------------------------------------------------------
+         1) Force-persist critical rule fields before finalising
+         -------------------------------------------------------------- */
+      const body = {
+        name: ruleName,
+        description: ruleDescription,
+        anchor_date: anchorDate,
+        recurrence_pattern: recurrencePattern,
+        day_of_week: dayOfWeek,
+        venue_id: venueId,
+      };
+      // Include aggregated start/end if slots exist
+      const agg = calculateShiftLength();
+      if (agg) {
+        body.start_time = agg.start;
+        body.end_time = agg.end;
+      }
+      try {
+        await api.patch(`/templates/rules/${ruleId}`, body);
+      } catch (patchErr) {
+        console.error('Pre-finalize save failed:', patchErr);
+        toast.error('Failed to save latest changes before finalising');
+        setSaving(false);
+        return;
+      }
+
+      /* --------------------------------------------------------------
+         2) Proceed to finalise
+         -------------------------------------------------------------- */
       const response = await api.post(`/templates/rules/${ruleId}/finalize`);
       
       if (response.data.success) {
