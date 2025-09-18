@@ -66,6 +66,11 @@ const VenueForm = ({
       // Merge any provided values last
       ...(value.features || {})
     },
+    // Transport flag (default false)
+    include_in_transport:
+      value.include_in_transport !== undefined
+        ? value.include_in_transport
+        : false,
     ...value
   };
 
@@ -316,6 +321,27 @@ const VenueForm = ({
             <span className="checkbox-text">
               {venue.is_active ? <FiToggleRight className="toggle-icon active" /> : <FiToggleLeft className="toggle-icon" />}
               Active
+            </span>
+          </label>
+        </div>
+
+        {/* Include in Transport */}
+        <div className="form-group checkbox-group">
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={!!venue.include_in_transport}
+              onChange={(e) =>
+                handleChange('include_in_transport', e.target.checked)
+              }
+            />
+            <span className="checkbox-text">
+              {venue.include_in_transport ? (
+                <FiToggleRight className="toggle-icon active" />
+              ) : (
+                <FiToggleLeft className="toggle-icon" />
+              )}
+              Include in Transport
             </span>
           </label>
         </div>
