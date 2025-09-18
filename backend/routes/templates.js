@@ -61,7 +61,8 @@ async function loadSettings(pool) {
   // the templates router to calculate staffing / vehicle requirements.
   // -------------------------------------------------------------------
   const DEFAULTS = {
-    loom_window_days: 14,
+    loom_window_fortnights: 4,
+    loom_window_days: 56, // 4 fortnights * 14 days
     staff_threshold_per_wpu: 5,
     vehicle_trigger_every_n_participants: 10,
     default_bus_capacity: 10, // kept for legacy fall-back paths
@@ -82,6 +83,15 @@ async function loadSettings(pool) {
       const num = Number(r.value);
       if (Number.isFinite(num) && num > 0) merged[r.key] = num;
     });
+
+    // Apply precedence and derivation rules
+    if (Number.isFinite(merged.loom_window_fortnights) && merged.loom_window_fortnights > 0) {
+      // Fortnights takes precedence - derive days
+      merged.loom_window_days = merged.loom_window_fortnights * 14;
+    } else if (Number.isFinite(merged.loom_window_days) && merged.loom_window_days > 0) {
+      // Only days is valid - derive fortnights
+      merged.loom_window_fortnights = Math.max(1, Math.round(merged.loom_window_days / 14));
+    }
 
     return merged;
   } catch (err) {
@@ -187,8 +197,11 @@ router.patch('/rules/:id', async (req, res) => {
     'description',
     'anchor_date',
     'recurrence_pattern',
+    'program_type',
     'day_of_week',
     'week_in_cycle',
+    'start_time',
+    'end_time',
     'venue_id',
     'auto_assign_staff',
     'auto_assign_vehicles',
@@ -1482,20 +1495,15 @@ router.post('/rules/:id/finalize', async (req, res) => {
       SET active = true
       WHERE id = $1
     `, [id]);
-    
-    // Call syncRethread with the rule ID
-    const summary = await syncRethread({ ruleId: id }, pool);
 
-    /* --------------------------------------------------------------
-     * Billing generation—produce payment_diamonds for the same window
-     * ------------------------------------------------------------ */
+    /* ------------------------------------------------------------------
+     * Determine loom window (org setting) and date range
+     * ------------------------------------------------------------------*/
     const settings = await loadSettings(pool);
-    const windowDays =
-      Number(settings.loom_window_days) && settings.loom_window_days > 0
-        ? Number(settings.loom_window_days)
-        : 14;
-
-    // Helper to format date → YYYY-MM-DD
+    const windowDays = settings.loom_window_fortnights ? settings.loom_window_fortnights * 14 : 
+                      settings.loom_window_days > 0 ? settings.loom_window_days : 56;
+    
+    // Helper YYYY-MM-DD
     const fmt = (d) => d.toISOString().split('T')[0];
     const tomorrow = (() => {
       const t = new Date();
@@ -1507,6 +1515,15 @@ router.post('/rules/:id/finalize', async (req, res) => {
     end.setDate(end.getDate() + windowDays - 1);
     const dateTo = fmt(end);
 
+    // Call syncRethread using the same window
+    const summary = await syncRethread(
+      { ruleId: id, windowDays, dateFrom, dateTo },
+      pool
+    );
+
+    /* ------------------------------------------------------------------
+     * Billing generation—produce payment_diamonds for identical window
+     * ------------------------------------------------------------------*/
     const billing = await generateBilling(
       { ruleId: id, dateFrom, dateTo },
       pool
@@ -1522,9 +1539,13 @@ router.post('/rules/:id/finalize', async (req, res) => {
       details: { summary, billing }
     });
     
+    /* ------------------------------------------------------------------
+     * Return a flat summary object so the frontend can easily display
+     * the numbers without having to drill into .summary.*
+     * -----------------------------------------------------------------*/
     res.json({
       success: true,
-      data: { summary, billing }
+      data: { ...summary, billing }
     });
   } catch (err) {
     console.error('Error finalizing rule:', err);

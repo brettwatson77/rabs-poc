@@ -8,14 +8,55 @@
 
 const { v4: uuidv4 } = require('uuid');
 
+/* ------------------------------------------------------------------------ */
+/*  Time-zone helpers – Australia/Sydney                                    */
+/* ------------------------------------------------------------------------ */
+const TZ = 'Australia/Sydney';
+
+// Format Date → 'YYYY-MM-DD' in target TZ using ISO-like en-CA
+function formatDateInTZ(date) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
+}
+
+// Parse 'YYYY-MM-DD' → { y,m,d }
+function parseYmd(ymd) {
+  const [y, m, d] = ymd.split('-').map((n) => parseInt(n, 10));
+  return { y, m, d };
+}
+
+// Add days to a ymd string, return ymd string in TZ
+function addDaysYmdTZ(ymd, days) {
+  const { y, m, d } = parseYmd(ymd);
+  // Use Date.UTC noon to avoid DST edge
+  const dt = new Date(Date.UTC(y, m - 1, d, 12));
+  dt.setUTCDate(dt.getUTCDate() + days);
+  return formatDateInTZ(dt);
+}
+
+// Day of week in TZ (1=Mon … 7=Sun)
+const DOW_MAP = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 };
+function dayOfWeekInTZ(ymd) {
+  const { y, m, d } = parseYmd(ymd);
+  const dt = new Date(Date.UTC(y, m - 1, d, 12));
+  const short = new Intl.DateTimeFormat('en-US', {
+    timeZone: TZ,
+    weekday: 'short',
+  }).format(dt);
+  return DOW_MAP[short];
+}
+
 /**
  * Helper function to get tomorrow's date in YYYY-MM-DD format
  * @returns {string} Tomorrow's date in YYYY-MM-DD format
  */
 function getTomorrow() {
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  return tomorrow.toISOString().split('T')[0];
+  const todayYmd = formatDateInTZ(new Date());
+  return addDaysYmdTZ(todayYmd, 1);
 }
 
 /**
@@ -24,33 +65,73 @@ function getTomorrow() {
  * @param {string} dateStr - The date string in YYYY-MM-DD format
  * @returns {boolean} - Whether the rule is active on the given date
  */
+/**
+ * Enhanced recurrence logic honouring anchor_date & recurrence_pattern
+ * Accepted patterns: one_off | weekly | fortnightly | monthly | null(weekly)
+ */
 function isRuleActiveOnDate(rule, dateStr) {
   if (!rule || !dateStr) return false;
-  
+
   const date = new Date(dateStr);
   if (isNaN(date.getTime())) return false;
-  
-  // Get day of week (1-7, where 1 is Monday)
-  const dayOfWeek = date.getDay() === 0 ? 7 : date.getDay(); // Convert Sunday (0) to 7
-  
-  // Check if the day of week matches
-  if (rule.day_of_week !== dayOfWeek) return false;
-  
-  // If week_in_cycle is defined, check week parity
-  if (rule.week_in_cycle !== null && rule.week_in_cycle !== undefined) {
-    // Get ISO week number
-    const startOfYear = new Date(date.getFullYear(), 0, 1);
-    const days = Math.floor((date - startOfYear) / (24 * 60 * 60 * 1000));
-    const weekNumber = Math.ceil((days + startOfYear.getDay()) / 7);
-    
-    // Check if week parity matches (week 1 = odd weeks, week 2 = even weeks)
-    const isOddWeek = weekNumber % 2 === 1;
-    return (rule.week_in_cycle === 1 && isOddWeek) || 
-           (rule.week_in_cycle === 2 && !isOddWeek);
+
+  // Derive weekday in Australia/Sydney TZ (1-Mon … 7-Sun)
+  const dayOfWeek = dayOfWeekInTZ(dateStr);
+  const anchorDate =
+    rule.anchor_date && !isNaN(new Date(rule.anchor_date).getTime())
+      ? new Date(rule.anchor_date)
+      : null;
+  const pattern = (rule.recurrence_pattern || 'weekly').toLowerCase();
+
+  switch (pattern) {
+    /* -------------------------------------------------- */
+    case 'one_off':
+      return anchorDate
+        ? dateStr === rule.anchor_date
+        : false;
+
+    /* -------------------------------------------------- */
+    case 'weekly':
+      return rule.day_of_week === dayOfWeek;
+
+    /* -------------------------------------------------- */
+    case 'fortnightly': {
+      if (rule.day_of_week !== dayOfWeek) return false;
+
+      // Prefer anchor_date parity; fall back to week_in_cycle
+      if (anchorDate) {
+        const diffDays = Math.floor(
+          (date.getTime() - anchorDate.getTime()) / (24 * 60 * 60 * 1000)
+        );
+        return diffDays % 14 === 0;
+      }
+
+      if (rule.week_in_cycle !== null && rule.week_in_cycle !== undefined) {
+        const startOfYear = new Date(date.getFullYear(), 0, 1);
+        const days = Math.floor((date - startOfYear) / 86400000);
+        const weekNumber = Math.ceil((days + startOfYear.getDay()) / 7);
+        const isOddWeek = weekNumber % 2 === 1;
+        return (
+          (rule.week_in_cycle === 1 && isOddWeek) ||
+          (rule.week_in_cycle === 2 && !isOddWeek)
+        );
+      }
+
+      // If no anchor or week_in_cycle, treat as weekly match
+      return true;
+    }
+
+    /* -------------------------------------------------- */
+    case 'monthly': {
+      if (!anchorDate) return false;
+      return date.getDate() === anchorDate.getDate();
+    }
+
+    /* -------------------------------------------------- */
+    default:
+      // Fallback to weekly behaviour
+      return rule.day_of_week === dayOfWeek;
   }
-  
-  // If week_in_cycle is not defined, treat as weekly
-  return true;
 }
 
 /**
@@ -61,14 +142,11 @@ function isRuleActiveOnDate(rule, dateStr) {
  */
 function generateDateRange(startDate, endDate) {
   const dates = [];
-  const currentDate = new Date(startDate);
-  const lastDate = new Date(endDate);
-  
-  while (currentDate <= lastDate) {
-    dates.push(currentDate.toISOString().split('T')[0]);
-    currentDate.setDate(currentDate.getDate() + 1);
+  let currentYmd = startDate;
+  while (currentYmd <= endDate) {
+    dates.push(currentYmd);
+    currentYmd = addDaysYmdTZ(currentYmd, 1);
   }
-  
   return dates;
 }
 
@@ -103,11 +181,7 @@ async function syncRethread(options = {}, pool) {
   }
   
   // Calculate dateTo if not provided
-  const dateTo = options.dateTo || (() => {
-    const endDate = new Date(dateFrom);
-    endDate.setDate(endDate.getDate() + windowDays - 1);
-    return endDate.toISOString().split('T')[0];
-  })();
+  const dateTo = options.dateTo || addDaysYmdTZ(dateFrom, windowDays - 1);
   
   // Generate the date range
   const dateRange = generateDateRange(dateFrom, dateTo);
@@ -135,11 +209,12 @@ async function syncRethread(options = {}, pool) {
             SELECT * FROM rules_programs
             WHERE id = $1 AND active = true
           `, [ruleId]);
-          
-          rules = ruleResult.rows;
+          // Filter that single rule by recurrence/anchor logic for this date
+          const single = ruleResult.rows.length ? ruleResult.rows[0] : null;
+          rules = single && isRuleActiveOnDate(single, date) ? [single] : [];
         } else {
           // Otherwise, get all active rules for this day of week
-          const dayOfWeek = new Date(date).getDay() === 0 ? 7 : new Date(date).getDay();
+          const dayOfWeek = dayOfWeekInTZ(date);
           const rulesResult = await client.query(`
             SELECT * FROM rules_programs
             WHERE active = true AND day_of_week = $1

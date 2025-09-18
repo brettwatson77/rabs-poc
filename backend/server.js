@@ -126,6 +126,42 @@ logger.init({ pool });
 
   try {
     await pool.query(ddlBlock);
+    /* ------------------------------------------------------------------
+     * Program Type column and constraint for Program Template Wizard v2.2
+     * ------------------------------------------------------------------*/
+    const programTypeDDL = `
+      DO $$ BEGIN
+        -- Add program_type column if it does not exist
+        IF NOT EXISTS (
+          SELECT 1
+            FROM information_schema.columns
+           WHERE table_name = 'rules_programs'
+             AND column_name = 'program_type'
+        ) THEN
+          ALTER TABLE rules_programs
+            ADD COLUMN program_type text DEFAULT 'standard';
+        END IF;
+
+        -- Drop any existing check constraint so we can recreate with correct set
+        IF EXISTS (
+          SELECT 1
+            FROM pg_constraint c
+            JOIN pg_class t ON t.oid = c.conrelid
+           WHERE t.relname = 'rules_programs'
+             AND c.conname = 'rules_programs_program_type_check'
+        ) THEN
+          ALTER TABLE rules_programs
+            DROP CONSTRAINT rules_programs_program_type_check;
+        END IF;
+
+        -- Re-add CHECK constraint with the allowed values
+        ALTER TABLE rules_programs
+          ADD CONSTRAINT rules_programs_program_type_check
+          CHECK (program_type IN ('standard','program','user_select_program'));
+      END $$;
+    `;
+
+    await pool.query(programTypeDDL);
     await pool.query(systemLogsDDL);
     // Ensure ts column exists (older DBs may be missing it) then add index
     await pool.query(

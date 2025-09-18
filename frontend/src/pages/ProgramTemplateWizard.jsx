@@ -39,6 +39,8 @@ const ProgramTemplateWizard = () => {
   );
   const [recurrencePattern, setRecurrencePattern] = useState('fortnightly');
   const [venueId, setVenueId] = useState('');
+  // NEW: program type (standard | program | user_select_program)
+  const [programType, setProgramType] = useState('standard');
   
   // State for UI
   const [loading, setLoading] = useState(true);
@@ -66,6 +68,25 @@ const ProgramTemplateWizard = () => {
   // Helper to update last updated timestamp
   const updateLastUpdated = () => setLastUpdated(new Date());
   
+  /* ------------------------------------------------------------------
+     Debounced rule patch helper – prevents excessive network chatter
+     ------------------------------------------------------------------ */
+  const patchRule = (() => {
+    let t;
+    return (id, body = {}) => {
+      if (!id || !body || Object.keys(body).length === 0) return;
+      clearTimeout(t);
+      t = setTimeout(async () => {
+        try {
+          await api.patch(`/templates/rules/${id}`, body);
+        } catch (e) {
+          console.error('Rule patch failed', body, e);
+          toast.error('Failed to save changes');
+        }
+      }, 300);
+    };
+  })();
+
   // Toggle participant open state
   const toggleParticipantOpen = (id) => setOpenParticipants(prev => ({...prev, [id]: !prev[id]}));
 
@@ -234,6 +255,72 @@ const ProgramTemplateWizard = () => {
     }
   }, [slots]);
   
+  /* ------------------------------------------------------------------
+     Persist program_type whenever it changes (after draft created)
+     ------------------------------------------------------------------ */
+  useEffect(() => {
+    if (!ruleId) return;
+    (async () => {
+      try {
+        await api.patch(`/templates/rules/${ruleId}`, {
+          program_type: programType,
+        });
+      } catch (err) {
+        console.error('Error saving program type:', err);
+        toast.error('Failed to save program type');
+      }
+    })();
+  }, [programType, ruleId]);
+
+  /* ------------------------------------------------------------------
+     Persist core rule fields whenever they change (debounced via patchRule)
+     ------------------------------------------------------------------ */
+  useEffect(() => {
+    if (!ruleId) return;
+    patchRule(ruleId, { name: ruleName });
+  }, [ruleId, ruleName]);
+
+  useEffect(() => {
+    if (!ruleId) return;
+    patchRule(ruleId, { description: ruleDescription });
+  }, [ruleId, ruleDescription]);
+
+  useEffect(() => {
+    if (!ruleId || !anchorDate) return;
+    patchRule(ruleId, { anchor_date: anchorDate });
+  }, [ruleId, anchorDate]);
+
+  useEffect(() => {
+    if (!ruleId) return;
+    patchRule(ruleId, { recurrence_pattern: recurrencePattern });
+  }, [ruleId, recurrencePattern]);
+
+  useEffect(() => {
+    if (!ruleId || !dayOfWeek) return;
+    patchRule(ruleId, { day_of_week: dayOfWeek });
+  }, [ruleId, dayOfWeek]);
+
+  useEffect(() => {
+    if (!ruleId || !venueId) return;
+    patchRule(ruleId, { venue_id: venueId });
+  }, [ruleId, venueId]);
+
+  /* ------------------------------------------------------------------
+     Persist calculated program-level start_time / end_time from slots
+     ------------------------------------------------------------------ */
+  useEffect(() => {
+    if (!ruleId || !Array.isArray(slots) || slots.length === 0) return;
+    let minStart = '23:59';
+    let maxEnd = '00:00';
+    for (const s of slots) {
+      if (s.start_time && s.start_time < minStart) minStart = s.start_time;
+      if (s.end_time && s.end_time > maxEnd) maxEnd = s.end_time;
+    }
+    if (minStart !== '23:59' && maxEnd !== '00:00') {
+      patchRule(ruleId, { start_time: minStart, end_time: maxEnd });
+    }
+  }, [ruleId, slots]);
+
   // Create draft rule on component mount
   useEffect(() => {
     const createDraftRule = async () => {
@@ -1058,6 +1145,35 @@ const ProgramTemplateWizard = () => {
     
     try {
       setSaving(true);
+      /* --------------------------------------------------------------
+         1) Force-persist critical rule fields before finalising
+         -------------------------------------------------------------- */
+      const body = {
+        name: ruleName,
+        description: ruleDescription,
+        anchor_date: anchorDate,
+        recurrence_pattern: recurrencePattern,
+        day_of_week: dayOfWeek,
+        venue_id: venueId,
+      };
+      // Include aggregated start/end if slots exist
+      const agg = calculateShiftLength();
+      if (agg) {
+        body.start_time = agg.start;
+        body.end_time = agg.end;
+      }
+      try {
+        await api.patch(`/templates/rules/${ruleId}`, body);
+      } catch (patchErr) {
+        console.error('Pre-finalize save failed:', patchErr);
+        toast.error('Failed to save latest changes before finalising');
+        setSaving(false);
+        return;
+      }
+
+      /* --------------------------------------------------------------
+         2) Proceed to finalise
+         -------------------------------------------------------------- */
       const response = await api.post(`/templates/rules/${ruleId}/finalize`);
       
       if (response.data.success) {
@@ -1322,6 +1438,8 @@ const ProgramTemplateWizard = () => {
           setAnchorDate={setAnchorDate}
           recurrencePattern={recurrencePattern}
           setRecurrencePattern={setRecurrencePattern}
+          programType={programType}
+          setProgramType={setProgramType}
           venueId={venueId}
           setVenueId={setVenueId}
           venues={venues}

@@ -33,6 +33,7 @@ import Staff from './pages/Staff';
 import VehiclesFull from './pages/VehiclesFull';
 import Venues from './pages/Venues';
 import ProgramTemplateWizard from './pages/ProgramTemplateWizard';
+import Activities from './pages/Activities';          // NEW
 // Slide-in system log panel
 import SystemLogPanel from './components/SystemLogPanel';
 
@@ -214,6 +215,17 @@ const Layout = ({ children }) => {
                 <FiMapPin />
               </NavLink>
               
+              {/* Activities */}
+              <NavLink
+                to="/activities"
+                className={({ isActive }) =>
+                  isActive ? 'icon-link active' : 'icon-link'
+                }
+                title="Activities"
+              >
+                <FiActivity />
+              </NavLink>
+
               <NavLink 
                 to="/finance" 
                 className={({ isActive }) => 
@@ -305,6 +317,7 @@ const App = () => {
           <Route path="/vehicles" element={<VehiclesFull />} />
           <Route path="/venues" element={<Venues />} />
           <Route path="/template-wizard" element={<ProgramTemplateWizard />} />
+          <Route path="/activities" element={<Activities />} />
         </Routes>
       </Layout>
       <ToastContainer position="bottom-right" autoClose={3000} />

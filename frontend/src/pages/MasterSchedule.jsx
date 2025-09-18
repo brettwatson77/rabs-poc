@@ -2,10 +2,42 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import '../styles/MasterSchedule.css';
-import { startOfWeek, addDays } from 'date-fns';
 
 // API base URL from environment (matches Dashboard pattern)
 const API_URL = import.meta.env.VITE_API_URL || '';
+
+/* ------------------------------------------------------------------
+   Time-zone helpers – all dates displayed/stored as Australia/Sydney
+   ------------------------------------------------------------------ */
+const TZ = 'Australia/Sydney';
+// Format Date → 'YYYY-MM-DD' in Sydney TZ
+const fmtYmdTZ = (d) =>
+  new Intl.DateTimeFormat('en-CA', {
+    timeZone: TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d);
+// Short weekday → index offset (Mon = 0)
+const DOW = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
+// Build Monday-based strip of {date} objects of given length
+const buildWindowDates = (days = 14) => {
+  const now = new Date();
+  const short = new Intl.DateTimeFormat('en-US', {
+    timeZone: TZ,
+    weekday: 'short',
+  }).format(now);
+  const offset = DOW[short] ?? 0; // days since Monday
+  const base = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 12)); // UTC noon avoids DST
+  base.setUTCDate(base.getUTCDate() - offset);
+  const arr = [];
+  for (let i = 0; i < days; i++) {
+    const d = new Date(base);
+    d.setUTCDate(base.getUTCDate() + i);
+    arr.push({ date: fmtYmdTZ(d) });
+  }
+  return arr;
+};
 
 /**
  * Master Schedule Page
@@ -26,13 +58,8 @@ const MasterSchedule = () => {
         const settingsResponse = await axios.get(`${API_URL}/api/v1/settings/org`);
         const days = settingsResponse.data?.data?.loom_window_days || 14;
         
-        // Build date strip starting from Monday of current week
-        const monday = startOfWeek(new Date(), { weekStartsOn: 1 });
-        const datesArr = [];
-        for (let i = 0; i < days; i++) {
-          const d = addDays(monday, i);
-          datesArr.push({ date: d.toISOString().split('T')[0] });
-        }
+        // Build Sydney-aware date strip
+        const datesArr = buildWindowDates(days);
         setWindowDates(datesArr);
 
         // Call loom/window just for availability check
@@ -57,12 +84,7 @@ const MasterSchedule = () => {
   
   // Generate dates helper (start Monday) for fallback
   const generateWindowDates = (days = 14) => {
-    const monday = startOfWeek(new Date(), { weekStartsOn: 1 });
-    const datesArr = [];
-    for (let i = 0; i < days; i++) {
-      datesArr.push({ date: addDays(monday, i).toISOString().split('T')[0] });
-    }
-    setWindowDates(datesArr);
+    setWindowDates(buildWindowDates(days));
     setLoading(false);
   };
   
@@ -119,17 +141,27 @@ const MasterSchedule = () => {
   // Get instances for a specific day
   const getInstancesForDay = (dateStr) => {
     // normalise both DB string and target day to YYYY-MM-DD to avoid TZ issues
-    const norm = (d) => new Date(d).toISOString().split('T')[0];
+    const norm = (d) => fmtYmdTZ(new Date(d));
     return instances.filter(instance => norm(instance.instance_date) === dateStr);
   };
   
   // Format day header
   const formatDayHeader = (dateStr) => {
     const day = new Date(dateStr);
-    const isToday = dateStr === new Date().toISOString().split('T')[0];
-    const dayName = day.toLocaleDateString('en-US', { weekday: 'short' });
-    const dayNum = day.getDate();
-    const month = day.toLocaleDateString('en-US', { month: 'short' });
+    const todayYmd = fmtYmdTZ(new Date());
+    const isToday = dateStr === todayYmd;
+    const dayName = new Intl.DateTimeFormat('en-US', {
+      timeZone: TZ,
+      weekday: 'short',
+    }).format(day);
+    const dayNum = new Intl.DateTimeFormat('en-US', {
+      timeZone: TZ,
+      day: 'numeric',
+    }).format(day);
+    const month = new Intl.DateTimeFormat('en-US', {
+      timeZone: TZ,
+      month: 'short',
+    }).format(day);
     
     return (
       <div className={`day-header ${isToday ? 'today' : ''}`}>
