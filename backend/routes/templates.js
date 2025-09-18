@@ -1485,20 +1485,16 @@ router.post('/rules/:id/finalize', async (req, res) => {
       SET active = true
       WHERE id = $1
     `, [id]);
-    
-    // Call syncRethread with the rule ID
-    const summary = await syncRethread({ ruleId: id }, pool);
 
-    /* --------------------------------------------------------------
-     * Billing generation—produce payment_diamonds for the same window
-     * ------------------------------------------------------------ */
+    /* ------------------------------------------------------------------
+     * Determine loom window (org setting) and date range
+     * ------------------------------------------------------------------*/
     const settings = await loadSettings(pool);
     const windowDays =
       Number(settings.loom_window_days) && settings.loom_window_days > 0
         ? Number(settings.loom_window_days)
         : 14;
-
-    // Helper to format date → YYYY-MM-DD
+    // Helper YYYY-MM-DD
     const fmt = (d) => d.toISOString().split('T')[0];
     const tomorrow = (() => {
       const t = new Date();
@@ -1510,6 +1506,15 @@ router.post('/rules/:id/finalize', async (req, res) => {
     end.setDate(end.getDate() + windowDays - 1);
     const dateTo = fmt(end);
 
+    // Call syncRethread using the same window
+    const summary = await syncRethread(
+      { ruleId: id, windowDays, dateFrom, dateTo },
+      pool
+    );
+
+    /* ------------------------------------------------------------------
+     * Billing generation—produce payment_diamonds for identical window
+     * ------------------------------------------------------------------*/
     const billing = await generateBilling(
       { ruleId: id, dateFrom, dateTo },
       pool
