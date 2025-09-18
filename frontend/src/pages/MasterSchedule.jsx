@@ -94,9 +94,33 @@ const MasterSchedule = () => {
     }
   };
   
+  // Delete a rule and refresh instances
+  const handleDeleteRule = async (ruleId) => {
+    if (!ruleId) return;
+    const confirmMsg =
+      'Delete this program template and all its scheduled instances?';
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      await axios.delete(
+        `${API_URL}/api/v1/templates/rules/${ruleId}`
+      );
+      // Refresh current window
+      fetchInstancesForRange(windowDates);
+    } catch (err) {
+      console.error(
+        `Failed DELETE ${API_URL}/api/v1/templates/rules/${ruleId}`,
+        err?.response?.status
+      );
+      window.alert('Failed to delete program – see console for details.');
+    }
+  };
+
   // Get instances for a specific day
   const getInstancesForDay = (dateStr) => {
-    return instances.filter(instance => instance.instance_date === dateStr);
+    // normalise both DB string and target day to YYYY-MM-DD to avoid TZ issues
+    const norm = (d) => new Date(d).toISOString().split('T')[0];
+    return instances.filter(instance => norm(instance.instance_date) === dateStr);
   };
   
   // Format day header
@@ -170,7 +194,17 @@ const MasterSchedule = () => {
               ) : getInstancesForDay(dateObj.date).length > 0 ? (
                 getInstancesForDay(dateObj.date).map(instance => (
                   <div key={instance.id} className="program-card glass-card">
-                    <h3>{instance.source_rule_id}</h3>
+                    <button
+                      className="delete-btn"
+                      title="Delete program"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteRule(instance.source_rule_id);
+                      }}
+                    >
+                      ×
+                    </button>
+                    <h3>{instance.program_name || instance.source_rule_id}</h3>
                     <p className="time">
                       {formatTime(instance.start_time)} - {formatTime(instance.end_time)}
                     </p>

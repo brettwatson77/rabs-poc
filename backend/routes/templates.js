@@ -12,6 +12,8 @@ const logger = require('../logger');
 
 // Import the syncRethread utility
 const { syncRethread } = require('../routes/util_syncRethread');
+// Import billing generator utility
+const { generateBilling } = require('../routes/util_generateBilling');
 
 /**
  * Helper function to check if a rule is active on a specific date
@@ -1479,6 +1481,32 @@ router.post('/rules/:id/finalize', async (req, res) => {
     
     // Call syncRethread with the rule ID
     const summary = await syncRethread({ ruleId: id }, pool);
+
+    /* --------------------------------------------------------------
+     * Billing generation—produce payment_diamonds for the same window
+     * ------------------------------------------------------------ */
+    const settings = await loadSettings(pool);
+    const windowDays =
+      Number(settings.loom_window_days) && settings.loom_window_days > 0
+        ? Number(settings.loom_window_days)
+        : 14;
+
+    // Helper to format date → YYYY-MM-DD
+    const fmt = (d) => d.toISOString().split('T')[0];
+    const tomorrow = (() => {
+      const t = new Date();
+      t.setDate(t.getDate() + 1);
+      return t;
+    })();
+    const dateFrom = fmt(tomorrow);
+    const end = new Date(tomorrow);
+    end.setDate(end.getDate() + windowDays - 1);
+    const dateTo = fmt(end);
+
+    const billing = await generateBilling(
+      { ruleId: id, dateFrom, dateTo },
+      pool
+    );
     
     // Log rule finalized
     await logger.logEvent({
@@ -1487,12 +1515,12 @@ router.post('/rules/:id/finalize', async (req, res) => {
       message: 'Rule finalized',
       entity: 'rule',
       entity_id: id,
-      details: { summary }
+      details: { summary, billing }
     });
     
     res.json({
       success: true,
-      data: summary
+      data: { summary, billing }
     });
   } catch (err) {
     console.error('Error finalizing rule:', err);
@@ -1558,6 +1586,144 @@ router.delete('/rules/:id/slots/:slotId', async (req, res) => {
       success: false,
       error: 'Failed to delete slot'
     });
+  }
+});
+
+/* ---------------------------------------------------------------------------
+ * DELETE /templates/rules/:id
+ * Permanently delete a rule and all related staging artefacts
+ * -------------------------------------------------------------------------*/
+router.delete('/rules/:id', async (req, res) => {
+  const pool = req.app.locals.pool;
+  const { id } = req.params;
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // 1. Validate rule exists
+    const chk = await client.query(
+      `SELECT id FROM rules_programs WHERE id = $1`,
+      [id]
+    );
+    if (chk.rowCount === 0) {
+      await client.query('ROLLBACK');
+      client.release();
+      return res.status(404).json({ success: false, error: 'Rule not found' });
+    }
+
+    // 2. Delete event_card_map rows via loom_instances join
+    await client.query(
+      `DELETE FROM event_card_map
+        WHERE loom_instance_id IN (
+          SELECT id FROM loom_instances WHERE source_rule_id = $1
+        )`,
+      [id]
+    );
+
+    // 3. Delete loom_instances
+    await client.query(
+      `DELETE FROM loom_instances WHERE source_rule_id = $1`,
+      [id]
+    );
+
+    // 4. Gather participant link ids (needed for staged billing variants)
+    const { rows: rppRows } = await client.query(
+      `SELECT id FROM rules_program_participants WHERE rule_id = $1`,
+      [id]
+    );
+    const rppIds = rppRows.map((r) => r.id);
+
+    if (rppIds.length) {
+      // Determine column presence for billing table
+      const { rows: colRows } = await client.query(
+        `SELECT column_name
+           FROM information_schema.columns
+          WHERE table_name = 'rules_program_participant_billing'
+            AND column_name IN ('rule_participant_id','rpp_id')`
+      );
+      const hasRuleParticipantId = colRows.some(
+        (r) => r.column_name === 'rule_participant_id'
+      );
+      const hasRppId = colRows.some((r) => r.column_name === 'rpp_id');
+
+      if (hasRuleParticipantId) {
+        await client.query(
+          `DELETE FROM rules_program_participant_billing
+            WHERE rule_participant_id = ANY($1::uuid[])`,
+          [rppIds]
+        );
+      }
+      if (hasRppId) {
+        await client.query(
+          `DELETE FROM rules_program_participant_billing
+            WHERE rpp_id = ANY($1::uuid[])`,
+          [rppIds]
+        );
+      }
+    }
+
+    // 5. Delete participants links
+    await client.query(
+      `DELETE FROM rules_program_participants WHERE rule_id = $1`,
+      [id]
+    );
+
+    // 6. Delete slots
+    await client.query(
+      `DELETE FROM rules_program_slots WHERE rule_id = $1`,
+      [id]
+    );
+
+    // 7. Delete placeholders
+    await client.query(
+      `DELETE FROM rules_program_staff_placeholders WHERE rule_id = $1`,
+      [id]
+    );
+    await client.query(
+      `DELETE FROM rules_program_vehicle_placeholders WHERE rule_id = $1`,
+      [id]
+    );
+
+    // 8. Delete cached requirements (table may not exist)
+    try {
+      await client.query(
+        `DELETE FROM rules_program_requirements WHERE rule_id = $1`,
+        [id]
+      );
+    } catch (_) {
+      // ignore if table missing
+    }
+
+    // 9. Delete generated billing diamonds
+    await client.query(
+      `DELETE FROM payment_diamonds WHERE program_id = $1`,
+      [id]
+    );
+
+    // 10. Finally delete rule
+    await client.query(`DELETE FROM rules_programs WHERE id = $1`, [id]);
+
+    await client.query('COMMIT');
+
+    // Log deletion
+    await logger.logEvent({
+      severity: 'INFO',
+      category: 'WIZARD',
+      message: 'Rule deleted',
+      entity: 'rule',
+      entity_id: id,
+    });
+
+    res.json({ success: true, data: { id, deleted: true } });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Error deleting rule:', err);
+    res
+      .status(500)
+      .json({ success: false, error: 'Failed to delete rule' });
+  } finally {
+    client.release();
   }
 });
 

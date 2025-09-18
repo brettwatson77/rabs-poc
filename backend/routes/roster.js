@@ -59,14 +59,12 @@ router.get('/day', async (req, res) => {
     const instancesPromises = instancesResult.rows.map(async (instance) => {
       // Count participants for this instance
       const participantsResult = await pool.query(`
-        SELECT COUNT(*) as participant_count
-        FROM rules_participant_schedule
-        WHERE program_id = $1
-          AND start_date <= $2
-          AND (end_date IS NULL OR end_date >= $2)
-      `, [instance.source_rule_id, date]);
-      
-      const participantCount = parseInt(participantsResult.rows[0].participant_count) || 0;
+        SELECT COUNT(*)::int AS participant_count
+        FROM rules_program_participants
+        WHERE rule_id = $1
+      `, [instance.source_rule_id]);
+
+      const participantCount = participantsResult.rows[0]?.participant_count || 0;
       
       // Calculate staff and vehicle requirements
       const staffRequired = Math.ceil(participantCount / staffThreshold);

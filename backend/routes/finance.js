@@ -18,6 +18,8 @@ const router = express.Router();
 const uuid = require('uuid');
 const fs = require('fs');
 const path = require('path');
+// Utility to generate billing lines from rule staging
+const { generateBilling } = require('../routes/util_generateBilling');
 
 // Helper functions for numeric handling and rounding
 const toNumber = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : 0; };
@@ -44,6 +46,21 @@ const ensurePaymentDiamondsColumns = async (pool) => {
   } catch (err) {
     // Ignore errors if columns already exist or other issues
     console.error('[FINANCE] Note: payment_diamonds column check:', err.message);
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Helper: load organisation settings (loom_window_days only)
+// ---------------------------------------------------------------------------
+const loadSettings = async (pool) => {
+  try {
+    const { rows } = await pool.query(
+      "SELECT key, value FROM settings WHERE key = 'loom_window_days'"
+    );
+    const v = Number(rows[0]?.value);
+    return { loom_window_days: Number.isFinite(v) && v > 0 ? v : 14 };
+  } catch (e) {
+    return { loom_window_days: 14 };
   }
 };
 
@@ -1276,6 +1293,60 @@ router.post('/export', async (req, res) => {
       success: false,
       error: 'Failed to export billing data',
       message: error.message
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /finance/generate-from-rules - Bulk generate diamonds from rule staging
+// ---------------------------------------------------------------------------
+router.post('/generate-from-rules', async (req, res) => {
+  const pool = req.app.locals.pool;
+  try {
+    await ensurePaymentDiamondsColumns(pool);
+
+    const { ruleId, dateFrom, dateTo } = req.body || {};
+    let df = dateFrom;
+    let dt = dateTo;
+
+    // If dates not supplied compute tomorrow → loom_window_days
+    if (!df || !dt) {
+      const { loom_window_days } = await loadSettings(pool);
+      const fmt = (d) => d.toISOString().split('T')[0];
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      df = fmt(tomorrow);
+      const end = new Date(tomorrow);
+      end.setDate(end.getDate() + loom_window_days - 1);
+      dt = fmt(end);
+    }
+
+    const summary = await generateBilling(
+      { ruleId, dateFrom: df, dateTo: dt },
+      pool
+    );
+
+    // Log operation
+    await pool.query(
+      `INSERT INTO system_logs (id,severity,category,message,details)
+       VALUES ($1,'INFO','FINANCIAL',$2,$3)`,
+      [
+        uuid.v4(),
+        'Generated billing from rules',
+        { ruleId: ruleId || null, dateFrom: df, dateTo: dt, ...summary },
+      ]
+    );
+
+    res.json({
+      success: true,
+      data: { dateFrom: df, dateTo: dt, ...summary },
+    });
+  } catch (err) {
+    console.error('[FINANCE] Error generating billing from rules:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate billing from rules',
+      message: err.message,
     });
   }
 });

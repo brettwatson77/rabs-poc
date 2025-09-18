@@ -195,6 +195,7 @@
 .program-card {
   padding: 15px;
   margin-bottom: 10px;
+  position: relative; /* allow absolutely-positioned child controls */
   cursor: pointer;
   transition: all var(--transition-speed) ease;
 }
@@ -245,6 +246,30 @@
   transition: all var(--transition-speed) ease;
 }
 
+/* -------------------------------------------------------------------- */
+/* Inline delete button for program cards                               */
+/* -------------------------------------------------------------------- */
+.program-card .delete-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  line-height: 22px;
+  text-align: center;
+  border: 1px solid var(--glass-border);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background var(--transition-speed) ease, transform var(--transition-speed) ease;
+}
+
+.program-card .delete-btn:hover {
+  background: var(--error-color);
+  transform: scale(1.05);
+}
 .empty-day:hover {
   border-color: rgba(255, 255, 255, 0.4);
   background: rgba(255, 255, 255, 0.05);
