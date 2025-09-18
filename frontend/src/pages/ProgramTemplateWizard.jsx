@@ -719,14 +719,17 @@ const ProgramTemplateWizard = () => {
     
     try {
       setSaving(true);
-      // Delete existing placeholder
-      await api.delete(`/templates/rules/${ruleId}/staff-placeholders/${placeholderId}`);
-      
-      // Create new placeholder with updated values
-      await api.post(`/templates/rules/${ruleId}/staff-placeholders`, {
-        mode,
-        staff_id: mode === 'manual' ? staffId : null
-      });
+      // PATCH the existing placeholder in-place
+      await api.patch(
+        `/templates/rules/${ruleId}/staff-placeholders/${placeholderId}`,
+        {
+          mode,
+          // only include staff_id when manual, otherwise let backend null it
+          ...(mode === 'manual'
+            ? { staff_id: staffId }
+            : { staff_id: null }),
+        }
+      );
       
       fetchStaffPlaceholders(ruleId);
       updateLastUpdated();

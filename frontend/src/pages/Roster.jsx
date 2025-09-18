@@ -2,6 +2,24 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/api';
 import { format, startOfWeek, addDays, subDays } from 'date-fns';
 
+/* ------------------------------------------------------------------
+   Time-zone helpers – all roster dates are displayed/stored as AEST
+   ------------------------------------------------------------------ */
+const TZ = 'Australia/Sydney';
+// Format Date → 'YYYY-MM-DD' in Sydney TZ
+const fmtYmdTZ = (d) =>
+  new Intl.DateTimeFormat('en-CA', {
+    timeZone: TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d);
+// Parse 'YYYY-MM-DD' → Date object anchored at noon UTC to avoid TZ drift
+const parseYmdToNoonUTC = (ymd) => {
+  const [y, m, d] = ymd.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d, 12));
+};
+
 const Roster = () => {
   // View toggle state: 'day' or 'staff'
   const [view, setView] = useState('day');
@@ -14,9 +32,7 @@ const Roster = () => {
   // Derive the 14-day string array from startMonday (memoised for stability)
   const dates = React.useMemo(
     () =>
-      Array.from({ length: 14 }, (_, i) =>
-        addDays(startMonday, i).toISOString().split('T')[0]
-      ),
+      Array.from({ length: 14 }, (_, i) => fmtYmdTZ(addDays(startMonday, i))),
     [startMonday]
   );
   const [shiftsByDate, setShiftsByDate] = useState({});           // {date: []}
@@ -180,8 +196,17 @@ const Roster = () => {
 
   // Format date header for columns
   const formatDateHeader = (dateStr) => {
-    const dateObj = new Date(dateStr);
-    return `${format(dateObj, 'EEE')} ${format(dateObj, 'd')}`;
+    // Parse `YYYY-MM-DD` safely (anchor at 12:00 UTC) then format in AEST
+    const dateObj = parseYmdToNoonUTC(dateStr);
+    const w = new Intl.DateTimeFormat('en-AU', {
+      timeZone: TZ,
+      weekday: 'short',
+    }).format(dateObj);
+    const d = new Intl.DateTimeFormat('en-AU', {
+      timeZone: TZ,
+      day: 'numeric',
+    }).format(dateObj);
+    return `${w} ${d}`;
   };
 
   return (

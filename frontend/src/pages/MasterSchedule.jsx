@@ -34,7 +34,7 @@ const MasterSchedule = () => {
   const dates = React.useMemo(
     () =>
       Array.from({ length: 14 }, (_, i) =>
-        addDays(startMonday, i).toISOString().split('T')[0]
+        fmtYmdTZ(addDays(startMonday, i))
       ),
     [startMonday]
   );
@@ -132,15 +132,36 @@ const MasterSchedule = () => {
   
   // Format day header
   const formatDayHeader = (dateStr) => {
-    const day = new Date(dateStr);
+    // Helper: parse 'YYYY-MM-DD' into a Date anchored at 12:00 UTC
+    const parseYmdToNoonUTC = (ymd) => {
+      const [y, m, d] = ymd.split('-').map(Number);
+      return new Date(Date.UTC(y, m - 1, d, 12));
+    };
+
+    const day = parseYmdToNoonUTC(dateStr);
     const todayYmd = fmtYmdTZ(new Date());
     const isToday = dateStr === todayYmd;
     
     return (
       <div className={`day-header ${isToday ? 'today' : ''}`}>
-        <div className="day-name">{format(day, 'EEE')}</div>
-        <div className="day-number">{format(day, 'd')}</div>
-        <div className="day-month">{format(day, 'MMM')}</div>
+        <div className="day-name">
+          {new Intl.DateTimeFormat('en-AU', {
+            timeZone: TZ,
+            weekday: 'short',
+          }).format(day)}
+        </div>
+        <div className="day-number">
+          {new Intl.DateTimeFormat('en-AU', {
+            timeZone: TZ,
+            day: 'numeric',
+          }).format(day)}
+        </div>
+        <div className="day-month">
+          {new Intl.DateTimeFormat('en-AU', {
+            timeZone: TZ,
+            month: 'short',
+          }).format(day)}
+        </div>
       </div>
     );
   };
