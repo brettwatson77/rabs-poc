@@ -1525,9 +1525,13 @@ router.post('/rules/:id/finalize', async (req, res) => {
       details: { summary, billing }
     });
     
+    /* ------------------------------------------------------------------
+     * Return a flat summary object so the frontend can easily display
+     * the numbers without having to drill into .summary.*
+     * -----------------------------------------------------------------*/
     res.json({
       success: true,
-      data: { summary, billing }
+      data: { ...summary, billing }
     });
   } catch (err) {
     console.error('Error finalizing rule:', err);
