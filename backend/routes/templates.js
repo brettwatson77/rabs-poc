@@ -15,6 +15,18 @@ const { syncRethread } = require('../routes/util_syncRethread');
 // Import billing generator utility
 const { generateBilling } = require('../routes/util_generateBilling');
 
+/* ------------------------------------------------------------------
+   Time-zone helpers – Australia/Sydney (avoids UTC date drift)
+-------------------------------------------------------------------*/
+const TZ = 'Australia/Sydney';
+const fmtYmdTZ = (d) =>
+  new Intl.DateTimeFormat('en-CA', {
+    timeZone: TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d);
+
 /**
  * Helper function to check if a rule is active on a specific date
  * @param {Object} ruleRow - The rule row from the database
@@ -1041,6 +1053,27 @@ router.get('/rules/:id/staff-placeholders', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Rule not found' });
     }
 
+    /* --------------------------------------------------------------
+     * Repair mode CHECK constraint so it also allows 'open'
+     * Older DBs may only allow ('auto','manual')
+     * ------------------------------------------------------------ */
+    try {
+      await pool.query(`
+        ALTER TABLE rules_program_staff_placeholders
+        DROP CONSTRAINT IF EXISTS rules_program_staff_placeholders_mode_check;
+      `);
+      await pool.query(`
+        ALTER TABLE rules_program_staff_placeholders
+        ADD CONSTRAINT rules_program_staff_placeholders_mode_check
+        CHECK (mode IN ('auto','manual','open'));
+      `);
+    } catch (e) {
+      console.warn(
+        '[TEMPLATES] Could not repair staff placeholders mode check:',
+        e.message
+      );
+    }
+
     const result = await pool.query(
       `SELECT id, rule_id, slot_index, mode, staff_id, created_at
          FROM rules_program_staff_placeholders
@@ -1087,6 +1120,76 @@ router.post('/rules/:id/staff-placeholders', async (req, res) => {
   } catch (err) {
     console.error('Error inserting staff placeholder:', err);
     res.status(500).json({ success: false, error: 'Failed to add placeholder' });
+  }
+});
+
+// PATCH - Update staff placeholder
+router.patch('/rules/:id/staff-placeholders/:phId', async (req, res) => {
+  const pool = req.app.locals.pool;
+  const { id, phId } = req.params;
+  const { mode, staff_id } = req.body || {};
+
+  try {
+    if (!(await ruleExists(pool, id))) {
+      return res.status(404).json({ success: false, error: 'Rule not found' });
+    }
+
+    // validate placeholder exists
+    const check = await pool.query(
+      `SELECT id FROM rules_program_staff_placeholders
+        WHERE id = $1 AND rule_id = $2`,
+      [phId, id]
+    );
+    if (check.rowCount === 0) {
+      return res
+        .status(404)
+        .json({ success: false, error: 'Staff placeholder not found' });
+    }
+
+    // Validate fields
+    if (mode !== undefined && !['auto', 'manual', 'open'].includes(mode)) {
+      return res.status(400).json({ success: false, error: 'Invalid mode' });
+    }
+    if (mode === 'manual' && staff_id === undefined) {
+      return res
+        .status(400)
+        .json({ success: false, error: 'staff_id required for manual mode' });
+    }
+
+    // Build dynamic update
+    const updates = [];
+    const values = [phId, id];
+    let pIdx = 3;
+
+    if (mode !== undefined) {
+      updates.push(`mode = $${pIdx++}`);
+      values.push(mode);
+    }
+    if (staff_id !== undefined) {
+      updates.push(`staff_id = $${pIdx++}`);
+      values.push(staff_id);
+    }
+
+    if (updates.length === 0) {
+      return res
+        .status(400)
+        .json({ success: false, error: 'No fields to update' });
+    }
+
+    const result = await pool.query(
+      `UPDATE rules_program_staff_placeholders
+          SET ${updates.join(', ')}
+        WHERE id = $1 AND rule_id = $2
+        RETURNING id, rule_id, slot_index, mode, staff_id, created_at`,
+      values
+    );
+
+    res.json({ success: true, data: result.rows[0] });
+  } catch (err) {
+    console.error('Error updating staff placeholder:', err);
+    res
+      .status(500)
+      .json({ success: false, error: 'Failed to update placeholder' });
   }
 });
 
@@ -1436,15 +1539,20 @@ router.post('/rules/:id/finalize', async (req, res) => {
   const { id } = req.params;
   
   try {
-    // First check if the rule exists
-    const ruleCheck = await pool.query('SELECT id FROM rules_programs WHERE id = $1', [id]);
-    
+    // Fetch rule row (need anchor_date)
+    const ruleCheck = await pool.query(
+      `SELECT id, anchor_date FROM rules_programs WHERE id = $1`,
+      [id]
+    );
+
     if (ruleCheck.rows.length === 0) {
       return res.status(404).json({
         success: false,
         error: 'Rule not found'
       });
     }
+
+    const ruleRow = ruleCheck.rows[0];
 
     /* ------------------------------------------------------------------
      * Validation: if there are ZERO organisational vehicles we must
@@ -1503,17 +1611,28 @@ router.post('/rules/:id/finalize', async (req, res) => {
     const windowDays = settings.loom_window_fortnights ? settings.loom_window_fortnights * 14 : 
                       settings.loom_window_days > 0 ? settings.loom_window_days : 56;
     
-    // Helper YYYY-MM-DD
-    const fmt = (d) => d.toISOString().split('T')[0];
+    // Determine dateFrom using anchor_date (falls back to tomorrow)
     const tomorrow = (() => {
       const t = new Date();
       t.setDate(t.getDate() + 1);
       return t;
     })();
-    const dateFrom = fmt(tomorrow);
-    const end = new Date(tomorrow);
+    let startDateObj;
+    if (ruleRow.anchor_date) {
+      // Use anchor_date directly
+      startDateObj = new Date(ruleRow.anchor_date);
+      // If anchor_date is in the past, still allow – syncRethread will clamp via futureOnly
+      if (isNaN(startDateObj.getTime())) {
+        startDateObj = tomorrow;
+      }
+    } else {
+      startDateObj = tomorrow;
+    }
+    const dateFrom = fmtYmdTZ(startDateObj);
+
+    const end = new Date(startDateObj);
     end.setDate(end.getDate() + windowDays - 1);
-    const dateTo = fmt(end);
+    const dateTo = fmtYmdTZ(end);
 
     // Call syncRethread using the same window
     const summary = await syncRethread(
