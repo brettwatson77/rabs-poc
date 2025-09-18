@@ -2,6 +2,24 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/api';
 import { format, startOfWeek, addDays, subDays } from 'date-fns';
 
+/* ------------------------------------------------------------------
+   Time-zone helpers – all roster dates are displayed/stored as AEST
+   ------------------------------------------------------------------ */
+const TZ = 'Australia/Sydney';
+// Format Date → 'YYYY-MM-DD' in Sydney TZ
+const fmtYmdTZ = (d) =>
+  new Intl.DateTimeFormat('en-CA', {
+    timeZone: TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d);
+// Parse 'YYYY-MM-DD' → Date object anchored at noon UTC to avoid TZ drift
+const parseYmdToNoonUTC = (ymd) => {
+  const [y, m, d] = ymd.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d, 12));
+};
+
 const Roster = () => {
   // View toggle state: 'day' or 'staff'
   const [view, setView] = useState('day');
@@ -11,19 +29,27 @@ const Roster = () => {
     startOfWeek(new Date(), { weekStartsOn: 1 })
   );
 
+  // Jump to fortnight containing \"today\"
+  const handleTodayFortnight = () => {
+    setStartMonday(startOfWeek(new Date(), { weekStartsOn: 1 }));
+  };
+
   // Derive the 14-day string array from startMonday (memoised for stability)
   const dates = React.useMemo(
     () =>
-      Array.from({ length: 14 }, (_, i) =>
-        addDays(startMonday, i).toISOString().split('T')[0]
-      ),
+      Array.from({ length: 14 }, (_, i) => fmtYmdTZ(addDays(startMonday, i))),
     [startMonday]
   );
-  const [instancesByDate, setInstancesByDate] = useState({});      // {date: []}
+  const [shiftsByDate, setShiftsByDate] = useState({});           // {date: []}
   const [staffDirectory, setStaffDirectory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+
+  /* ---------------------------------------------------------------------- */
+  /* Local week toggle (0 = week 1, 1 = week 2) – only affects By Day view   */
+  /* ---------------------------------------------------------------------- */
+  const [week, setWeek] = useState(0); // 0 or 1
 
   /* ---------------------------------------------------------------------- */
   /* Fortnight helpers & navigation                                         */
@@ -43,6 +69,71 @@ const Roster = () => {
     setStartMonday((prev) => addDays(prev, 14));
   };
 
+  // Format time helper (HH:MM:SS → 12:MM AM/PM)
+  const formatTime = (timeStr) => {
+    if (!timeStr) return '';
+    const [hours, minutes] = timeStr.split(':');
+    const hour = parseInt(hours, 10);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const formattedHour = hour % 12 || 12;
+    return `${formattedHour}:${minutes} ${ampm}`;
+  };
+
+  // Render a shift card with consistent styling
+  const renderShiftCard = (shift) => {
+    return (
+      <div 
+        key={shift.shift_id} 
+        className="shift-card glass-card"
+        style={{
+          padding: '6px',
+          marginBottom: '6px',
+          borderRadius: '6px',
+          position: 'relative',
+          width: '100%'
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <strong style={{ fontSize: '0.9rem', marginRight: '20px' }}>{shift.program_name}</strong>
+          {shift.status !== 'assigned' ? (
+            <span 
+              className={`status-tag ${shift.status}`}
+              style={{
+                padding: '1px 4px',
+                borderRadius: '3px',
+                fontSize: '0.65rem',
+                fontWeight: 'bold',
+                backgroundColor: shift.status === 'open' ? '#f59e0b' : '#3b82f6',
+                color: 'white'
+              }}
+            >
+              {shift.status === 'open' ? 'Open' : 'Auto'}
+            </span>
+          ) : null}
+        </div>
+        
+        <div style={{ fontSize: '0.8rem' }}>
+          {shift.start_time && shift.end_time && (
+            <span className="time">
+              {formatTime(shift.start_time)} - {formatTime(shift.end_time)}
+            </span>
+          )}
+          {shift.status === 'assigned' && (
+            <span className="staff-name" style={{ marginLeft: '8px', fontWeight: 'bold' }}>
+              {shift.staff_name}
+            </span>
+          )}
+        </div>
+        
+        {shift.venue_name && (
+          <div className="venue" style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)' }}>
+            {shift.venue_name}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // fetch 14 days in parallel once
   useEffect(() => {
     const fetchAll = async () => {
@@ -60,12 +151,14 @@ const Roster = () => {
         );
 
         const results = await Promise.all(promises);
-        const map = {};
+        const shiftsMap = {};
         let staffSet = false;
+        
         results.forEach((res, idx) => {
           const dateKey = dates[idx];
           if (res && res.data?.success) {
-            map[dateKey] = res.data.data.instances || [];
+            shiftsMap[dateKey] = res.data.data.shifts || [];
+            
             if (!staffSet && Array.isArray(res.data.data.staff_directory)) {
               setStaffDirectory(res.data.data.staff_directory);
               staffSet = true;
@@ -73,10 +166,10 @@ const Roster = () => {
           } else {
             // HTTP failure captured already; mark error banner
             setError('Failed to fetch some roster data.');
-            map[dateKey] = [];
+            shiftsMap[dateKey] = [];
           }
         });
-        setInstancesByDate(map);
+        setShiftsByDate(shiftsMap);
         
         // If we didn't get staff from any day response, fetch staff directly
         if (!staffSet) {
@@ -108,8 +201,17 @@ const Roster = () => {
 
   // Format date header for columns
   const formatDateHeader = (dateStr) => {
-    const dateObj = new Date(dateStr);
-    return `${format(dateObj, 'EEE')} ${format(dateObj, 'd')}`;
+    // Parse `YYYY-MM-DD` safely (anchor at 12:00 UTC) then format in AEST
+    const dateObj = parseYmdToNoonUTC(dateStr);
+    const w = new Intl.DateTimeFormat('en-AU', {
+      timeZone: TZ,
+      weekday: 'short',
+    }).format(dateObj);
+    const d = new Intl.DateTimeFormat('en-AU', {
+      timeZone: TZ,
+      day: 'numeric',
+    }).format(dateObj);
+    return `${w} ${d}`;
   };
 
   return (
@@ -119,7 +221,23 @@ const Roster = () => {
         {/* Simple refresh */}
       </div>
 
-      {/* Fortnight navigation ------------------------------------------------ */}
+  {/* View mode tabs ------------------------------------------------------ */}
+  <div className="tab-bar" style={{ marginBottom: '16px' }}>
+        <button
+          className={`tab-btn ${view === 'day' ? 'active' : ''}`}
+          onClick={() => setView('day')}
+        >
+          Schedule&nbsp;View
+        </button>
+        <button
+          className={`tab-btn ${view === 'staff' ? 'active' : ''}`}
+          onClick={() => setView('staff')}
+        >
+          Staff&nbsp;View
+        </button>
+  </div>
+
+  {/* Fortnight navigation ------------------------------------------------ */}
       <div
         className="fortnight-nav glass-card"
         style={{
@@ -151,12 +269,44 @@ const Roster = () => {
 
         <button
           className="btn nav-button"
+          onClick={handleTodayFortnight}
+          style={{ minWidth: '100px' }}
+        >
+          Today
+        </button>
+
+        <button
+          className="btn nav-button"
           onClick={handleNextFortnight}
           style={{ minWidth: '140px' }}
         >
           Next&nbsp;Fortnight
         </button>
       </div>
+
+      {/* Week selector (only visible in Schedule view) -------------------- */}
+      {view === 'day' && (
+        <div className="tab-bar" style={{ marginBottom: '16px' }}>
+          <button
+            className={`tab-btn ${week === 0 ? 'active' : ''}`}
+            onClick={() => setWeek(0)}
+          >
+            Week&nbsp;One
+          </button>
+          <button
+            className={`tab-btn ${week === 1 ? 'active' : ''}`}
+            onClick={() => setWeek(1)}
+          >
+            Week&nbsp;Two
+          </button>
+          <button
+            className={`tab-btn ${week === 2 ? 'active' : ''}`}
+            onClick={() => setWeek(2)}
+          >
+            Both
+          </button>
+        </div>
+      )}
 
       <div className="roster-controls glass-card" style={{ 
         display: 'flex', 
@@ -166,36 +316,6 @@ const Roster = () => {
         position: 'relative',
         zIndex: 4
       }}>
-        {/* View toggle buttons */}
-        <div className="view-toggle" style={{ display: 'flex', gap: '8px' }}>
-          <button 
-            className={`btn ${view === 'day' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setView('day')}
-            style={{ 
-              padding: '8px 16px',
-              borderRadius: '4px',
-              fontWeight: view === 'day' ? 'bold' : 'normal',
-              backgroundColor: view === 'day' ? '#4a6fa5' : '#e0e0e0',
-              color: view === 'day' ? 'white' : 'black'
-            }}
-          >
-            By Day
-          </button>
-          <button 
-            className={`btn ${view === 'staff' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setView('staff')}
-            style={{ 
-              padding: '8px 16px',
-              borderRadius: '4px',
-              fontWeight: view === 'staff' ? 'bold' : 'normal',
-              backgroundColor: view === 'staff' ? '#4a6fa5' : '#e0e0e0',
-              color: view === 'staff' ? 'white' : 'black'
-            }}
-          >
-            By Staff
-          </button>
-        </div>
-        
         {/* Search input - only show in staff view */}
         {view === 'staff' && (
           <div className="roster-search" style={{ 
@@ -230,75 +350,45 @@ const Roster = () => {
 
       {/* Main roster view - conditional rendering based on view state */}
       {!loading && view === 'day' && (
-        <div className="roster-view-grid">
-          {/* Week 1 (first 7 days) */}
+        <div className="full-bleed roster-view-grid" style={{ overflowX: 'auto' }}>
           <div
             className="week-grid"
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(7, minmax(220px, 1fr))',
+              gridTemplateColumns: `repeat(${week === 2 ? 14 : 7}, minmax(200px, 1fr))`,
               gap: '16px',
-              marginBottom: '24px'
+              marginBottom: '24px',
             }}
           >
-            {dates.slice(0, 7).map((d) => {
-              const dayInstances = instancesByDate[d] || [];
-              return (
-                <div key={d} className="instance-column glass-card">
-                  <div className="column-header">{formatDateHeader(d)}</div>
-                  {dayInstances.length === 0 ? (
-                    <div className="empty-day">No program instances today.</div>
-                  ) : (
-                    dayInstances.map((inst) => (
-                      <div key={inst.instance_id} className="instance-card">
-                        <strong>{inst.program_name}</strong>
-                        <div>Staff: {inst.staff_required}</div>
-                        <div>Vehicles: {inst.vehicles_required}</div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Week 2 (next 7 days) */}
-          <div
-            className="week-grid"
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(7, minmax(220px, 1fr))',
-              gap: '16px'
-            }}
-          >
-            {dates.slice(7).map((d) => {
-              const dayInstances = instancesByDate[d] || [];
-              return (
-                <div key={d} className="instance-column glass-card">
-                  <div className="column-header">{formatDateHeader(d)}</div>
-                  {dayInstances.length === 0 ? (
-                    <div className="empty-day">No program instances today.</div>
-                  ) : (
-                    dayInstances.map((inst) => (
-                      <div key={inst.instance_id} className="instance-card">
-                        <strong>{inst.program_name}</strong>
-                        <div>Staff: {inst.staff_required}</div>
-                        <div>Vehicles: {inst.vehicles_required}</div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              );
-            })}
+            {dates
+              .slice(week === 2 ? 0 : week * 7, week === 2 ? 14 : week * 7 + 7)
+              .map((d) => {
+                const dayShifts = shiftsByDate[d] || [];
+                // Sort shifts by start_time
+                const sortedShifts = [...dayShifts].sort((a, b) => 
+                  a.start_time < b.start_time ? -1 : a.start_time > b.start_time ? 1 : 0
+                );
+                
+                return (
+                  <div key={d} className="instance-column glass-card">
+                    <div className="column-header">{formatDateHeader(d)}</div>
+                    {sortedShifts.length === 0 ? (
+                      <div className="empty-day">No shifts scheduled today.</div>
+                    ) : (
+                      sortedShifts.map(shift => renderShiftCard(shift))
+                    )}
+                  </div>
+                );
+              })}
           </div>
         </div>
       )}
 
       {/* Staff View - Single grid with sticky first column */}
       {!loading && view === 'staff' && (
-        <div className="rosterGrid" style={{
+        <div className="full-bleed rosterGrid" style={{
           display: 'grid',
-          gridTemplateColumns: '280px repeat(14, minmax(220px, 1fr))',
+          gridTemplateColumns: '280px repeat(14, minmax(200px, 1fr))',
           gridAutoRows: 'minmax(64px, auto)',
           overflow: 'auto',
           height: 'calc(100vh - 200px)'
@@ -337,6 +427,90 @@ const Roster = () => {
               {formatDateHeader(date)}
             </div>
           ))}
+          
+          {/* Open Shifts row */}
+          <div 
+            className="staffCell"
+            style={{
+              position: 'sticky',
+              left: 0,
+              zIndex: 2,
+              background: 'var(--panel-bg, rgba(30, 34, 42, 0.7))',
+              padding: '12px 16px',
+              fontWeight: 'bold',
+              borderBottom: '1px solid var(--ui-border, rgba(255,255,255,0.08))',
+              boxShadow: '2px 0 0 rgba(0,0,0,0.08)'
+            }}
+          >
+            Open Shifts
+          </div>
+          
+          {/* Open shifts for each day */}
+          {dates.map((date) => {
+            const dayShifts = shiftsByDate[date] || [];
+            const openShifts = dayShifts.filter(s => s.status === 'open');
+            return (
+              <div
+                key={`open-${date}`}
+                className="dayCell"
+                style={{
+                  padding: '8px',
+                  borderBottom: '1px solid var(--ui-border, rgba(255,255,255,0.08))',
+                  background: 'rgba(255,255,255,0.02)'
+                }}
+              >
+                {openShifts.length > 0 ? (
+                  openShifts.map(shift => renderShiftCard(shift))
+                ) : (
+                  <div style={{ color: 'var(--ui-text-muted)', fontSize: '0.85rem', textAlign: 'center' }}>
+                    No open shifts
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          
+          {/* Auto Assign row */}
+          <div 
+            className="staffCell"
+            style={{
+              position: 'sticky',
+              left: 0,
+              zIndex: 2,
+              background: 'var(--panel-bg, rgba(30, 34, 42, 0.7))',
+              padding: '12px 16px',
+              fontWeight: 'bold',
+              borderBottom: '1px solid var(--ui-border, rgba(255,255,255,0.08))',
+              boxShadow: '2px 0 0 rgba(0,0,0,0.08)'
+            }}
+          >
+            Auto Assign
+          </div>
+          
+          {/* Auto shifts for each day */}
+          {dates.map((date) => {
+            const dayShifts = shiftsByDate[date] || [];
+            const autoShifts = dayShifts.filter(s => s.status === 'auto');
+            return (
+              <div
+                key={`auto-${date}`}
+                className="dayCell"
+                style={{
+                  padding: '8px',
+                  borderBottom: '1px solid var(--ui-border, rgba(255,255,255,0.08))',
+                  background: 'rgba(255,255,255,0.02)'
+                }}
+              >
+                {autoShifts.length > 0 ? (
+                  autoShifts.map(shift => renderShiftCard(shift))
+                ) : (
+                  <div style={{ color: 'var(--ui-text-muted)', fontSize: '0.85rem', textAlign: 'center' }}>
+                    No auto shifts
+                  </div>
+                )}
+              </div>
+            );
+          })}
           
           {/* Staff rows with day cells */}
           {staffFiltered.length > 0 ? (
@@ -380,22 +554,34 @@ const Roster = () => {
                 </div>
                 
                 {/* Day cells for this staff member */}
-                {dates.map((date) => (
-                  <div
-                    key={`${staff.id}-${date}`}
-                    className="dayCell"
-                    style={{
-                      padding: '12px',
-                      borderBottom: '1px solid var(--ui-border, rgba(255,255,255,0.08))',
-                      fontSize: '0.85rem',
-                      color: 'var(--ui-text-muted, rgba(255,255,255,0.6))',
-                      textAlign: 'center',
-                      background: 'rgba(255,255,255,0.02)'
-                    }}
-                  >
-                    <div>No shifts assigned</div>
-                  </div>
-                ))}
+                {dates.map((date) => {
+                  const dayShifts = shiftsByDate[date] || [];
+                  const staffShifts = dayShifts.filter(
+                    s => s.status === 'assigned' && s.staff_id === staff.id
+                  ).sort((a, b) => 
+                    a.start_time < b.start_time ? -1 : a.start_time > b.start_time ? 1 : 0
+                  );
+                  
+                  return (
+                    <div
+                      key={`${staff.id}-${date}`}
+                      className="dayCell"
+                      style={{
+                        padding: '8px',
+                        borderBottom: '1px solid var(--ui-border, rgba(255,255,255,0.08))',
+                        background: 'rgba(255,255,255,0.02)'
+                      }}
+                    >
+                      {staffShifts.length > 0 ? (
+                        staffShifts.map(shift => renderShiftCard(shift))
+                      ) : (
+                        <div style={{ color: 'var(--ui-text-muted)', fontSize: '0.85rem', textAlign: 'center' }}>
+                          No shifts assigned
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </React.Fragment>
             ))
           ) : (

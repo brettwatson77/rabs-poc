@@ -13,6 +13,18 @@
 const express = require('express');
 const router = express.Router();
 
+/* ------------------------------------------------------------------
+   Time-zone helpers – Australia/Sydney (avoids UTC drift)
+-------------------------------------------------------------------*/
+const TZ = 'Australia/Sydney';
+const fmtYmdTZ = (d) =>
+  new Intl.DateTimeFormat('en-CA', {
+    timeZone: TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d);
+
 /**
  * @route   GET /api/v1/loom/window
  * @desc    Get array of dates in the loom window
@@ -62,7 +74,7 @@ router.get('/window', async (req, res) => {
       date.setDate(today.getDate() + i);
       
       // Format as YYYY-MM-DD
-      const formattedDate = date.toISOString().split('T')[0];
+      const formattedDate = fmtYmdTZ(date);
       dates.push({ date: formattedDate });
     }
     
@@ -107,7 +119,7 @@ router.get('/instances', async (req, res) => {
       SELECT 
         li.id,
         li.source_rule_id,
-        li.instance_date,
+        to_char(li.instance_date::date, 'YYYY-MM-DD') AS instance_date,
         li.start_time,
         li.end_time,
         li.venue_id,

@@ -124,7 +124,11 @@ function isRuleActiveOnDate(rule, dateStr) {
     /* -------------------------------------------------- */
     case 'monthly': {
       if (!anchorDate) return false;
-      return date.getDate() === anchorDate.getDate();
+      // Compare day-of-month in Australia/Sydney to avoid UTC drift
+      const anchorYmdTZ = formatDateInTZ(anchorDate); // 'YYYY-MM-DD' in TZ
+      const { d: anchorDay } = parseYmd(anchorYmdTZ);
+      const { d: candDay } = parseYmd(dateStr);
+      return candDay === anchorDay;
     }
 
     /* -------------------------------------------------- */

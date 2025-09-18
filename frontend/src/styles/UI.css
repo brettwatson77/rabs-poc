@@ -238,3 +238,22 @@
 .rosterGrid .dayCell  { background: rgba(255,255,255,0.02); }
 .rosterGrid .staffCell,
 .rosterGrid .dayCell  { border-bottom: 1px solid var(--ui-border); }
+
+/* -------------------------------------------------------------------------- */
+/*  Utility: Full-bleed section                                               */
+/* -------------------------------------------------------------------------- */
+
+.full-bleed {
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  padding-left: var(--space-xl);
+  padding-right: var(--space-xl);
+}
+
+@media (max-width: 640px) {
+  .full-bleed {
+    padding-left: var(--space-lg);
+    padding-right: var(--space-lg);
+  }
+}
