@@ -190,6 +190,8 @@ router.patch('/rules/:id', async (req, res) => {
     'program_type',
     'day_of_week',
     'week_in_cycle',
+    'start_time',
+    'end_time',
     'venue_id',
     'auto_assign_staff',
     'auto_assign_vehicles',

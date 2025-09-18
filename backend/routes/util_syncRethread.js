@@ -24,33 +24,72 @@ function getTomorrow() {
  * @param {string} dateStr - The date string in YYYY-MM-DD format
  * @returns {boolean} - Whether the rule is active on the given date
  */
+/**
+ * Enhanced recurrence logic honouring anchor_date & recurrence_pattern
+ * Accepted patterns: one_off | weekly | fortnightly | monthly | null(weekly)
+ */
 function isRuleActiveOnDate(rule, dateStr) {
   if (!rule || !dateStr) return false;
-  
+
   const date = new Date(dateStr);
   if (isNaN(date.getTime())) return false;
-  
-  // Get day of week (1-7, where 1 is Monday)
-  const dayOfWeek = date.getDay() === 0 ? 7 : date.getDay(); // Convert Sunday (0) to 7
-  
-  // Check if the day of week matches
-  if (rule.day_of_week !== dayOfWeek) return false;
-  
-  // If week_in_cycle is defined, check week parity
-  if (rule.week_in_cycle !== null && rule.week_in_cycle !== undefined) {
-    // Get ISO week number
-    const startOfYear = new Date(date.getFullYear(), 0, 1);
-    const days = Math.floor((date - startOfYear) / (24 * 60 * 60 * 1000));
-    const weekNumber = Math.ceil((days + startOfYear.getDay()) / 7);
-    
-    // Check if week parity matches (week 1 = odd weeks, week 2 = even weeks)
-    const isOddWeek = weekNumber % 2 === 1;
-    return (rule.week_in_cycle === 1 && isOddWeek) || 
-           (rule.week_in_cycle === 2 && !isOddWeek);
+
+  const dayOfWeek = date.getDay() === 0 ? 7 : date.getDay();
+  const anchorDate =
+    rule.anchor_date && !isNaN(new Date(rule.anchor_date).getTime())
+      ? new Date(rule.anchor_date)
+      : null;
+  const pattern = (rule.recurrence_pattern || 'weekly').toLowerCase();
+
+  switch (pattern) {
+    /* -------------------------------------------------- */
+    case 'one_off':
+      return anchorDate
+        ? dateStr === rule.anchor_date
+        : false;
+
+    /* -------------------------------------------------- */
+    case 'weekly':
+      return rule.day_of_week === dayOfWeek;
+
+    /* -------------------------------------------------- */
+    case 'fortnightly': {
+      if (rule.day_of_week !== dayOfWeek) return false;
+
+      // Prefer anchor_date parity; fall back to week_in_cycle
+      if (anchorDate) {
+        const diffDays = Math.floor(
+          (date.getTime() - anchorDate.getTime()) / (24 * 60 * 60 * 1000)
+        );
+        return diffDays % 14 === 0;
+      }
+
+      if (rule.week_in_cycle !== null && rule.week_in_cycle !== undefined) {
+        const startOfYear = new Date(date.getFullYear(), 0, 1);
+        const days = Math.floor((date - startOfYear) / 86400000);
+        const weekNumber = Math.ceil((days + startOfYear.getDay()) / 7);
+        const isOddWeek = weekNumber % 2 === 1;
+        return (
+          (rule.week_in_cycle === 1 && isOddWeek) ||
+          (rule.week_in_cycle === 2 && !isOddWeek)
+        );
+      }
+
+      // If no anchor or week_in_cycle, treat as weekly match
+      return true;
+    }
+
+    /* -------------------------------------------------- */
+    case 'monthly': {
+      if (!anchorDate) return false;
+      return date.getDate() === anchorDate.getDate();
+    }
+
+    /* -------------------------------------------------- */
+    default:
+      // Fallback to weekly behaviour
+      return rule.day_of_week === dayOfWeek;
   }
-  
-  // If week_in_cycle is not defined, treat as weekly
-  return true;
 }
 
 /**
