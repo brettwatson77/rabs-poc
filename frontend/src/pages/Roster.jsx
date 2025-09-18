@@ -19,7 +19,6 @@ const Roster = () => {
       ),
     [startMonday]
   );
-  const [instancesByDate, setInstancesByDate] = useState({});      // {date: []}
   const [shiftsByDate, setShiftsByDate] = useState({});           // {date: []}
   const [staffDirectory, setStaffDirectory] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -66,40 +65,49 @@ const Roster = () => {
         key={shift.shift_id} 
         className="shift-card glass-card"
         style={{
-          padding: '8px',
-          marginBottom: '8px',
-          borderRadius: '8px',
-          position: 'relative'
+          padding: '6px',
+          marginBottom: '6px',
+          borderRadius: '6px',
+          position: 'relative',
+          width: '100%'
         }}
       >
-        <strong>{shift.program_name}</strong>
-        <div>
-          {shift.start_time && shift.end_time && (
-            <div className="time">
-              {formatTime(shift.start_time)} - {formatTime(shift.end_time)}
-            </div>
-          )}
-          {shift.venue_name && <div className="venue">{shift.venue_name}</div>}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <strong style={{ fontSize: '0.9rem', marginRight: '20px' }}>{shift.program_name}</strong>
+          {shift.status !== 'assigned' ? (
+            <span 
+              className={`status-tag ${shift.status}`}
+              style={{
+                padding: '1px 4px',
+                borderRadius: '3px',
+                fontSize: '0.65rem',
+                fontWeight: 'bold',
+                backgroundColor: shift.status === 'open' ? '#f59e0b' : '#3b82f6',
+                color: 'white'
+              }}
+            >
+              {shift.status === 'open' ? 'Open' : 'Auto'}
+            </span>
+          ) : null}
         </div>
-        {shift.status !== 'assigned' ? (
-          <span 
-            className={`status-tag ${shift.status}`}
-            style={{
-              position: 'absolute',
-              top: '8px',
-              right: '8px',
-              padding: '2px 6px',
-              borderRadius: '4px',
-              fontSize: '0.7rem',
-              fontWeight: 'bold',
-              backgroundColor: shift.status === 'open' ? '#f59e0b' : '#3b82f6',
-              color: 'white'
-            }}
-          >
-            {shift.status === 'open' ? 'Open' : 'Auto'}
-          </span>
-        ) : (
-          <div className="staff-name">{shift.staff_name}</div>
+        
+        <div style={{ fontSize: '0.8rem' }}>
+          {shift.start_time && shift.end_time && (
+            <span className="time">
+              {formatTime(shift.start_time)} - {formatTime(shift.end_time)}
+            </span>
+          )}
+          {shift.status === 'assigned' && (
+            <span className="staff-name" style={{ marginLeft: '8px', fontWeight: 'bold' }}>
+              {shift.staff_name}
+            </span>
+          )}
+        </div>
+        
+        {shift.venue_name && (
+          <div className="venue" style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)' }}>
+            {shift.venue_name}
+          </div>
         )}
       </div>
     );
@@ -122,14 +130,12 @@ const Roster = () => {
         );
 
         const results = await Promise.all(promises);
-        const instanceMap = {};
         const shiftsMap = {};
         let staffSet = false;
         
         results.forEach((res, idx) => {
           const dateKey = dates[idx];
           if (res && res.data?.success) {
-            instanceMap[dateKey] = res.data.data.instances || [];
             shiftsMap[dateKey] = res.data.data.shifts || [];
             
             if (!staffSet && Array.isArray(res.data.data.staff_directory)) {
@@ -139,12 +145,9 @@ const Roster = () => {
           } else {
             // HTTP failure captured already; mark error banner
             setError('Failed to fetch some roster data.');
-            instanceMap[dateKey] = [];
             shiftsMap[dateKey] = [];
           }
         });
-        
-        setInstancesByDate(instanceMap);
         setShiftsByDate(shiftsMap);
         
         // If we didn't get staff from any day response, fetch staff directly
@@ -326,12 +329,12 @@ const Roster = () => {
 
       {/* Main roster view - conditional rendering based on view state */}
       {!loading && view === 'day' && (
-        <div className="roster-view-grid">
+        <div className="roster-view-grid" style={{ overflowX: 'auto' }}>
           <div
             className="week-grid"
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(7, minmax(220px, 1fr))',
+              gridTemplateColumns: 'repeat(7, minmax(200px, 1fr))',
               gap: '16px',
               marginBottom: '24px',
             }}
@@ -364,7 +367,7 @@ const Roster = () => {
       {!loading && view === 'staff' && (
         <div className="rosterGrid" style={{
           display: 'grid',
-          gridTemplateColumns: '280px repeat(14, minmax(220px, 1fr))',
+          gridTemplateColumns: '280px repeat(14, minmax(200px, 1fr))',
           gridAutoRows: 'minmax(64px, auto)',
           overflow: 'auto',
           height: 'calc(100vh - 200px)'
@@ -432,9 +435,7 @@ const Roster = () => {
                 style={{
                   padding: '8px',
                   borderBottom: '1px solid var(--ui-border, rgba(255,255,255,0.08))',
-                  background: 'rgba(255,255,255,0.02)',
-                  maxHeight: '200px',
-                  overflow: 'auto'
+                  background: 'rgba(255,255,255,0.02)'
                 }}
               >
                 {openShifts.length > 0 ? (
@@ -476,9 +477,7 @@ const Roster = () => {
                 style={{
                   padding: '8px',
                   borderBottom: '1px solid var(--ui-border, rgba(255,255,255,0.08))',
-                  background: 'rgba(255,255,255,0.02)',
-                  maxHeight: '200px',
-                  overflow: 'auto'
+                  background: 'rgba(255,255,255,0.02)'
                 }}
               >
                 {autoShifts.length > 0 ? (
@@ -549,9 +548,7 @@ const Roster = () => {
                       style={{
                         padding: '8px',
                         borderBottom: '1px solid var(--ui-border, rgba(255,255,255,0.08))',
-                        background: 'rgba(255,255,255,0.02)',
-                        maxHeight: '200px',
-                        overflow: 'auto'
+                        background: 'rgba(255,255,255,0.02)'
                       }}
                     >
                       {staffShifts.length > 0 ? (
