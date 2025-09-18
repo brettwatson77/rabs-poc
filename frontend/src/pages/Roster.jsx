@@ -222,7 +222,7 @@ const Roster = () => {
       </div>
 
   {/* View mode tabs ------------------------------------------------------ */}
-  <div className=\"tab-bar\" style={{ marginBottom: '16px' }}>
+  <div className="tab-bar" style={{ marginBottom: '16px' }}>
         <button
           className={`tab-btn ${view === 'day' ? 'active' : ''}`}
           onClick={() => setView('day')}
@@ -276,7 +276,7 @@ const Roster = () => {
         </button>
 
         <button
-          className=\"btn nav-button\"
+          className="btn nav-button"
           onClick={handleNextFortnight}
           style={{ minWidth: '140px' }}
         >
@@ -286,7 +286,7 @@ const Roster = () => {
 
       {/* Week selector (only visible in Schedule view) -------------------- */}
       {view === 'day' && (
-        <div className=\"tab-bar\" style={{ marginBottom: '16px' }}>
+        <div className="tab-bar" style={{ marginBottom: '16px' }}>
           <button
             className={`tab-btn ${week === 0 ? 'active' : ''}`}
             onClick={() => setWeek(0)}
@@ -350,7 +350,7 @@ const Roster = () => {
 
       {/* Main roster view - conditional rendering based on view state */}
       {!loading && view === 'day' && (
-        <div className=\"full-bleed roster-view-grid\" style={{ overflowX: 'auto' }}>
+        <div className="full-bleed roster-view-grid" style={{ overflowX: 'auto' }}>
           <div
             className="week-grid"
             style={{
@@ -386,7 +386,7 @@ const Roster = () => {
 
       {/* Staff View - Single grid with sticky first column */}
       {!loading && view === 'staff' && (
-        <div className=\"full-bleed rosterGrid\" style={{
+        <div className="full-bleed rosterGrid" style={{
           display: 'grid',
           gridTemplateColumns: '280px repeat(14, minmax(200px, 1fr))',
           gridAutoRows: 'minmax(64px, auto)',
