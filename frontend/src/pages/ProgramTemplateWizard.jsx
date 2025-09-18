@@ -68,6 +68,25 @@ const ProgramTemplateWizard = () => {
   // Helper to update last updated timestamp
   const updateLastUpdated = () => setLastUpdated(new Date());
   
+  /* ------------------------------------------------------------------
+     Debounced rule patch helper – prevents excessive network chatter
+     ------------------------------------------------------------------ */
+  const patchRule = (() => {
+    let t;
+    return (id, body = {}) => {
+      if (!id || !body || Object.keys(body).length === 0) return;
+      clearTimeout(t);
+      t = setTimeout(async () => {
+        try {
+          await api.patch(`/templates/rules/${id}`, body);
+        } catch (e) {
+          console.error('Rule patch failed', body, e);
+          toast.error('Failed to save changes');
+        }
+      }, 300);
+    };
+  })();
+
   // Toggle participant open state
   const toggleParticipantOpen = (id) => setOpenParticipants(prev => ({...prev, [id]: !prev[id]}));
 
@@ -252,6 +271,55 @@ const ProgramTemplateWizard = () => {
       }
     })();
   }, [programType, ruleId]);
+
+  /* ------------------------------------------------------------------
+     Persist core rule fields whenever they change (debounced via patchRule)
+     ------------------------------------------------------------------ */
+  useEffect(() => {
+    if (!ruleId) return;
+    patchRule(ruleId, { name: ruleName });
+  }, [ruleId, ruleName]);
+
+  useEffect(() => {
+    if (!ruleId) return;
+    patchRule(ruleId, { description: ruleDescription });
+  }, [ruleId, ruleDescription]);
+
+  useEffect(() => {
+    if (!ruleId || !anchorDate) return;
+    patchRule(ruleId, { anchor_date: anchorDate });
+  }, [ruleId, anchorDate]);
+
+  useEffect(() => {
+    if (!ruleId) return;
+    patchRule(ruleId, { recurrence_pattern: recurrencePattern });
+  }, [ruleId, recurrencePattern]);
+
+  useEffect(() => {
+    if (!ruleId || !dayOfWeek) return;
+    patchRule(ruleId, { day_of_week: dayOfWeek });
+  }, [ruleId, dayOfWeek]);
+
+  useEffect(() => {
+    if (!ruleId || !venueId) return;
+    patchRule(ruleId, { venue_id: venueId });
+  }, [ruleId, venueId]);
+
+  /* ------------------------------------------------------------------
+     Persist calculated program-level start_time / end_time from slots
+     ------------------------------------------------------------------ */
+  useEffect(() => {
+    if (!ruleId || !Array.isArray(slots) || slots.length === 0) return;
+    let minStart = '23:59';
+    let maxEnd = '00:00';
+    for (const s of slots) {
+      if (s.start_time && s.start_time < minStart) minStart = s.start_time;
+      if (s.end_time && s.end_time > maxEnd) maxEnd = s.end_time;
+    }
+    if (minStart !== '23:59' && maxEnd !== '00:00') {
+      patchRule(ruleId, { start_time: minStart, end_time: maxEnd });
+    }
+  }, [ruleId, slots]);
 
   // Create draft rule on component mount
   useEffect(() => {
