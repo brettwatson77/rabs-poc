@@ -18,6 +18,7 @@ const ProgramDetailsPanel = (props) => {
     ruleDescription, setRuleDescription,
     anchorDate, setAnchorDate,
     recurrencePattern, setRecurrencePattern,
+    programType, setProgramType,        // NEW
     venueId, setVenueId,
     venues = [],
     showNewVenueForm, setShowNewVenueForm,
@@ -68,6 +69,23 @@ const ProgramDetailsPanel = (props) => {
                 {(patternOptions || []).map(p => (
                   <option key={p.value} value={p.value}>{p.label}</option>
                 ))}
+              </select>
+            </div>
+
+            {/* ---------------- Program Type ---------------- */}
+            <div className="form-group">
+              <label htmlFor="programType">Program Type</label>
+              <select
+                id="programType"
+                value={programType || 'standard'}
+                onChange={(e) =>
+                  setProgramType && setProgramType(e.target.value)
+                }
+                className="form-control"
+              >
+                <option value="standard">Standard</option>
+                <option value="program">Program</option>
+                <option value="user_select_program">User Select Program</option>
               </select>
             </div>
 

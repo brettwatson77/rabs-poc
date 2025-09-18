@@ -1,0 +1,103 @@
+/* Activities Page Styles */
+
+/* Main container styles */
+.activities-page {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+/* Form layout */
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.form-actions {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Activities table container for horizontal scrolling */
+.activities-table-container {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: var(--border-radius, 8px);
+  background: var(--glass-bg, rgba(255, 255, 255, 0.1));
+  box-shadow: var(--glass-shadow, 0 4px 6px rgba(0, 0, 0, 0.1));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* Table styles */
+.activities-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+  color: var(--text-color, #333);
+}
+
+.activities-table th,
+.activities-table td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--glass-border, rgba(255, 255, 255, 0.2));
+}
+
+.activities-table th {
+  background-color: var(--glass-header-bg, rgba(255, 255, 255, 0.15));
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.activities-table tr:hover {
+  background-color: var(--glass-hover, rgba(255, 255, 255, 0.05));
+}
+
+/* Action buttons */
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.action-buttons .btn {
+  padding: 0.25rem 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .activities-table th,
+  .activities-table td {
+    padding: 0.5rem;
+  }
+}
+
+/* Form controls within table cells */
+.activities-table input,
+.activities-table textarea {
+  width: 100%;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.2));
+  background: var(--input-bg, rgba(255, 255, 255, 0.1));
+  border-radius: 4px;
+  color: var(--text-color, #333);
+}
+
+.activities-table textarea {
+  resize: vertical;
+  min-height: 60px;
+}

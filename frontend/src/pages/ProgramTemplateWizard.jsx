@@ -39,6 +39,8 @@ const ProgramTemplateWizard = () => {
   );
   const [recurrencePattern, setRecurrencePattern] = useState('fortnightly');
   const [venueId, setVenueId] = useState('');
+  // NEW: program type (standard | program | user_select_program)
+  const [programType, setProgramType] = useState('standard');
   
   // State for UI
   const [loading, setLoading] = useState(true);
@@ -234,6 +236,23 @@ const ProgramTemplateWizard = () => {
     }
   }, [slots]);
   
+  /* ------------------------------------------------------------------
+     Persist program_type whenever it changes (after draft created)
+     ------------------------------------------------------------------ */
+  useEffect(() => {
+    if (!ruleId) return;
+    (async () => {
+      try {
+        await api.patch(`/templates/rules/${ruleId}`, {
+          program_type: programType,
+        });
+      } catch (err) {
+        console.error('Error saving program type:', err);
+        toast.error('Failed to save program type');
+      }
+    })();
+  }, [programType, ruleId]);
+
   // Create draft rule on component mount
   useEffect(() => {
     const createDraftRule = async () => {
@@ -1322,6 +1341,8 @@ const ProgramTemplateWizard = () => {
           setAnchorDate={setAnchorDate}
           recurrencePattern={recurrencePattern}
           setRecurrencePattern={setRecurrencePattern}
+          programType={programType}
+          setProgramType={setProgramType}
           venueId={venueId}
           setVenueId={setVenueId}
           venues={venues}

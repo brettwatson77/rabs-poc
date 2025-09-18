@@ -25,6 +25,7 @@ const systemRoutes = require('./system');
 const changesRoutes = require('./changes');
 const templatesRoutes = require('./templates');
 const calendarRoutes = require('./calendar');
+const activitiesRoutes = require('./activities'); // NEW – activities CRUD
 
 // Mount routes at their respective paths
 router.use('/participants', participantRoutes);
@@ -43,6 +44,7 @@ router.use('/system', systemRoutes);
 router.use('/changes', changesRoutes);
 router.use('/templates', templatesRoutes);
 router.use('/calendar', calendarRoutes);
+router.use('/activities', activitiesRoutes);       // NEW – mount activities routes
 
 // Root API info endpoint
 router.get('/', (req, res) => {
@@ -62,6 +64,7 @@ router.get('/', (req, res) => {
       '/loom',
       '/intentions',
       '/finance',
+      '/activities',
       '/changes',
       '/settings',
       '/system'

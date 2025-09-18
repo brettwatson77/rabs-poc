@@ -187,6 +187,7 @@ router.patch('/rules/:id', async (req, res) => {
     'description',
     'anchor_date',
     'recurrence_pattern',
+    'program_type',
     'day_of_week',
     'week_in_cycle',
     'venue_id',
