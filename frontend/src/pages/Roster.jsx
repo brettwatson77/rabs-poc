@@ -20,10 +20,16 @@ const Roster = () => {
     [startMonday]
   );
   const [instancesByDate, setInstancesByDate] = useState({});      // {date: []}
+  const [shiftsByDate, setShiftsByDate] = useState({});           // {date: []}
   const [staffDirectory, setStaffDirectory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+
+  /* ---------------------------------------------------------------------- */
+  /* Local week toggle (0 = week 1, 1 = week 2) – only affects By Day view   */
+  /* ---------------------------------------------------------------------- */
+  const [week, setWeek] = useState(0); // 0 or 1
 
   /* ---------------------------------------------------------------------- */
   /* Fortnight helpers & navigation                                         */
@@ -43,6 +49,62 @@ const Roster = () => {
     setStartMonday((prev) => addDays(prev, 14));
   };
 
+  // Format time helper (HH:MM:SS → 12:MM AM/PM)
+  const formatTime = (timeStr) => {
+    if (!timeStr) return '';
+    const [hours, minutes] = timeStr.split(':');
+    const hour = parseInt(hours, 10);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const formattedHour = hour % 12 || 12;
+    return `${formattedHour}:${minutes} ${ampm}`;
+  };
+
+  // Render a shift card with consistent styling
+  const renderShiftCard = (shift) => {
+    return (
+      <div 
+        key={shift.shift_id} 
+        className="shift-card glass-card"
+        style={{
+          padding: '8px',
+          marginBottom: '8px',
+          borderRadius: '8px',
+          position: 'relative'
+        }}
+      >
+        <strong>{shift.program_name}</strong>
+        <div>
+          {shift.start_time && shift.end_time && (
+            <div className="time">
+              {formatTime(shift.start_time)} - {formatTime(shift.end_time)}
+            </div>
+          )}
+          {shift.venue_name && <div className="venue">{shift.venue_name}</div>}
+        </div>
+        {shift.status !== 'assigned' ? (
+          <span 
+            className={`status-tag ${shift.status}`}
+            style={{
+              position: 'absolute',
+              top: '8px',
+              right: '8px',
+              padding: '2px 6px',
+              borderRadius: '4px',
+              fontSize: '0.7rem',
+              fontWeight: 'bold',
+              backgroundColor: shift.status === 'open' ? '#f59e0b' : '#3b82f6',
+              color: 'white'
+            }}
+          >
+            {shift.status === 'open' ? 'Open' : 'Auto'}
+          </span>
+        ) : (
+          <div className="staff-name">{shift.staff_name}</div>
+        )}
+      </div>
+    );
+  };
+
   // fetch 14 days in parallel once
   useEffect(() => {
     const fetchAll = async () => {
@@ -60,12 +122,16 @@ const Roster = () => {
         );
 
         const results = await Promise.all(promises);
-        const map = {};
+        const instanceMap = {};
+        const shiftsMap = {};
         let staffSet = false;
+        
         results.forEach((res, idx) => {
           const dateKey = dates[idx];
           if (res && res.data?.success) {
-            map[dateKey] = res.data.data.instances || [];
+            instanceMap[dateKey] = res.data.data.instances || [];
+            shiftsMap[dateKey] = res.data.data.shifts || [];
+            
             if (!staffSet && Array.isArray(res.data.data.staff_directory)) {
               setStaffDirectory(res.data.data.staff_directory);
               staffSet = true;
@@ -73,10 +139,13 @@ const Roster = () => {
           } else {
             // HTTP failure captured already; mark error banner
             setError('Failed to fetch some roster data.');
-            map[dateKey] = [];
+            instanceMap[dateKey] = [];
+            shiftsMap[dateKey] = [];
           }
         });
-        setInstancesByDate(map);
+        
+        setInstancesByDate(instanceMap);
+        setShiftsByDate(shiftsMap);
         
         // If we didn't get staff from any day response, fetch staff directly
         if (!staffSet) {
@@ -158,6 +227,33 @@ const Roster = () => {
         </button>
       </div>
 
+      {/* Week selector (only visible in By Day view) ----------------------- */}
+      {view === 'day' && (
+        <div
+          className="week-toggle glass-card"
+          style={{
+            display: 'flex',
+            gap: '8px',
+            justifyContent: 'center',
+            marginBottom: '16px',
+            padding: '8px',
+          }}
+        >
+          <button
+            className={`btn ${week === 0 ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setWeek(0)}
+          >
+            Week&nbsp;1
+          </button>
+          <button
+            className={`btn ${week === 1 ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setWeek(1)}
+          >
+            Week&nbsp;2
+          </button>
+        </div>
+      )}
+
       <div className="roster-controls glass-card" style={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
@@ -231,65 +327,35 @@ const Roster = () => {
       {/* Main roster view - conditional rendering based on view state */}
       {!loading && view === 'day' && (
         <div className="roster-view-grid">
-          {/* Week 1 (first 7 days) */}
           <div
             className="week-grid"
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(7, minmax(220px, 1fr))',
               gap: '16px',
-              marginBottom: '24px'
+              marginBottom: '24px',
             }}
           >
-            {dates.slice(0, 7).map((d) => {
-              const dayInstances = instancesByDate[d] || [];
-              return (
-                <div key={d} className="instance-column glass-card">
-                  <div className="column-header">{formatDateHeader(d)}</div>
-                  {dayInstances.length === 0 ? (
-                    <div className="empty-day">No program instances today.</div>
-                  ) : (
-                    dayInstances.map((inst) => (
-                      <div key={inst.instance_id} className="instance-card">
-                        <strong>{inst.program_name}</strong>
-                        <div>Staff: {inst.staff_required}</div>
-                        <div>Vehicles: {inst.vehicles_required}</div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Week 2 (next 7 days) */}
-          <div
-            className="week-grid"
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(7, minmax(220px, 1fr))',
-              gap: '16px'
-            }}
-          >
-            {dates.slice(7).map((d) => {
-              const dayInstances = instancesByDate[d] || [];
-              return (
-                <div key={d} className="instance-column glass-card">
-                  <div className="column-header">{formatDateHeader(d)}</div>
-                  {dayInstances.length === 0 ? (
-                    <div className="empty-day">No program instances today.</div>
-                  ) : (
-                    dayInstances.map((inst) => (
-                      <div key={inst.instance_id} className="instance-card">
-                        <strong>{inst.program_name}</strong>
-                        <div>Staff: {inst.staff_required}</div>
-                        <div>Vehicles: {inst.vehicles_required}</div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              );
-            })}
+            {dates
+              .slice(week * 7, week * 7 + 7)
+              .map((d) => {
+                const dayShifts = shiftsByDate[d] || [];
+                // Sort shifts by start_time
+                const sortedShifts = [...dayShifts].sort((a, b) => 
+                  a.start_time < b.start_time ? -1 : a.start_time > b.start_time ? 1 : 0
+                );
+                
+                return (
+                  <div key={d} className="instance-column glass-card">
+                    <div className="column-header">{formatDateHeader(d)}</div>
+                    {sortedShifts.length === 0 ? (
+                      <div className="empty-day">No shifts scheduled today.</div>
+                    ) : (
+                      sortedShifts.map(shift => renderShiftCard(shift))
+                    )}
+                  </div>
+                );
+              })}
           </div>
         </div>
       )}
@@ -338,6 +404,94 @@ const Roster = () => {
             </div>
           ))}
           
+          {/* Open Shifts row */}
+          <div 
+            className="staffCell"
+            style={{
+              position: 'sticky',
+              left: 0,
+              zIndex: 2,
+              background: 'var(--panel-bg, rgba(30, 34, 42, 0.7))',
+              padding: '12px 16px',
+              fontWeight: 'bold',
+              borderBottom: '1px solid var(--ui-border, rgba(255,255,255,0.08))',
+              boxShadow: '2px 0 0 rgba(0,0,0,0.08)'
+            }}
+          >
+            Open Shifts
+          </div>
+          
+          {/* Open shifts for each day */}
+          {dates.map((date) => {
+            const dayShifts = shiftsByDate[date] || [];
+            const openShifts = dayShifts.filter(s => s.status === 'open');
+            return (
+              <div
+                key={`open-${date}`}
+                className="dayCell"
+                style={{
+                  padding: '8px',
+                  borderBottom: '1px solid var(--ui-border, rgba(255,255,255,0.08))',
+                  background: 'rgba(255,255,255,0.02)',
+                  maxHeight: '200px',
+                  overflow: 'auto'
+                }}
+              >
+                {openShifts.length > 0 ? (
+                  openShifts.map(shift => renderShiftCard(shift))
+                ) : (
+                  <div style={{ color: 'var(--ui-text-muted)', fontSize: '0.85rem', textAlign: 'center' }}>
+                    No open shifts
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          
+          {/* Auto Assign row */}
+          <div 
+            className="staffCell"
+            style={{
+              position: 'sticky',
+              left: 0,
+              zIndex: 2,
+              background: 'var(--panel-bg, rgba(30, 34, 42, 0.7))',
+              padding: '12px 16px',
+              fontWeight: 'bold',
+              borderBottom: '1px solid var(--ui-border, rgba(255,255,255,0.08))',
+              boxShadow: '2px 0 0 rgba(0,0,0,0.08)'
+            }}
+          >
+            Auto Assign
+          </div>
+          
+          {/* Auto shifts for each day */}
+          {dates.map((date) => {
+            const dayShifts = shiftsByDate[date] || [];
+            const autoShifts = dayShifts.filter(s => s.status === 'auto');
+            return (
+              <div
+                key={`auto-${date}`}
+                className="dayCell"
+                style={{
+                  padding: '8px',
+                  borderBottom: '1px solid var(--ui-border, rgba(255,255,255,0.08))',
+                  background: 'rgba(255,255,255,0.02)',
+                  maxHeight: '200px',
+                  overflow: 'auto'
+                }}
+              >
+                {autoShifts.length > 0 ? (
+                  autoShifts.map(shift => renderShiftCard(shift))
+                ) : (
+                  <div style={{ color: 'var(--ui-text-muted)', fontSize: '0.85rem', textAlign: 'center' }}>
+                    No auto shifts
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          
           {/* Staff rows with day cells */}
           {staffFiltered.length > 0 ? (
             staffFiltered.map((staff) => (
@@ -380,22 +534,36 @@ const Roster = () => {
                 </div>
                 
                 {/* Day cells for this staff member */}
-                {dates.map((date) => (
-                  <div
-                    key={`${staff.id}-${date}`}
-                    className="dayCell"
-                    style={{
-                      padding: '12px',
-                      borderBottom: '1px solid var(--ui-border, rgba(255,255,255,0.08))',
-                      fontSize: '0.85rem',
-                      color: 'var(--ui-text-muted, rgba(255,255,255,0.6))',
-                      textAlign: 'center',
-                      background: 'rgba(255,255,255,0.02)'
-                    }}
-                  >
-                    <div>No shifts assigned</div>
-                  </div>
-                ))}
+                {dates.map((date) => {
+                  const dayShifts = shiftsByDate[date] || [];
+                  const staffShifts = dayShifts.filter(
+                    s => s.status === 'assigned' && s.staff_id === staff.id
+                  ).sort((a, b) => 
+                    a.start_time < b.start_time ? -1 : a.start_time > b.start_time ? 1 : 0
+                  );
+                  
+                  return (
+                    <div
+                      key={`${staff.id}-${date}`}
+                      className="dayCell"
+                      style={{
+                        padding: '8px',
+                        borderBottom: '1px solid var(--ui-border, rgba(255,255,255,0.08))',
+                        background: 'rgba(255,255,255,0.02)',
+                        maxHeight: '200px',
+                        overflow: 'auto'
+                      }}
+                    >
+                      {staffShifts.length > 0 ? (
+                        staffShifts.map(shift => renderShiftCard(shift))
+                      ) : (
+                        <div style={{ color: 'var(--ui-text-muted)', fontSize: '0.85rem', textAlign: 'center' }}>
+                          No shifts assigned
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </React.Fragment>
             ))
           ) : (

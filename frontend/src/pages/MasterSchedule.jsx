@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import '../styles/MasterSchedule.css';
+import { format, startOfWeek, addDays, subDays } from 'date-fns';
 
 // API base URL from environment (matches Dashboard pattern)
 const API_URL = import.meta.env.VITE_API_URL || '';
@@ -18,103 +19,80 @@ const fmtYmdTZ = (d) =>
     month: '2-digit',
     day: '2-digit',
   }).format(d);
-// Short weekday → index offset (Mon = 0)
-const DOW = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
-// Build Monday-based strip of {date} objects of given length
-const buildWindowDates = (days = 14) => {
-  const now = new Date();
-  const short = new Intl.DateTimeFormat('en-US', {
-    timeZone: TZ,
-    weekday: 'short',
-  }).format(now);
-  const offset = DOW[short] ?? 0; // days since Monday
-  const base = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 12)); // UTC noon avoids DST
-  base.setUTCDate(base.getUTCDate() - offset);
-  const arr = [];
-  for (let i = 0; i < days; i++) {
-    const d = new Date(base);
-    d.setUTCDate(base.getUTCDate() + i);
-    arr.push({ date: fmtYmdTZ(d) });
-  }
-  return arr;
-};
 
 /**
  * Master Schedule Page
  * Shows program/event cards from loom instances in a date-based view
  */
 const MasterSchedule = () => {
-  // State for window and instances
-  const [loading, setLoading] = useState(true);
-  const [windowDates, setWindowDates] = useState([]);
-  const [instances, setInstances] = useState([]);
-  // No error banner state (was unused)
+  // Track current fortnight via its starting Monday
+  const [startMonday, setStartMonday] = useState(
+    startOfWeek(new Date(), { weekStartsOn: 1 })
+  );
+
+  // Derive the 14-day string array from startMonday
+  const dates = React.useMemo(
+    () =>
+      Array.from({ length: 14 }, (_, i) =>
+        addDays(startMonday, i).toISOString().split('T')[0]
+      ),
+    [startMonday]
+  );
   
-  // Fetch organization settings and window dates
+  // State for loading and shift data
+  const [loading, setLoading] = useState(true);
+  const [shiftsByDate, setShiftsByDate] = useState({});
+  
+  // Human-readable label for the current 14-day window (Mon .. Sun)
+  const fortnightLabel = `${format(startMonday, 'EEE d MMM')} — ${format(
+    addDays(startMonday, 13),
+    'EEE d MMM',
+  )}`;
+
+  const handlePrevFortnight = () => {
+    setStartMonday((prev) => subDays(prev, 14));
+  };
+
+  const handleNextFortnight = () => {
+    setStartMonday((prev) => addDays(prev, 14));
+  };
+  
+  // Fetch roster data for the current fortnight
   useEffect(() => {
-    const fetchSettings = async () => {
+    const fetchRosterData = async () => {
+      setLoading(true);
       try {
-        // First get org settings for window days
-        const settingsResponse = await axios.get(`${API_URL}/api/v1/settings/org`);
-        const days = settingsResponse.data?.data?.loom_window_days || 14;
+        const promises = dates.map((date) =>
+          axios
+            .get(`${API_URL}/api/v1/roster/day`, { params: { date } })
+            .catch((err) => {
+              console.error(`Failed GET /roster/day?date=${date}`, err?.response?.status);
+              return null;
+            })
+        );
+
+        const results = await Promise.all(promises);
+        const shiftsMap = {};
         
-        // Build Sydney-aware date strip
-        const datesArr = buildWindowDates(days);
-        setWindowDates(datesArr);
-
-        // Call loom/window just for availability check
-        try {
-          await axios.get(`${API_URL}/api/v1/loom/window`, { params: { days } });
-        } catch (wErr) {
-          console.error(`Failed GET ${API_URL}/api/v1/loom/window`, wErr?.response?.status);
-        }
-
-        // Always attempt to fetch instances
-        fetchInstancesForRange(datesArr);
-      } catch (err) {
-        // HTTP failure or network issue – show banner
-        console.error(`Failed GET ${API_URL}/api/v1/settings/org`, err?.response?.status);
-        // Fallback dates so page still renders
-        generateWindowDates(14);
+        results.forEach((res, idx) => {
+          const dateKey = dates[idx];
+          if (res && res.data?.success) {
+            shiftsMap[dateKey] = res.data.data.shifts || [];
+          } else {
+            shiftsMap[dateKey] = [];
+          }
+        });
+        
+        setShiftsByDate(shiftsMap);
+      } catch (error) {
+        console.error('Error fetching roster data:', error);
+      } finally {
+        setLoading(false);
       }
     };
-    
-    fetchSettings();
-  }, []);
-  
-  // Generate dates helper (start Monday) for fallback
-  const generateWindowDates = (days = 14) => {
-    setWindowDates(buildWindowDates(days));
-    setLoading(false);
-  };
-  
-  // Fetch instances for date range
-  const fetchInstancesForRange = async (dates) => {
-    if (!dates || dates.length === 0) return;
-    
-    setLoading(true);
-    try {
-      const startDate = dates[0].date;
-      const endDate = dates[dates.length - 1].date;
-      
-      const response = await axios.get(`${API_URL}/api/v1/loom/instances`, {
-        params: {
-          startDate,
-          endDate
-        }
-      });
-      
-      if (response.data && response.data.success) {
-        setInstances(response.data.data);
-      } else {
-        throw new Error('Failed to fetch instances data');
-      }
-    } catch (err) {
-      console.error(`Failed GET ${API_URL}/api/v1/loom/instances`, err?.response?.status);
-    } finally {
-      setLoading(false);
-    }
-  };
+
+    fetchRosterData();
+  }, [dates]);
   
   // Delete a rule and refresh instances
   const handleDeleteRule = async (ruleId) => {
@@ -127,8 +105,30 @@ const MasterSchedule = () => {
       await axios.delete(
         `${API_URL}/api/v1/templates/rules/${ruleId}`
       );
-      // Refresh current window
-      fetchInstancesForRange(windowDates);
+      
+      // Refresh current fortnight data
+      const promises = dates.map((date) =>
+        axios
+          .get(`${API_URL}/api/v1/roster/day`, { params: { date } })
+          .catch((err) => {
+            console.error(`Failed GET /roster/day?date=${date}`, err?.response?.status);
+            return null;
+          })
+      );
+
+      const results = await Promise.all(promises);
+      const shiftsMap = {};
+      
+      results.forEach((res, idx) => {
+        const dateKey = dates[idx];
+        if (res && res.data?.success) {
+          shiftsMap[dateKey] = res.data.data.shifts || [];
+        } else {
+          shiftsMap[dateKey] = [];
+        }
+      });
+      
+      setShiftsByDate(shiftsMap);
     } catch (err) {
       console.error(
         `Failed DELETE ${API_URL}/api/v1/templates/rules/${ruleId}`,
@@ -137,37 +137,18 @@ const MasterSchedule = () => {
       window.alert('Failed to delete program – see console for details.');
     }
   };
-
-  // Get instances for a specific day
-  const getInstancesForDay = (dateStr) => {
-    // normalise both DB string and target day to YYYY-MM-DD to avoid TZ issues
-    const norm = (d) => fmtYmdTZ(new Date(d));
-    return instances.filter(instance => norm(instance.instance_date) === dateStr);
-  };
   
   // Format day header
   const formatDayHeader = (dateStr) => {
     const day = new Date(dateStr);
     const todayYmd = fmtYmdTZ(new Date());
     const isToday = dateStr === todayYmd;
-    const dayName = new Intl.DateTimeFormat('en-US', {
-      timeZone: TZ,
-      weekday: 'short',
-    }).format(day);
-    const dayNum = new Intl.DateTimeFormat('en-US', {
-      timeZone: TZ,
-      day: 'numeric',
-    }).format(day);
-    const month = new Intl.DateTimeFormat('en-US', {
-      timeZone: TZ,
-      month: 'short',
-    }).format(day);
     
     return (
       <div className={`day-header ${isToday ? 'today' : ''}`}>
-        <div className="day-name">{dayName}</div>
-        <div className="day-number">{dayNum}</div>
-        <div className="day-month">{month}</div>
+        <div className="day-name">{format(day, 'EEE')}</div>
+        <div className="day-number">{format(day, 'd')}</div>
+        <div className="day-month">{format(day, 'MMM')}</div>
       </div>
     );
   };
@@ -184,6 +165,52 @@ const MasterSchedule = () => {
     return `${displayHours}:${minutes} ${ampm}`;
   };
   
+  // Render a shift card with consistent styling
+  const renderShiftCard = (shift) => {
+    return (
+      <div 
+        key={shift.shift_id} 
+        className="shift-card glass-card"
+        style={{
+          padding: '8px',
+          marginBottom: '8px',
+          borderRadius: '8px',
+          position: 'relative'
+        }}
+      >
+        <strong>{shift.program_name}</strong>
+        <div>
+          {shift.start_time && shift.end_time && (
+            <div className="time">
+              {formatTime(shift.start_time)} - {formatTime(shift.end_time)}
+            </div>
+          )}
+          {shift.venue_name && <div className="venue">{shift.venue_name}</div>}
+        </div>
+        {shift.status !== 'assigned' ? (
+          <span 
+            className={`status-tag ${shift.status}`}
+            style={{
+              position: 'absolute',
+              top: '8px',
+              right: '8px',
+              padding: '2px 6px',
+              borderRadius: '4px',
+              fontSize: '0.7rem',
+              fontWeight: 'bold',
+              backgroundColor: shift.status === 'open' ? '#f59e0b' : '#3b82f6',
+              color: 'white'
+            }}
+          >
+            {shift.status === 'open' ? 'Open' : 'Auto'}
+          </span>
+        ) : (
+          <div className="staff-name">{shift.staff_name}</div>
+        )}
+      </div>
+    );
+  };
+  
   return (
     <div className="master-schedule">
       <div className="schedule-header">
@@ -193,72 +220,122 @@ const MasterSchedule = () => {
         </Link>
       </div>
       
+      {/* Fortnight navigation */}
+      <div
+        className="fortnight-nav glass-card"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '12px',
+          marginBottom: '16px',
+          padding: '12px'
+        }}
+      >
+        <button
+          className="btn nav-button"
+          onClick={handlePrevFortnight}
+          style={{ minWidth: '140px' }}
+        >
+          Previous&nbsp;Fortnight
+        </button>
+
+        <div
+          style={{
+            flex: 1,
+            textAlign: 'center',
+            fontWeight: 600,
+            letterSpacing: '-0.01em',
+          }}
+        >
+          {fortnightLabel}
+        </div>
+
+        <button
+          className="btn nav-button"
+          onClick={handleNextFortnight}
+          style={{ minWidth: '140px' }}
+        >
+          Next&nbsp;Fortnight
+        </button>
+      </div>
+      
       {loading && (
         <div className="loading">Loading schedule window...</div>
       )}
       
-      {/* Date-based Calendar Grid */}
-      <div
-        className="calendar-grid"
-        style={{
-          display: 'grid',
-          gridAutoFlow: 'column',
-          gridTemplateColumns: `repeat(${windowDates.length}, minmax(280px, 1fr))`,
-          gap: '16px',
-          overflowX: 'auto'
-        }}
-      >
-        {windowDates.map((dateObj, index) => (
-          <div 
-            key={index} 
-            className="day-column glass-panel"
+      {!loading && (
+        <div className="fortnight-view">
+          {/* Week 1 (first 7 days) */}
+          <div
+            className="week-grid"
             style={{
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between'
+              display: 'grid',
+              gridTemplateColumns: 'repeat(7, minmax(220px, 1fr))',
+              gap: '16px',
+              marginBottom: '24px'
             }}
           >
-            {formatDayHeader(dateObj.date)}
-            
-            <div className="day-instances">
-              {loading ? (
-                <div className="loading-placeholder">Loading...</div>
-              ) : getInstancesForDay(dateObj.date).length > 0 ? (
-                getInstancesForDay(dateObj.date).map(instance => (
-                  <div key={instance.id} className="program-card glass-card">
-                    <button
-                      className="delete-btn"
-                      title="Delete program"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteRule(instance.source_rule_id);
-                      }}
-                    >
-                      ×
-                    </button>
-                    <h3>{instance.program_name || instance.source_rule_id}</h3>
-                    <p className="time">
-                      {formatTime(instance.start_time)} - {formatTime(instance.end_time)}
-                    </p>
+            {dates.slice(0, 7).map((date) => {
+              const dayShifts = shiftsByDate[date] || [];
+              // Sort shifts by start_time
+              const sortedShifts = [...dayShifts].sort((a, b) => 
+                a.start_time < b.start_time ? -1 : a.start_time > b.start_time ? 1 : 0
+              );
+              
+              return (
+                <div key={date} className="day-column glass-panel">
+                  {formatDayHeader(date)}
+                  
+                  <div className="day-shifts">
+                    {sortedShifts.length === 0 ? (
+                      <div className="empty-day">
+                        <span>No shifts scheduled</span>
+                      </div>
+                    ) : (
+                      sortedShifts.map(shift => renderShiftCard(shift))
+                    )}
                   </div>
-                ))
-              ) : (
-                <div className="empty-day">
-                  <span style={{ textAlign: 'center', padding: '24px 0' }}>
-                    No programs scheduled
-                  </span>
                 </div>
-              )}
-            </div>
-            {/* CTA always at bottom of tile */}
-            <div className="day-cta">
-              <Link to="/template-wizard" className="create-link">
-                Create Program
-              </Link>
-            </div>
+              );
+            })}
           </div>
-        ))}
-      </div>
+          
+          {/* Week 2 (next 7 days) */}
+          <div
+            className="week-grid"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(7, minmax(220px, 1fr))',
+              gap: '16px'
+            }}
+          >
+            {dates.slice(7, 14).map((date) => {
+              const dayShifts = shiftsByDate[date] || [];
+              // Sort shifts by start_time
+              const sortedShifts = [...dayShifts].sort((a, b) => 
+                a.start_time < b.start_time ? -1 : a.start_time > b.start_time ? 1 : 0
+              );
+              
+              return (
+                <div key={date} className="day-column glass-panel">
+                  {formatDayHeader(date)}
+                  
+                  <div className="day-shifts">
+                    {sortedShifts.length === 0 ? (
+                      <div className="empty-day">
+                        <span>No shifts scheduled</span>
+                      </div>
+                    ) : (
+                      sortedShifts.map(shift => renderShiftCard(shift))
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
