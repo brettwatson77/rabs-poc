@@ -16,6 +16,17 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
+    // Ensure all required columns exist
+    await pool.query(`
+      ALTER TABLE venues
+        ADD COLUMN IF NOT EXISTS include_in_transport boolean DEFAULT false,
+        ADD COLUMN IF NOT EXISTS contact_phone text,
+        ADD COLUMN IF NOT EXISTS contact_email text,
+        ADD COLUMN IF NOT EXISTS accessibility_features text,
+        ADD COLUMN IF NOT EXISTS venue_type text,
+        ADD COLUMN IF NOT EXISTS is_active boolean DEFAULT true
+    `);
+    
     // Restore rich field selection expected by Filing Cabinet UI
     const query = `
       SELECT
@@ -25,9 +36,12 @@ router.get('/', async (req, res) => {
         suburb,
         state,
         postcode,
+        contact_phone,
+        contact_email,
         capacity,
         facilities,
         features,
+        COALESCE(include_in_transport,false) AS include_in_transport,
         COALESCE(is_active, active, true) AS is_active,
         created_at,
         updated_at,
@@ -60,6 +74,15 @@ router.get('/:id', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { id } = req.params;
+    await pool.query(`
+      ALTER TABLE venues
+        ADD COLUMN IF NOT EXISTS include_in_transport boolean DEFAULT false,
+        ADD COLUMN IF NOT EXISTS contact_phone text,
+        ADD COLUMN IF NOT EXISTS contact_email text,
+        ADD COLUMN IF NOT EXISTS accessibility_features text,
+        ADD COLUMN IF NOT EXISTS venue_type text,
+        ADD COLUMN IF NOT EXISTS is_active boolean DEFAULT true
+    `);
     
     const query = `
       SELECT
@@ -69,9 +92,12 @@ router.get('/:id', async (req, res) => {
         suburb,
         state,
         postcode,
+        contact_phone,
+        contact_email,
         capacity,
         facilities,
         features,
+        COALESCE(include_in_transport,false) AS include_in_transport,
         COALESCE(is_active, active, true) AS is_active,
         created_at,
         updated_at,
@@ -109,6 +135,17 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
+    // Ensure all required columns exist
+    await pool.query(`
+      ALTER TABLE venues
+        ADD COLUMN IF NOT EXISTS include_in_transport boolean DEFAULT false,
+        ADD COLUMN IF NOT EXISTS contact_phone text,
+        ADD COLUMN IF NOT EXISTS contact_email text,
+        ADD COLUMN IF NOT EXISTS accessibility_features text,
+        ADD COLUMN IF NOT EXISTS venue_type text,
+        ADD COLUMN IF NOT EXISTS is_active boolean DEFAULT true
+    `);
+    
     const {
       name,
       address,
@@ -120,7 +157,8 @@ router.post('/', async (req, res) => {
       features,
       accessibility_features,
       venue_type,
-      is_active
+      is_active,
+      include_in_transport
     } = req.body;
     
     // Validate required fields
@@ -135,11 +173,13 @@ router.post('/', async (req, res) => {
       INSERT INTO venues (
         name, address, postcode, contact_phone, contact_email,
         capacity, facilities, features, accessibility_features,
-        venue_type, is_active
+        venue_type, include_in_transport, is_active
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING id, name, address, postcode, contact_phone, contact_email,
-                capacity, accessibility_features, venue_type, is_active
+                capacity, accessibility_features, venue_type,
+                COALESCE(include_in_transport,false) AS include_in_transport,
+                is_active
     `;
     
     const values = [
@@ -153,6 +193,7 @@ router.post('/', async (req, res) => {
       features || '{}',
       accessibility_features || null,
       venue_type || null,
+      include_in_transport !== undefined ? include_in_transport : false,
       is_active !== undefined ? is_active : true
     ];
     
@@ -178,16 +219,30 @@ router.put('/:id', async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { id } = req.params;
+    await pool.query(`
+      ALTER TABLE venues
+        ADD COLUMN IF NOT EXISTS include_in_transport boolean DEFAULT false,
+        ADD COLUMN IF NOT EXISTS contact_phone text,
+        ADD COLUMN IF NOT EXISTS contact_email text,
+        ADD COLUMN IF NOT EXISTS accessibility_features text,
+        ADD COLUMN IF NOT EXISTS venue_type text,
+        ADD COLUMN IF NOT EXISTS is_active boolean DEFAULT true
+    `);
+    
     const {
       name,
       address,
+      suburb,
+      state,
       postcode,
       contact_phone,
       contact_email,
       capacity,
       accessibility_features,
       venue_type,
-      is_active
+      is_active,
+      include_in_transport,
+      notes
     } = req.body;
     
     // Check if venue exists
@@ -212,6 +267,16 @@ router.put('/:id', async (req, res) => {
     if (address !== undefined) {
       updates.push(`address = $${paramIndex++}`);
       values.push(address);
+    }
+    
+    if (suburb !== undefined) {
+      updates.push(`suburb = $${paramIndex++}`);
+      values.push(suburb);
+    }
+    
+    if (state !== undefined) {
+      updates.push(`state = $${paramIndex++}`);
+      values.push(state);
     }
     
     if (postcode !== undefined) {
@@ -257,9 +322,19 @@ router.put('/:id', async (req, res) => {
       values.push(venue_type);
     }
     
+    if (include_in_transport !== undefined) {
+      updates.push(`include_in_transport = $${paramIndex++}`);
+      values.push(include_in_transport);
+    }
+
     if (is_active !== undefined) {
       updates.push(`is_active = $${paramIndex++}`);
       values.push(is_active);
+    }
+    
+    if (notes !== undefined) {
+      updates.push(`notes = $${paramIndex++}`);
+      values.push(notes);
     }
     
     // If no fields to update
@@ -277,6 +352,7 @@ router.put('/:id', async (req, res) => {
       RETURNING id, name, address, suburb, state, postcode, contact_phone,
                 contact_email, capacity, facilities, features,
                 accessibility_features, venue_type,
+                COALESCE(include_in_transport,false) AS include_in_transport,
                 COALESCE(is_active, true) AS is_active,
                 status, location_lat, location_lng,
                 created_at, updated_at

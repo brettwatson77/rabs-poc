@@ -569,10 +569,13 @@ router.patch('/rules/:id/participants/:rppId', async (req, res) => {
   const { pickup_address_pref, dropoff_address_pref } = req.body || {};
 
   // Quick validation of provided values
-  const validVals = ['primary', 'secondary'];
+  const validVals = ['primary', 'secondary', 'none'];
+  const venueRegex =
+    /^venue:([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$/;
   if (
     pickup_address_pref !== undefined &&
-    !validVals.includes(pickup_address_pref)
+    !validVals.includes(pickup_address_pref) &&
+    !venueRegex.test(pickup_address_pref)
   ) {
     return res
       .status(400)
@@ -580,7 +583,8 @@ router.patch('/rules/:id/participants/:rppId', async (req, res) => {
   }
   if (
     dropoff_address_pref !== undefined &&
-    !validVals.includes(dropoff_address_pref)
+    !validVals.includes(dropoff_address_pref) &&
+    !venueRegex.test(dropoff_address_pref)
   ) {
     return res
       .status(400)

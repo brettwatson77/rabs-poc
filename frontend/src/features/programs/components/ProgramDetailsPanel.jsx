@@ -176,6 +176,23 @@ const ProgramDetailsPanel = (props) => {
                       placeholder="Enter venue type"
                     />
                   </div>
+                  {/* Include in Transport checkbox */}
+                  <div className="form-group checkbox-group">
+                    <label className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={!!newVenue.include_in_transport}
+                        onChange={(e) =>
+                          setNewVenue &&
+                          setNewVenue({
+                            ...newVenue,
+                            include_in_transport: e.target.checked,
+                          })
+                        }
+                      />{' '}
+                      Include in Transport
+                    </label>
+                  </div>
                   <div className="form-actions">
                     <button 
                       className="btn btn-secondary"

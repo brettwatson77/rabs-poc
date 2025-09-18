@@ -78,6 +78,7 @@ const ProgramTemplateWizard = () => {
     contact_phone: '',
     contact_email: '',
     capacity: '',
+    include_in_transport: false,
     accessibility_features: '',
     venue_type: '',
     is_active: true
@@ -458,6 +459,7 @@ const ProgramTemplateWizard = () => {
           contact_phone: '',
           contact_email: '',
           capacity: '',
+          include_in_transport: false,
           accessibility_features: '',
           venue_type: '',
           is_active: true
@@ -1438,16 +1440,47 @@ const ProgramTemplateWizard = () => {
                                         )
                                       }
                                     >
-                                      <option value="primary">
-                                        Primary — {primaryLabel}
-                                      </option>
-                                      <option
-                                        value="secondary"
-                                        disabled={!secondaryLabel}
-                                      >
-                                        Secondary —{' '}
-                                        {secondaryLabel || 'N/A'}
-                                      </option>
+                                      {/* No Transport */}
+                                      <option value="none">No Transport</option>
+                                      {/* Participant addresses */}
+                                      <optgroup label="Participant Addresses">
+                                        <option value="primary">
+                                          Primary — {primaryLabel}
+                                        </option>
+                                        <option
+                                          value="secondary"
+                                          disabled={!secondaryLabel}
+                                        >
+                                          Secondary — {secondaryLabel || 'N/A'}
+                                        </option>
+                                      </optgroup>
+                                      {/* Transport Venues */}
+                                      {venues.some(
+                                        (v) => v.include_in_transport
+                                      ) && (
+                                        <optgroup label="Transport Venues">
+                                          {venues
+                                            .filter(
+                                              (v) => v.include_in_transport
+                                            )
+                                            .map((v) => (
+                                              <option
+                                                key={v.id}
+                                                value={`venue:${v.id}`}
+                                              >
+                                                {v.name} —{' '}
+                                                {[
+                                                  v.address,
+                                                  v.suburb,
+                                                  v.state,
+                                                  v.postcode,
+                                                ]
+                                                  .filter(Boolean)
+                                                  .join(', ')}
+                                              </option>
+                                            ))}
+                                        </optgroup>
+                                      )}
                                     </select>
                                   </div>
                                   <div className="form-group">
@@ -1463,16 +1496,47 @@ const ProgramTemplateWizard = () => {
                                         )
                                       }
                                     >
-                                      <option value="primary">
-                                        Primary — {primaryLabel}
-                                      </option>
-                                      <option
-                                        value="secondary"
-                                        disabled={!secondaryLabel}
-                                      >
-                                        Secondary —{' '}
-                                        {secondaryLabel || 'N/A'}
-                                      </option>
+                                      {/* No Transport */}
+                                      <option value="none">No Transport</option>
+                                      {/* Participant addresses */}
+                                      <optgroup label="Participant Addresses">
+                                        <option value="primary">
+                                          Primary — {primaryLabel}
+                                        </option>
+                                        <option
+                                          value="secondary"
+                                          disabled={!secondaryLabel}
+                                        >
+                                          Secondary — {secondaryLabel || 'N/A'}
+                                        </option>
+                                      </optgroup>
+                                      {/* Transport Venues */}
+                                      {venues.some(
+                                        (v) => v.include_in_transport
+                                      ) && (
+                                        <optgroup label="Transport Venues">
+                                          {venues
+                                            .filter(
+                                              (v) => v.include_in_transport
+                                            )
+                                            .map((v) => (
+                                              <option
+                                                key={v.id}
+                                                value={`venue:${v.id}`}
+                                              >
+                                                {v.name} —{' '}
+                                                {[
+                                                  v.address,
+                                                  v.suburb,
+                                                  v.state,
+                                                  v.postcode,
+                                                ]
+                                                  .filter(Boolean)
+                                                  .join(', ')}
+                                              </option>
+                                            ))}
+                                        </optgroup>
+                                      )}
                                     </select>
                                   </div>
                                 </>
