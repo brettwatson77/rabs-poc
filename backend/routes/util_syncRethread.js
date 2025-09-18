@@ -174,8 +174,9 @@ async function syncRethread(options = {}, pool) {
             SELECT * FROM rules_programs
             WHERE id = $1 AND active = true
           `, [ruleId]);
-          
-          rules = ruleResult.rows;
+          // Filter that single rule by recurrence/anchor logic for this date
+          const single = ruleResult.rows.length ? ruleResult.rows[0] : null;
+          rules = single && isRuleActiveOnDate(single, date) ? [single] : [];
         } else {
           // Otherwise, get all active rules for this day of week
           const dayOfWeek = new Date(date).getDay() === 0 ? 7 : new Date(date).getDay();
