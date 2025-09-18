@@ -54,13 +54,33 @@ const ensurePaymentDiamondsColumns = async (pool) => {
 // ---------------------------------------------------------------------------
 const loadSettings = async (pool) => {
   try {
+    // Pull both fortnights & days (fortnights takes precedence)
     const { rows } = await pool.query(
-      "SELECT key, value FROM settings WHERE key = 'loom_window_days'"
+      `SELECT key, value
+         FROM settings
+        WHERE key IN ('loom_window_fortnights','loom_window_days')`
     );
-    const v = Number(rows[0]?.value);
-    return { loom_window_days: Number.isFinite(v) && v > 0 ? v : 14 };
+
+    // Quick lookup map
+    const kv = {};
+    rows.forEach(r => kv[r.key] = r.value);
+
+    const fortnights = Number(kv.loom_window_fortnights);
+    const daysVal    = Number(kv.loom_window_days);
+
+    let days;
+    if (Number.isFinite(fortnights) && fortnights > 0) {
+      days = fortnights * 14;
+    } else if (Number.isFinite(daysVal) && daysVal > 0) {
+      days = daysVal;
+    } else {
+      days = 56; // default = 4 fortnights
+    }
+
+    return { loom_window_days: days };
   } catch (e) {
-    return { loom_window_days: 14 };
+    // Fallback default
+    return { loom_window_days: 56 };
   }
 };
 

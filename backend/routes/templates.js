@@ -61,7 +61,8 @@ async function loadSettings(pool) {
   // the templates router to calculate staffing / vehicle requirements.
   // -------------------------------------------------------------------
   const DEFAULTS = {
-    loom_window_days: 14,
+    loom_window_fortnights: 4,
+    loom_window_days: 56, // 4 fortnights * 14 days
     staff_threshold_per_wpu: 5,
     vehicle_trigger_every_n_participants: 10,
     default_bus_capacity: 10, // kept for legacy fall-back paths
@@ -82,6 +83,15 @@ async function loadSettings(pool) {
       const num = Number(r.value);
       if (Number.isFinite(num) && num > 0) merged[r.key] = num;
     });
+
+    // Apply precedence and derivation rules
+    if (Number.isFinite(merged.loom_window_fortnights) && merged.loom_window_fortnights > 0) {
+      // Fortnights takes precedence - derive days
+      merged.loom_window_days = merged.loom_window_fortnights * 14;
+    } else if (Number.isFinite(merged.loom_window_days) && merged.loom_window_days > 0) {
+      // Only days is valid - derive fortnights
+      merged.loom_window_fortnights = Math.max(1, Math.round(merged.loom_window_days / 14));
+    }
 
     return merged;
   } catch (err) {
@@ -1490,10 +1500,9 @@ router.post('/rules/:id/finalize', async (req, res) => {
      * Determine loom window (org setting) and date range
      * ------------------------------------------------------------------*/
     const settings = await loadSettings(pool);
-    const windowDays =
-      Number(settings.loom_window_days) && settings.loom_window_days > 0
-        ? Number(settings.loom_window_days)
-        : 14;
+    const windowDays = settings.loom_window_fortnights ? settings.loom_window_fortnights * 14 : 
+                      settings.loom_window_days > 0 ? settings.loom_window_days : 56;
+    
     // Helper YYYY-MM-DD
     const fmt = (d) => d.toISOString().split('T')[0];
     const tomorrow = (() => {

@@ -29,18 +29,27 @@ router.get('/window', async (req, res) => {
     if (req.query.days && !isNaN(parseInt(req.query.days))) {
       windowDays = parseInt(req.query.days);
     } else {
-      // Otherwise fetch from settings
+      // Otherwise fetch fortnights/days from settings with precedence
       const settingResult = await pool.query(
-        `SELECT value FROM settings WHERE key = 'loom_window_days'`
+        `SELECT key, value 
+           FROM settings 
+          WHERE key IN ('loom_window_fortnights','loom_window_days')`
       );
-      
-      // Use setting value if found, otherwise default to 14
-      windowDays = settingResult.rows.length > 0 ? 
-        parseInt(settingResult.rows[0].value) : 14;
-      
-      // Ensure it's a valid number
-      if (isNaN(windowDays) || windowDays <= 0) {
-        windowDays = 14;
+
+      // Build quick lookup
+      const kv = {};
+      settingResult.rows.forEach(r => { kv[r.key] = r.value; });
+
+      const fnInt   = parseInt(kv.loom_window_fortnights);
+      const daysInt = parseInt(kv.loom_window_days);
+
+      if (!isNaN(fnInt) && fnInt > 0) {
+        windowDays = fnInt * 14;
+      } else if (!isNaN(daysInt) && daysInt > 0) {
+        windowDays = daysInt;
+      } else {
+        // Default: 4 fortnights
+        windowDays = 56;
       }
     }
     

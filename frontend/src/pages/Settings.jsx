@@ -162,7 +162,13 @@ const Settings = () => {
       onSuccess: (res) => {
         if (res?.data) {
           setOrgSettings(res.data);
-          const totalFortnights = Math.max(1, Math.round(res.data.loom_window_days / 14));
+          const totalFortnights =
+            res.data.loom_window_fortnights && res.data.loom_window_fortnights > 0
+              ? res.data.loom_window_fortnights
+              : Math.max(
+                  1,
+                  Math.round((res.data.loom_window_days || 0) / 14)
+                );
           // Set single fortnights value
           setLoomFortnights(totalFortnights);
         }
@@ -229,6 +235,7 @@ const Settings = () => {
     const days = loomFortnights * 14;
     // 1) PUT org numeric settings
     const putOrg = axios.put(`${API_URL}/api/v1/settings/org`, {
+      loom_window_fortnights: loomFortnights,
       loom_window_days: days,
       staff_threshold_per_wpu: orgSettings.staff_threshold_per_wpu,
       vehicle_trigger_every_n_participants: orgSettings.vehicle_trigger_every_n_participants
