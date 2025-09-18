@@ -29,6 +29,11 @@ const Roster = () => {
     startOfWeek(new Date(), { weekStartsOn: 1 })
   );
 
+  // Jump to fortnight containing \"today\"
+  const handleTodayFortnight = () => {
+    setStartMonday(startOfWeek(new Date(), { weekStartsOn: 1 }));
+  };
+
   // Derive the 14-day string array from startMonday (memoised for stability)
   const dates = React.useMemo(
     () =>
@@ -216,7 +221,23 @@ const Roster = () => {
         {/* Simple refresh */}
       </div>
 
-      {/* Fortnight navigation ------------------------------------------------ */}
+  {/* View mode tabs ------------------------------------------------------ */}
+  <div className=\"tab-bar\" style={{ marginBottom: '16px' }}>
+        <button
+          className={`tab-btn ${view === 'day' ? 'active' : ''}`}
+          onClick={() => setView('day')}
+        >
+          Schedule&nbsp;View
+        </button>
+        <button
+          className={`tab-btn ${view === 'staff' ? 'active' : ''}`}
+          onClick={() => setView('staff')}
+        >
+          Staff&nbsp;View
+        </button>
+  </div>
+
+  {/* Fortnight navigation ------------------------------------------------ */}
       <div
         className="fortnight-nav glass-card"
         style={{
@@ -248,6 +269,14 @@ const Roster = () => {
 
         <button
           className="btn nav-button"
+          onClick={handleTodayFortnight}
+          style={{ minWidth: '100px' }}
+        >
+          Today
+        </button>
+
+        <button
+          className=\"btn nav-button\"
           onClick={handleNextFortnight}
           style={{ minWidth: '140px' }}
         >
@@ -255,29 +284,26 @@ const Roster = () => {
         </button>
       </div>
 
-      {/* Week selector (only visible in By Day view) ----------------------- */}
+      {/* Week selector (only visible in Schedule view) -------------------- */}
       {view === 'day' && (
-        <div
-          className="week-toggle glass-card"
-          style={{
-            display: 'flex',
-            gap: '8px',
-            justifyContent: 'center',
-            marginBottom: '16px',
-            padding: '8px',
-          }}
-        >
+        <div className=\"tab-bar\" style={{ marginBottom: '16px' }}>
           <button
-            className={`btn ${week === 0 ? 'btn-primary' : 'btn-secondary'}`}
+            className={`tab-btn ${week === 0 ? 'active' : ''}`}
             onClick={() => setWeek(0)}
           >
-            Week&nbsp;1
+            Week&nbsp;One
           </button>
           <button
-            className={`btn ${week === 1 ? 'btn-primary' : 'btn-secondary'}`}
+            className={`tab-btn ${week === 1 ? 'active' : ''}`}
             onClick={() => setWeek(1)}
           >
-            Week&nbsp;2
+            Week&nbsp;Two
+          </button>
+          <button
+            className={`tab-btn ${week === 2 ? 'active' : ''}`}
+            onClick={() => setWeek(2)}
+          >
+            Both
           </button>
         </div>
       )}
@@ -290,36 +316,6 @@ const Roster = () => {
         position: 'relative',
         zIndex: 4
       }}>
-        {/* View toggle buttons */}
-        <div className="view-toggle" style={{ display: 'flex', gap: '8px' }}>
-          <button 
-            className={`btn ${view === 'day' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setView('day')}
-            style={{ 
-              padding: '8px 16px',
-              borderRadius: '4px',
-              fontWeight: view === 'day' ? 'bold' : 'normal',
-              backgroundColor: view === 'day' ? '#4a6fa5' : '#e0e0e0',
-              color: view === 'day' ? 'white' : 'black'
-            }}
-          >
-            By Day
-          </button>
-          <button 
-            className={`btn ${view === 'staff' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setView('staff')}
-            style={{ 
-              padding: '8px 16px',
-              borderRadius: '4px',
-              fontWeight: view === 'staff' ? 'bold' : 'normal',
-              backgroundColor: view === 'staff' ? '#4a6fa5' : '#e0e0e0',
-              color: view === 'staff' ? 'white' : 'black'
-            }}
-          >
-            By Staff
-          </button>
-        </div>
-        
         {/* Search input - only show in staff view */}
         {view === 'staff' && (
           <div className="roster-search" style={{ 
@@ -354,18 +350,18 @@ const Roster = () => {
 
       {/* Main roster view - conditional rendering based on view state */}
       {!loading && view === 'day' && (
-        <div className="roster-view-grid" style={{ overflowX: 'auto' }}>
+        <div className=\"full-bleed roster-view-grid\" style={{ overflowX: 'auto' }}>
           <div
             className="week-grid"
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(7, minmax(200px, 1fr))',
+              gridTemplateColumns: `repeat(${week === 2 ? 14 : 7}, minmax(200px, 1fr))`,
               gap: '16px',
               marginBottom: '24px',
             }}
           >
             {dates
-              .slice(week * 7, week * 7 + 7)
+              .slice(week === 2 ? 0 : week * 7, week === 2 ? 14 : week * 7 + 7)
               .map((d) => {
                 const dayShifts = shiftsByDate[d] || [];
                 // Sort shifts by start_time
@@ -390,7 +386,7 @@ const Roster = () => {
 
       {/* Staff View - Single grid with sticky first column */}
       {!loading && view === 'staff' && (
-        <div className="rosterGrid" style={{
+        <div className=\"full-bleed rosterGrid\" style={{
           display: 'grid',
           gridTemplateColumns: '280px repeat(14, minmax(200px, 1fr))',
           gridAutoRows: 'minmax(64px, auto)',
