@@ -16,45 +16,47 @@ const { v4: uuidv4 } = require('uuid');
 let _activitiesSchemaReady = false;
 async function ensureActivitiesSchema(pool) {
   if (_activitiesSchemaReady) return;
-  const ddl = `
-    CREATE TABLE IF NOT EXISTS activities (
-      id uuid PRIMARY KEY,
-      program_id uuid NOT NULL REFERENCES rules_programs(id) ON DELETE CASCADE,
-      activity_date date NOT NULL,
-      name text NOT NULL,
-      address text,
-      activity_cost numeric(10,2) DEFAULT 0,
-      food_budget numeric(10,2) DEFAULT 0,
-      notes text,
-      created_at timestamptz DEFAULT now(),
-      updated_at timestamptz DEFAULT now()
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_activities_program_date
-      ON activities (program_id, activity_date);
-
-    DO $$
-    BEGIN
-      IF NOT EXISTS (
-        SELECT 1 FROM pg_trigger WHERE tgname = 'update_activities_timestamp'
-      ) THEN
-        CREATE OR REPLACE FUNCTION update_activities_timestamp()
-        RETURNS TRIGGER AS $$
-        BEGIN
-          NEW.updated_at = now();
-          RETURN NEW;
-        END;
-        $$ LANGUAGE plpgsql;
-
-        CREATE TRIGGER update_activities_timestamp
-        BEFORE UPDATE ON activities
-        FOR EACH ROW
-        EXECUTE FUNCTION update_activities_timestamp();
-      END IF;
-    END $$;
-  `;
   try {
-    await pool.query(ddl);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS activities (
+        id uuid PRIMARY KEY,
+        program_id uuid NOT NULL REFERENCES rules_programs(id) ON DELETE CASCADE,
+        activity_date date NOT NULL,
+        name text NOT NULL,
+        address text,
+        activity_cost numeric(10,2) DEFAULT 0,
+        food_budget numeric(10,2) DEFAULT 0,
+        notes text,
+        created_at timestamptz DEFAULT now(),
+        updated_at timestamptz DEFAULT now()
+      );
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_activities_program_date
+      ON activities (program_id, activity_date);
+    `);
+    await pool.query(`
+      CREATE OR REPLACE FUNCTION update_activities_timestamp()
+      RETURNS TRIGGER AS $$
+      BEGIN
+        NEW.updated_at = now();
+        RETURN NEW;
+      END;
+      $$ LANGUAGE plpgsql;
+    `);
+    await pool.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_trigger WHERE tgname = 'update_activities_timestamp'
+        ) THEN
+          CREATE TRIGGER update_activities_timestamp
+          BEFORE UPDATE ON activities
+          FOR EACH ROW
+          EXECUTE FUNCTION update_activities_timestamp();
+        END IF;
+      END $$;
+    `);
     _activitiesSchemaReady = true;
   } catch (e) {
     console.error('Error ensuring activities schema:', e.message);
