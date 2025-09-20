@@ -383,19 +383,19 @@ const VehiclesFull = () => {
     <div className="vehicles-page">
       {/* Page Header */}
       <header className="page-header">
-        <h2>Vehicles</h2>
+        <h2 className="page-title">Vehicles</h2>
       </header>
 
       {/* Tab Navigation */}
-      <div className="page-tabs">
+      <div className="tab-bar">
         <button
-          className={`tab-button ${activeTab === 'directory' ? 'active' : ''}`}
+          className={`tab-btn ${activeTab === 'directory' ? 'active' : ''}`}
           onClick={() => setActiveTab('directory')}
         >
           Directory
         </button>
         <button
-          className={`tab-button ${activeTab === 'maintenance' ? 'active' : ''}`}
+          className={`tab-btn ${activeTab === 'maintenance' ? 'active' : ''}`}
           onClick={() => setActiveTab('maintenance')}
         >
           Maintenance
