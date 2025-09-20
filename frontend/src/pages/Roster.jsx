@@ -237,106 +237,101 @@ const Roster = () => {
         </button>
   </div>
 
-  {/* Fortnight navigation ------------------------------------------------ */}
+  {/* Unified control bar ------------------------------------------------- */}
       <div
-        className="fortnight-nav glass-card"
+        className="glass-card"
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: '12px',
+          gap: '16px',
+          flexWrap: 'wrap',
           marginBottom: '16px',
         }}
       >
-        <button
-          className="btn nav-button"
-          onClick={handlePrevFortnight}
-          style={{ minWidth: '140px' }}
-        >
-          Previous&nbsp;Fortnight
-        </button>
-
-        <div
-          style={{
-            flex: 1,
-            textAlign: 'center',
-            fontWeight: 600,
-            letterSpacing: '-0.01em',
-          }}
-        >
-          {fortnightLabel}
-        </div>
-
-        <button
-          className="btn nav-button"
-          onClick={handleTodayFortnight}
-          style={{ minWidth: '100px' }}
-        >
-          Today
-        </button>
-
-        <button
-          className="btn nav-button"
-          onClick={handleNextFortnight}
-          style={{ minWidth: '140px' }}
-        >
-          Next&nbsp;Fortnight
-        </button>
-      </div>
-
-      {/* Week selector (only visible in Schedule view) -------------------- */}
-      {view === 'day' && (
-        <div className="tab-bar" style={{ marginBottom: '16px' }}>
+        {/* Left: fortnight navigation */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <button
-            className={`tab-btn ${week === 0 ? 'active' : ''}`}
-            onClick={() => setWeek(0)}
+            className="btn nav-button"
+            onClick={handlePrevFortnight}
+            style={{ minWidth: '140px' }}
           >
-            Week&nbsp;One
+            Previous&nbsp;Fortnight
           </button>
-          <button
-            className={`tab-btn ${week === 1 ? 'active' : ''}`}
-            onClick={() => setWeek(1)}
+
+          <div
+            style={{
+              fontWeight: 600,
+              letterSpacing: '-0.01em',
+              minWidth: '200px',
+              textAlign: 'center',
+            }}
           >
-            Week&nbsp;Two
+            {fortnightLabel}
+          </div>
+
+          <button
+            className="btn nav-button"
+            onClick={handleTodayFortnight}
+            style={{ minWidth: '80px' }}
+          >
+            Today
           </button>
+
           <button
-            className={`tab-btn ${week === 2 ? 'active' : ''}`}
-            onClick={() => setWeek(2)}
+            className="btn nav-button"
+            onClick={handleNextFortnight}
+            style={{ minWidth: '140px' }}
           >
-            Both
+            Next&nbsp;Fortnight
           </button>
         </div>
-      )}
 
-      <div className="roster-controls glass-card" style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        marginBottom: '16px',
-        position: 'relative',
-        zIndex: 4
-      }}>
-        {/* Search input - only show in staff view */}
-        {view === 'staff' && (
-          <div className="roster-search" style={{ 
-            height: '40px', 
-            width: '100%', 
-            maxWidth: '320px', 
-            marginLeft: '16px',
-            display: 'flex',
-            alignItems: 'center'
-          }}>
+        {/* Right: week selector or staff search */}
+        {view === 'day' ? (
+          <div className="tab-bar" style={{ marginLeft: 'auto' }}>
+            <button
+              className={`tab-btn ${week === 0 ? 'active' : ''}`}
+              onClick={() => setWeek(0)}
+            >
+              Week&nbsp;One
+            </button>
+            <button
+              className={`tab-btn ${week === 1 ? 'active' : ''}`}
+              onClick={() => setWeek(1)}
+            >
+              Week&nbsp;Two
+            </button>
+            <button
+              className={`tab-btn ${week === 2 ? 'active' : ''}`}
+              onClick={() => setWeek(2)}
+            >
+              Both
+            </button>
+          </div>
+        ) : (
+          <div
+            className="roster-search"
+            style={{
+              height: '40px',
+              width: '100%',
+              maxWidth: '320px',
+              marginLeft: 'auto',
+              display: 'flex',
+              alignItems: 'center',
+            }}
+          >
             <input
               type="text"
               placeholder="Search staff..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="glass-input"
-              style={{ 
-                width: '100%', 
+              style={{
+                width: '100%',
                 height: '100%',
-                padding: '8px 12px', 
-                borderRadius: '10px' 
+                padding: '8px 12px',
+                borderRadius: '10px',
               }}
             />
           </div>

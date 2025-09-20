@@ -41,6 +41,22 @@ const Dashboard = () => {
     }
   );
   
+  // Fetch organization settings
+  const {
+    data: orgSettings,
+    isLoading: orgSettingsLoading,
+    refetch: refetchOrgSettings
+  } = useQuery(
+    ['orgSettings'],
+    async () => {
+      const response = await api.get('/api/v1/settings/org');
+      return response.data;
+    },
+    {
+      staleTime: 300000, // 5 minutes
+    }
+  );
+  
   // unified healthy test
   const isHealthy = (d) =>
     !!d && (d.ok === true || d.success === true || d.status === 'ok');
@@ -142,6 +158,7 @@ const Dashboard = () => {
   const handleRefresh = () => {
     refetchCards();
     refetchSystemHealth();
+    refetchOrgSettings();
     // Metrics & alerts disabled
   };
   
@@ -221,17 +238,11 @@ const Dashboard = () => {
       {/* Welcome Card */}
       <div className="glass-card welcome-card mb-4">
         <div className="card-header">
-          <h3>Welcome to RABS v3</h3>
+          <h3>Welcome to RABS</h3>
         </div>
         <div className="card-body">
           <p>
-            The all-new Roster & Billing System for NDIS providers. This clean-slate rebuild 
-            follows the RP2 methodology, with API-IS-KING principle in full effect.
-          </p>
-          <p>
-            <strong>The Loom System:</strong> RABS uses a &quot;loom&quot; metaphor where programs are woven 
-            into the schedule. The Wall (program templates) + Calendar (dates) create the Master Schedule, 
-            which breaks down into time slots shown below (Earlier/Before/Now/Next/Later).
+            The Real-time Adaptive Backend System designed to simplify complex operations with speed, clarity, and flexibility. Built to connect people, data, and processes seamlessly, RABS adapts in real time to changing needs, ensuring that schedules, resources, and workflows stay aligned. Whether managing daily tasks or long-term strategies, RABS gives you a reliable, intelligent foundation to work smarter, not harder. (Coming Soon: Reggie)
           </p>
         </div>
       </div>
@@ -270,10 +281,11 @@ const Dashboard = () => {
             {/* Earlier */}
             <div className="time-column">
               <div className="column-header earlier">
-                <h4>Earlier</h4>
-                {timeSlotColumns.earlier.length > 0 && (
-                  <span className="count-badge">{timeSlotColumns.earlier.length}</span>
-                )}
+                <h4>
+                  {timeSlotColumns.earlier.length > 0 
+                    ? `Earlier (${timeSlotColumns.earlier.length})` 
+                    : 'Earlier'}
+                </h4>
               </div>
               <div className="column-content">
                 {timeSlotColumns.earlier.length === 0 ? (
@@ -289,10 +301,11 @@ const Dashboard = () => {
             {/* Before */}
             <div className="time-column">
               <div className="column-header before">
-                <h4>Before</h4>
-                {timeSlotColumns.before.length > 0 && (
-                  <span className="count-badge">{timeSlotColumns.before.length}</span>
-                )}
+                <h4>
+                  {timeSlotColumns.before.length > 0 
+                    ? `Before (${timeSlotColumns.before.length})` 
+                    : 'Before'}
+                </h4>
               </div>
               <div className="column-content">
                 {timeSlotColumns.before.length === 0 ? (
@@ -308,10 +321,11 @@ const Dashboard = () => {
             {/* Now */}
             <div className="time-column">
               <div className="column-header now">
-                <h4>Now</h4>
-                {timeSlotColumns.now.length > 0 && (
-                  <span className="count-badge">{timeSlotColumns.now.length}</span>
-                )}
+                <h4>
+                  {timeSlotColumns.now.length > 0 
+                    ? `Now (${timeSlotColumns.now.length})` 
+                    : 'Now'}
+                </h4>
               </div>
               <div className="column-content">
                 {timeSlotColumns.now.length === 0 ? (
@@ -327,10 +341,11 @@ const Dashboard = () => {
             {/* Next */}
             <div className="time-column">
               <div className="column-header next">
-                <h4>Next</h4>
-                {timeSlotColumns.next.length > 0 && (
-                  <span className="count-badge">{timeSlotColumns.next.length}</span>
-                )}
+                <h4>
+                  {timeSlotColumns.next.length > 0 
+                    ? `Next (${timeSlotColumns.next.length})` 
+                    : 'Next'}
+                </h4>
               </div>
               <div className="column-content">
                 {timeSlotColumns.next.length === 0 ? (
@@ -346,10 +361,11 @@ const Dashboard = () => {
             {/* Later */}
             <div className="time-column">
               <div className="column-header later">
-                <h4>Later</h4>
-                {timeSlotColumns.later.length > 0 && (
-                  <span className="count-badge">{timeSlotColumns.later.length}</span>
-                )}
+                <h4>
+                  {timeSlotColumns.later.length > 0 
+                    ? `Later (${timeSlotColumns.later.length})` 
+                    : 'Later'}
+                </h4>
               </div>
               <div className="column-content">
                 {timeSlotColumns.later.length === 0 ? (
@@ -411,7 +427,16 @@ const Dashboard = () => {
             </div>
             <div className="system-status-details">
               <div className="status-item">
-                <strong>Loom Window:</strong> 7 days before, 30 days ahead
+                <strong>Loom Window:</strong> {orgSettingsLoading ? 'Loading...' : 
+                  `${orgSettings?.data?.loom_window_fortnights || 4} fortnights (~${orgSettings?.data?.loom_window_days || 56} days)`}
+              </div>
+              <div className="status-item">
+                <strong>Staff per WPU:</strong> {orgSettingsLoading ? 'Loading...' : 
+                  `${orgSettings?.data?.staff_threshold_per_wpu || 5}`}
+              </div>
+              <div className="status-item">
+                <strong>Vehicle trigger per participants:</strong> {orgSettingsLoading ? 'Loading...' : 
+                  `${orgSettings?.data?.vehicle_trigger_every_n_participants || 10}`}
               </div>
               <div className="status-item">
                 <strong>Last Updated:</strong> {format(new Date(), 'MMM d, yyyy h:mm a')}

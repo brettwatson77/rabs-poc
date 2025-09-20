@@ -236,7 +236,7 @@ const MasterSchedule = () => {
   return (
     <div className="master-schedule">
       <div className="schedule-header">
-        <h1>Master Schedule</h1>
+        <h1>Schedule</h1>
         <Link to="/template-wizard" className="create-button glass-button">
           Create Program
         </Link>
@@ -275,6 +275,16 @@ const MasterSchedule = () => {
 
         <button
           className="btn nav-button"
+          onClick={() =>
+            setStartMonday(startOfWeek(new Date(), { weekStartsOn: 1 }))
+          }
+          style={{ minWidth: '100px' }}
+        >
+          Today
+        </button>
+
+        <button
+          className="btn nav-button"
           onClick={handleNextFortnight}
           style={{ minWidth: '140px' }}
         >
@@ -287,7 +297,7 @@ const MasterSchedule = () => {
       )}
       
       {!loading && (
-        <div className="fortnight-view" style={{ overflowX: 'auto' }}>
+        <div className="full-bleed fortnight-view" style={{ overflowX: 'auto' }}>
           {/* Week 1 (first 7 days) */}
           <div
             className="week-grid"
