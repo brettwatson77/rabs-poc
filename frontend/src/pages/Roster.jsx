@@ -87,8 +87,8 @@ const Roster = () => {
         key={shift.shift_id} 
         className="shift-card glass-card"
         style={{
-          padding: '6px',
-          marginBottom: '6px',
+          padding: '4px 6px',
+          marginBottom: '4px',
           borderRadius: '6px',
           position: 'relative',
           width: '100%'
@@ -247,17 +247,7 @@ const Roster = () => {
   </div>
 
   {/* Unified control bar ------------------------------------------------- */}
-      <div
-        className="glass-card"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '16px',
-          flexWrap: 'wrap',
-          marginBottom: '16px',
-        }}
-      >
+      <div className="search-filter-bar">
         {/* Left: fortnight navigation */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <button
@@ -319,8 +309,20 @@ const Roster = () => {
             </button>
           </div>
         ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginLeft: 'auto', flexWrap: 'wrap' }}>
-            {/* Week selector (same as Day view) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginLeft: 'auto' }}>
+            {/* Search field first */}
+            <div className="search-container" style={{ flex: '1' }}>
+              <FiSearch className="search-icon" />
+              <input
+                type="text"
+                placeholder="Search staff..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="search-input"
+              />
+            </div>
+            
+            {/* Week selector second */}
             <div className="tab-bar">
               <button
                 className={`tab-btn ${week === 0 ? 'active' : ''}`}
@@ -340,18 +342,6 @@ const Roster = () => {
               >
                 Both
               </button>
-            </div>
-
-            {/* Search field */}
-            <div className="search-container" style={{ maxWidth: '320px', flex: '1 1 260px' }}>
-              <FiSearch className="search-icon" />
-              <input
-                type="text"
-                placeholder="Search staff..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="search-input"
-              />
             </div>
           </div>
         )}
@@ -403,7 +393,7 @@ const Roster = () => {
         <div className="full-bleed rosterGrid" style={{
           display: 'grid',
           gridTemplateColumns: `280px repeat(${visibleDates.length}, minmax(200px, 1fr))`,
-          gridAutoRows: 'minmax(72px, auto)',
+          gridAutoRows: 'minmax(88px, auto)',
           overflow: 'auto',
           height: 'calc(100vh - 200px)'
         }}>

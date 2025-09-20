@@ -257,3 +257,28 @@
     padding-right: var(--space-lg);
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/*  Utility: Full-bleed vertical helper                                       */
+/*  Extends .full-bleed horizontally and also removes the vertical padding   */
+/*  applied by .main-content so a section can stretch edge-to-edge beneath   */
+/*  the navbar down to the footer.                                           */
+/* -------------------------------------------------------------------------- */
+
+.full-bleed-v {
+  /* negate the main-content vertical padding (var(--space-xl)) */
+  margin-top: calc(-1 * var(--space-xl));
+  margin-bottom: calc(-1 * var(--space-xl));
+  /* re-apply equal internal spacing so content still aligns */
+  padding-top: var(--space-xl);
+  padding-bottom: var(--space-xl);
+}
+
+@media (max-width: 640px) {
+  .full-bleed-v {
+    margin-top: calc(-1 * var(--space-lg));
+    margin-bottom: calc(-1 * var(--space-lg));
+    padding-top: var(--space-lg);
+    padding-bottom: var(--space-lg);
+  }
+}
