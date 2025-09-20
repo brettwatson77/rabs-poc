@@ -234,7 +234,7 @@ const MasterSchedule = () => {
   };
   
   return (
-    <div className="master-schedule">
+    <div className="master-schedule full-bleed">
       <div className="schedule-header">
         <h1>Schedule</h1>
         <Link to="/template-wizard" className="create-button glass-button">

@@ -338,7 +338,7 @@ const Venues = () => {
     <div className="directory-tab">
       {/* Page Header */}
       <header className="page-header">
-        <h2>Venues</h2>
+        <h2 className="page-title">Venues</h2>
       </header>
 
       {/* Global search / filter bar */}

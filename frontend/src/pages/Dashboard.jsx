@@ -49,7 +49,8 @@ const Dashboard = () => {
   } = useQuery(
     ['orgSettings'],
     async () => {
-      const response = await api.get('/api/v1/settings/org');
+      // use baseURL already configured on `api` so we don't double-prefix
+      const response = await api.get('/settings/org');
       return response.data;
     },
     {

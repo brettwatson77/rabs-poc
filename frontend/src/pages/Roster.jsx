@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/api';
 import { format, startOfWeek, addDays, subDays } from 'date-fns';
+import { FiSearch } from 'react-icons/fi';
 
 /* ------------------------------------------------------------------
    Time-zone helpers – all roster dates are displayed/stored as AEST
@@ -199,6 +200,14 @@ const Roster = () => {
       .includes(search.toLowerCase())
   );
 
+  /* ------------------------------------------------------------------ */
+  /* Visible dates helper based on week selector (0,1,2)                */
+  /* ------------------------------------------------------------------ */
+  const visibleDates = React.useMemo(
+    () => (week === 2 ? dates : dates.slice(week * 7, week * 7 + 7)),
+    [week, dates]
+  );
+
   // Format date header for columns
   const formatDateHeader = (dateStr) => {
     // Parse `YYYY-MM-DD` safely (anchor at 12:00 UTC) then format in AEST
@@ -310,30 +319,40 @@ const Roster = () => {
             </button>
           </div>
         ) : (
-          <div
-            className="roster-search"
-            style={{
-              height: '40px',
-              width: '100%',
-              maxWidth: '320px',
-              marginLeft: 'auto',
-              display: 'flex',
-              alignItems: 'center',
-            }}
-          >
-            <input
-              type="text"
-              placeholder="Search staff..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="glass-input"
-              style={{
-                width: '100%',
-                height: '100%',
-                padding: '8px 12px',
-                borderRadius: '10px',
-              }}
-            />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginLeft: 'auto', flexWrap: 'wrap' }}>
+            {/* Week selector (same as Day view) */}
+            <div className="tab-bar">
+              <button
+                className={`tab-btn ${week === 0 ? 'active' : ''}`}
+                onClick={() => setWeek(0)}
+              >
+                Week&nbsp;One
+              </button>
+              <button
+                className={`tab-btn ${week === 1 ? 'active' : ''}`}
+                onClick={() => setWeek(1)}
+              >
+                Week&nbsp;Two
+              </button>
+              <button
+                className={`tab-btn ${week === 2 ? 'active' : ''}`}
+                onClick={() => setWeek(2)}
+              >
+                Both
+              </button>
+            </div>
+
+            {/* Search field */}
+            <div className="search-container" style={{ maxWidth: '320px', flex: '1 1 260px' }}>
+              <FiSearch className="search-icon" />
+              <input
+                type="text"
+                placeholder="Search staff..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="search-input"
+              />
+            </div>
           </div>
         )}
       </div>
@@ -383,8 +402,8 @@ const Roster = () => {
       {!loading && view === 'staff' && (
         <div className="full-bleed rosterGrid" style={{
           display: 'grid',
-          gridTemplateColumns: '280px repeat(14, minmax(200px, 1fr))',
-          gridAutoRows: 'minmax(64px, auto)',
+          gridTemplateColumns: `280px repeat(${visibleDates.length}, minmax(200px, 1fr))`,
+          gridAutoRows: 'minmax(72px, auto)',
           overflow: 'auto',
           height: 'calc(100vh - 200px)'
         }}>
@@ -404,7 +423,7 @@ const Roster = () => {
           </div>
           
           {/* Date headers */}
-          {dates.map((date) => (
+          {visibleDates.map((date) => (
             <div 
               key={`header-${date}`} 
               className="headerCell"
@@ -441,7 +460,7 @@ const Roster = () => {
           </div>
           
           {/* Open shifts for each day */}
-          {dates.map((date) => {
+          {visibleDates.map((date) => {
             const dayShifts = shiftsByDate[date] || [];
             const openShifts = dayShifts.filter(s => s.status === 'open');
             return (
@@ -483,7 +502,7 @@ const Roster = () => {
           </div>
           
           {/* Auto shifts for each day */}
-          {dates.map((date) => {
+          {visibleDates.map((date) => {
             const dayShifts = shiftsByDate[date] || [];
             const autoShifts = dayShifts.filter(s => s.status === 'auto');
             return (
@@ -549,7 +568,7 @@ const Roster = () => {
                 </div>
                 
                 {/* Day cells for this staff member */}
-                {dates.map((date) => {
+                {visibleDates.map((date) => {
                   const dayShifts = shiftsByDate[date] || [];
                   const staffShifts = dayShifts.filter(
                     s => s.status === 'assigned' && s.staff_id === staff.id
