@@ -2,13 +2,11 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/api';
 import { toast } from 'react-toastify';
 import { 
-  FiCalendar, 
   FiEdit2, 
   FiTrash2, 
   FiSave, 
   FiX, 
   FiPlusCircle,
-  FiActivity
 } from 'react-icons/fi';
 import '../styles/Activities.css';
 
@@ -238,7 +236,7 @@ const Activities = () => {
   return (
     <div className="activities-page">
       <div className="page-header">
-        <h2 className="page-title"><FiActivity /> Activities</h2>
+        <h2 className="page-title">Activities</h2>
       </div>
       
       {/* Program Selection */}

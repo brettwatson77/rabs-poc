@@ -1734,7 +1734,7 @@ return (
   <div className="vehicles-page">
     {/* Page Header */}
     <header className="page-header">
-      <h2>Vehicles</h2>
+      <h2 className="page-title">Vehicles</h2>
     </header>
 
     {/* Tab Navigation */}
